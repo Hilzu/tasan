@@ -11,7 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default tsEslint.config(
   // https://eslint.org/docs/latest/use/configure/ignore
   {
-    ignores: ["**/dist/"],
+    ignores: ["**/build/", "**/dist/"],
   },
 
   js.configs.recommended,
