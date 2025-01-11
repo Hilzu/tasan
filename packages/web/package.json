@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "NODE_ENV=production react-router build",
-    "clean": "rm -rf .react-router build",
+    "clean": "rm -rf .react-router build node_modules/.vite",
     "dev": "react-router dev",
     "start": "NODE_ENV=production react-router-serve ./build/server/index.js",
     "test": "react-router typegen && tsc"
@@ -19,13 +19,13 @@
   },
   "devDependencies": {
     "@react-router/dev": "^7.1.1",
-    "@types/node": "^20",
+    "@types/node": "catalog:",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
-    "typescript": "^5.7.2",
+    "typescript": "catalog:",
     "vite": "^5.4.11",
     "vite-tsconfig-paths": "^5.1.4"
   }
