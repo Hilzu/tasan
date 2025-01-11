@@ -9,6 +9,10 @@
     "start": "NODE_ENV=production react-router-serve ./build/server/index.js",
     "test": "react-router typegen && tsc"
   },
+  "engines": {
+    "node": "^22.11.0",
+    "pnpm": "^10.0.0"
+  },
   "dependencies": {
     "@react-router/node": "^7.1.1",
     "@react-router/serve": "^7.1.1",
