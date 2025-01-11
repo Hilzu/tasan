@@ -1,4 +1,5 @@
 {
+  "extends": "../../tsconfig.json",
   "include": [
     "**/*",
     "**/.server/**/*",
@@ -17,11 +18,8 @@
     "paths": {
       "~/*": ["./app/*"]
     },
-    "esModuleInterop": true,
-    "verbatimModuleSyntax": true,
     "noEmit": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "strict": true
+    "skipLibCheck": true
   }
 }

@@ -11,7 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default tsEslint.config(
   // https://eslint.org/docs/latest/use/configure/ignore
   {
-    ignores: ["**/build/", "**/dist/"],
+    ignores: ["**/.react-router/", "**/build/", "**/dist/"],
   },
 
   js.configs.recommended,
@@ -51,5 +51,11 @@ export default tsEslint.config(
   {
     files: ["**/*.mjs", "**/*.cjs", "**/*.js"],
     ...tsEslint.configs.disableTypeChecked,
+  },
+  {
+    files: ["packages/web/**"],
+    rules: {
+      "n/no-missing-import": "off",
+    },
   },
 );

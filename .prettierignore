@@ -1,3 +1,4 @@
+.react-router/
 build/
 dist/
 node_modules/

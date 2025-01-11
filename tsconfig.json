@@ -4,7 +4,6 @@
     "module": "node16",
     "target": "es2022",
     "moduleResolution": "node16",
-    "noEmit": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -12,5 +11,5 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "build", "dist"]
 }

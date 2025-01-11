@@ -3,15 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "cross-env NODE_ENV=production react-router build",
+    "build": "NODE_ENV=production react-router build",
+    "clean": "rm -rf .react-router build",
     "dev": "react-router dev",
-    "start": "cross-env NODE_ENV=production react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "start": "NODE_ENV=production react-router-serve ./build/server/index.js",
+    "test": "react-router typegen && tsc"
   },
   "dependencies": {
     "@react-router/node": "^7.1.1",
     "@react-router/serve": "^7.1.1",
-    "cross-env": "^7.0.3",
     "isbot": "^5.1.17",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

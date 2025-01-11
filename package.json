@@ -17,9 +17,10 @@
   },
   "scripts": {
     "build": "pnpm -r build",
+    "clean": "pnpm -r clean",
     "fix": "node --run format && eslint --fix .",
     "format": "prettier --write .",
-    "test": "concurrently --group node:test:*",
+    "test": "pnpm -r test && concurrently --group node:test:*",
     "test:format": "prettier --check .",
     "test:lint": "eslint ."
   },
