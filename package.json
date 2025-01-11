@@ -1,9 +1,13 @@
 {
   "name": "tasan",
   "version": "0.0.0",
-  "description": "",
-  "main": "dist/main.js",
-  "author": "",
+  "description": "Web app to split bills ",
+  "homepage": "https://tasan.app",
+  "author": "Santeri Hiltunen <santeri@santeri.consulting> (https://santeri.consulting)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hilzu/tasan.git"
+  },
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
@@ -12,25 +16,11 @@
     "pnpm": "^9.15.3"
   },
   "scripts": {
-    "build": "node --run clean && node --run build:ts",
-    "build:ts": "node build.mjs",
-    "clean": "rimraf dist",
-    "dev": "node --run clean && node build.mjs --dev && node --run dev-start",
-    "dev-start": "concurrently node:dev:*",
-    "dev:app": "node --watch --import ./dist/setup.js --enable-source-maps .",
-    "dev:build": "node build.mjs --dev --watch",
-    "dev:types": "tsc --watch --noEmit --preserveWatchOutput --pretty",
-    "docker:build": "docker build --tag tasan .",
-    "docker:run": "docker run --init --interactive --tty --publish 3000:3000 tasan",
-    "fix": "concurrently --group node:fix:* node:format",
-    "fix:lint": "eslint --fix .",
+    "fix": "node --run format && eslint --fix .",
     "format": "prettier --write .",
-    "start": "node --import ./dist/setup.js --enable-source-maps .",
-    "test": "concurrently --group node:test:* && node --run test-node",
-    "test-node": "tsx --import ./test/shim.mjs --test --test-reporter spec \"src/**/*.test.ts\"",
+    "test": "concurrently --group node:test:*",
     "test:format": "prettier --check .",
-    "test:lint": "eslint .",
-    "test:types": "tsc --noEmit --pretty"
+    "test:lint": "eslint ."
   },
   "dependencies": {},
   "devDependencies": {
@@ -38,15 +28,11 @@
     "@types/eslint__js": "^8.42.3",
     "@types/node": "^22.10.5",
     "concurrently": "^9.1.2",
-    "dotenv": "^16.4.7",
-    "esbuild": "^0.24.2",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-n": "^17.15.1",
     "globals": "^15.14.0",
     "prettier": "3.4.2",
-    "rimraf": "^6.0.1",
-    "tsx": "^4.19.2",
     "typescript": "~5.7.3",
     "typescript-eslint": "^8.19.1"
   }
