@@ -3,23 +3,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "NODE_ENV=production react-router build",
+    "build": "NODE_ENV=production react-router build --minify esbuild --mode production",
     "clean": "rm -rf .react-router build node_modules/.vite",
     "dev": "react-router dev",
-    "start": "NODE_ENV=production react-router-serve ./build/server/index.js",
     "test": "react-router typegen && tsc"
   },
   "engines": {
     "node": "^22.11.0",
-    "pnpm": "^10.0.0"
+    "pnpm": "^9.15.3"
   },
+  "files": [
+    "build"
+  ],
   "dependencies": {
     "@react-router/node": "^7.1.1",
-    "@react-router/serve": "^7.1.1",
     "isbot": "^5.1.17",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router": "^7.1.1"
+    "react-router": "catalog:"
   },
   "devDependencies": {
     "@react-router/dev": "^7.1.1",

@@ -5,6 +5,9 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
+    "cdk:diff": "cdk diff",
+    "cdk:deploy": "cdk deploy",
+    "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
     "start": "node --enable-source-maps .",
     "test": "tsc --noEmit",
@@ -12,15 +15,18 @@
   },
   "engines": {
     "node": "^22.11.0",
-    "pnpm": "^10.0.0"
+    "pnpm": "^9.15.3"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.147",
     "@types/node": "catalog:",
     "aws-cdk": "^2.175.1",
+    "esbuild": "^0.24.2",
     "typescript": "catalog:"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.175.1",
-    "constructs": "^10.0.0"
+    "constructs": "^10.0.0",
+    "react-router": "catalog:"
   }
 }
