@@ -5,13 +5,13 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
-    "cdk:diff": "cdk diff",
     "cdk:deploy": "cdk deploy",
+    "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
+    "dev": "tsc -w",
     "start": "node --enable-source-maps .",
-    "test": "tsc --noEmit",
-    "watch": "tsc -w"
+    "test": "tsc --noEmit"
   },
   "engines": {
     "node": "^22.11.0",
@@ -25,6 +25,7 @@
     "typescript": "catalog:"
   },
   "dependencies": {
+    "@tasan/web": "workspace:*",
     "aws-cdk-lib": "^2.176.0",
     "constructs": "^10.4.2",
     "react-router": "catalog:"

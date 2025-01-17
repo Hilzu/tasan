@@ -3,14 +3,10 @@ import type {
   LambdaFunctionURLEvent,
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
-import { pathToFileURL } from "node:url";
-import { createRequestHandler, type ServerBuild } from "react-router";
+import { createRequestHandler } from "react-router";
 import * as process from "node:process";
+import * as build from "@tasan/web";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const build: ServerBuild = await import(
-  pathToFileURL("./build/server/index.js").href
-);
 const requestHandler = createRequestHandler(build, process.env.NODE_ENV);
 
 const eventToRequest = (event: LambdaFunctionURLEvent): Request => {

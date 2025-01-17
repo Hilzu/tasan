@@ -16,6 +16,8 @@ import {
 import type { Construct } from "constructs";
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 
+const publicRootFiles = ["favicon.ico"];
+
 export class TasanStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -36,20 +38,8 @@ export class TasanStack extends Stack {
         sourceMap: true,
         target: "es2022",
         format: OutputFormat.ESM,
-        commandHooks: {
-          beforeBundling(_inputDir: string, outputDir: string): string[] {
-            return [
-              `pnpm --filter @tasan/web... build`,
-              `pnpm deploy --node-linker=hoisted --filter @tasan/web --prod ${outputDir}`,
-            ];
-          },
-          beforeInstall(_inputDir: string, _outputDir: string): string[] {
-            return [];
-          },
-          afterBundling(_inputDir: string, _outputDir: string): string[] {
-            return [];
-          },
-        },
+        banner:
+          'import {createRequire} from "module"; const require = createRequire(import.meta.url);',
       },
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
@@ -64,6 +54,7 @@ export class TasanStack extends Stack {
 
     const appFunctionUrl = appFunction.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.AWS_IAM,
+      invokeMode: lambda.InvokeMode.BUFFERED,
     });
 
     const assetsBucket = new s3.Bucket(this, "AppAssetsBucket");
@@ -71,7 +62,7 @@ export class TasanStack extends Stack {
     new s3deployment.BucketDeployment(this, "AppAssetsDeployment", {
       sources: [
         s3deployment.Source.asset("../web/build/client", {
-          exclude: ["favicon.ico"],
+          exclude: publicRootFiles,
         }),
       ],
       destinationBucket: assetsBucket,
@@ -86,7 +77,7 @@ export class TasanStack extends Stack {
     new s3deployment.BucketDeployment(this, "AppNonAssetsDeployment", {
       sources: [
         s3deployment.Source.asset("../web/build/client", {
-          exclude: ["assets"],
+          exclude: ["*", ...publicRootFiles.map((file) => `!${file}`)],
         }),
       ],
       destinationBucket: assetsBucket,
@@ -137,11 +128,13 @@ export class TasanStack extends Stack {
       responseHeadersPolicy,
     });
 
-    distribution.addBehavior("favicon.ico", assetOrigin, {
-      allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
-      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-      responseHeadersPolicy,
-    });
+    for (const file of publicRootFiles) {
+      distribution.addBehavior(file, assetOrigin, {
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        responseHeadersPolicy,
+      });
+    }
 
     const appHostedZone = new route53.HostedZone(this, "AppHostedZone", {
       zoneName: "tasan.app",

@@ -2,8 +2,16 @@
   "name": "@tasan/web",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./app/app.d.ts",
+        "default": "./build/server/index.js"
+      }
+    }
+  },
   "scripts": {
-    "build": "NODE_ENV=production react-router build --minify esbuild --mode production",
+    "build": "NODE_ENV=production react-router build --sourcemapServer",
     "clean": "rm -rf .react-router build node_modules/.vite",
     "dev": "react-router dev",
     "test": "react-router typegen && tsc"
