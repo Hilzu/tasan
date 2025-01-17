@@ -46,10 +46,12 @@ export const handler: LambdaFunctionURLHandler = async (event) => {
     method: request.method,
     url: request.url,
     headers: {
-      "CloudFront-Viewer-Country-Name": request.headers.get(
-        "CloudFront-Viewer-Country-Name",
+      "cloudfront-viewer-country-name": request.headers.get(
+        "cloudfront-viewer-country-name",
       ),
-      "content-type": request.headers.get("content-type"),
+      accept: request.headers.get("accept"),
+      "accept-encoding": request.headers.get("accept-encoding"),
+      "accept-language": request.headers.get("accept-language"),
       "user-agent": request.headers.get("user-agent"),
       "x-forwarded-for": request.headers.get("x-forwarded-for"),
     },
