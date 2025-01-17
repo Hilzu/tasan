@@ -26,7 +26,7 @@ export default function handleRequest(
     responseHeaders.set(
       "Content-Security-Policy",
       [
-        `script-src 'nonce-${scriptNonce}' 'strict-dynamic'`,
+        `script-src 'unsafe-inline' https: 'nonce-${scriptNonce}' 'strict-dynamic'`,
         "object-src 'none'",
         "default-src 'self'",
         "base-uri 'none'",
