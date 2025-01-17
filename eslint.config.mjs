@@ -39,6 +39,10 @@ export default tsEslint.config(
   nodePlugin.configs["flat/recommended"],
   {
     rules: {
+      "@typescript-eslint/no-unnecessary-condition": [
+        "error",
+        { allowConstantLoopConditions: true },
+      ],
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-import-type-side-effects": "error",
       "@typescript-eslint/no-unused-vars": [
@@ -51,6 +55,12 @@ export default tsEslint.config(
   {
     files: ["**/*.mjs", "**/*.cjs", "**/*.js"],
     ...tsEslint.configs.disableTypeChecked,
+  },
+  {
+    files: ["**/*.d.ts"],
+    rules: {
+      "@typescript-eslint/consistent-type-imports": "off",
+    },
   },
   {
     files: ["packages/infra/**"],

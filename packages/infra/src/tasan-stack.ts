@@ -32,6 +32,7 @@ export class TasanStack extends Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       memorySize: 256,
       entry: "./src/app-function.mts",
+      architecture: lambda.Architecture.ARM_64,
       bundling: {
         charset: nodejs.Charset.UTF8,
         minify: true,

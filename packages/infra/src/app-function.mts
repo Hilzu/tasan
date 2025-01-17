@@ -1,7 +1,7 @@
 import type {
-  LambdaFunctionURLHandler,
-  LambdaFunctionURLEvent,
   APIGatewayProxyStructuredResultV2,
+  LambdaFunctionURLEvent,
+  LambdaFunctionURLHandler,
 } from "aws-lambda";
 import { createRequestHandler } from "react-router";
 import * as process from "node:process";
@@ -42,8 +42,24 @@ const responseToResult = async (
 
 export const handler: LambdaFunctionURLHandler = async (event) => {
   const request = eventToRequest(event);
+  console.log("Received request", {
+    method: request.method,
+    url: request.url,
+    headers: {
+      "CloudFront-Viewer-Country-Name": request.headers.get(
+        "CloudFront-Viewer-Country-Name",
+      ),
+      "content-type": request.headers.get("content-type"),
+      "user-agent": request.headers.get("user-agent"),
+      "x-forwarded-for": request.headers.get("x-forwarded-for"),
+    },
+  });
 
   const response = await requestHandler(request);
+  console.log("Responding with", {
+    status: response.status,
+    headers: Object.fromEntries(response.headers),
+  });
 
   return await responseToResult(response);
 };
