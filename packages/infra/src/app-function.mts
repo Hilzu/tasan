@@ -27,15 +27,45 @@ const eventToRequest = (event: LambdaFunctionURLEvent): Request => {
   });
 };
 
+const textMediaTypes = [
+  "application/x-www-form-urlencoded",
+  "multipart/form-data",
+];
+const textSubTypes = ["json", "xml"];
+const shouldBase64Encode = (contentType: string | null): boolean => {
+  if (!contentType) return false;
+  const mediaType = contentType.split(";")[0].trim();
+  if (textMediaTypes.includes(mediaType)) return false;
+
+  const [type, subtype] = mediaType.split("/");
+  if (type === "text") return false;
+  if (textSubTypes.includes(subtype)) return false;
+
+  const suffix = subtype.split("+")[1];
+  if (textSubTypes.includes(suffix)) return false;
+
+  return true;
+};
+
+const base64Encode = (buffer: ArrayBuffer): string => {
+  return Buffer.from(buffer).toString("base64");
+};
+
 const responseToResult = async (
   response: Response,
 ): Promise<APIGatewayProxyStructuredResultV2> => {
-  const body = await response.text();
+  const contentType = response.headers.get("content-type");
+  const isBase64Encoded = shouldBase64Encode(contentType);
+
+  const body =
+    isBase64Encoded ?
+      base64Encode(await response.arrayBuffer())
+    : await response.text();
   return {
     statusCode: response.status,
     headers: Object.fromEntries(response.headers),
     body,
-    isBase64Encoded: false,
+    isBase64Encoded,
     cookies: undefined,
   };
 };
