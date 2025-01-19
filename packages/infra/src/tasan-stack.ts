@@ -54,7 +54,8 @@ export class TasanStack extends Stack {
     });
 
     const appFunctionUrl = appFunction.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.AWS_IAM,
+      // TODO: set auth and lambda@edge to calculate body hash
+      authType: lambda.FunctionUrlAuthType.NONE,
       invokeMode: lambda.InvokeMode.BUFFERED,
     });
 
@@ -107,9 +108,10 @@ export class TasanStack extends Stack {
       domainNames: ["tasan.app"],
       certificate,
       defaultBehavior: {
-        origin:
-          origins.FunctionUrlOrigin.withOriginAccessControl(appFunctionUrl),
+        // TODO: use OAC when we have body hash calculation: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html
+        origin: new origins.FunctionUrlOrigin(appFunctionUrl),
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        // TODO: Cache manifests but not other responses
         cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
         originRequestPolicy:
           cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
@@ -118,6 +120,7 @@ export class TasanStack extends Stack {
       },
       priceClass: cloudfront.PriceClass.PRICE_CLASS_ALL,
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
+      enableLogging: false,
     });
 
     const assetOrigin =
