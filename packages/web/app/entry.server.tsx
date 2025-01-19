@@ -33,7 +33,7 @@ export default function handleRequest(
         "default-src 'self'",
         "base-uri 'none'",
         "frame-ancestors 'none'",
-        "form-action 'self'",
+        // "form-action 'self'",
       ].join("; "),
     );
 
