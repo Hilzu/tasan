@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+    version="1.1"
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+    viewBox="0 0 48 48"
+>
+  <rect width="48" height="48" fill="#00796B" />
+
+  <text
+    x="50%"
+    y="35"
+    text-anchor="middle"
+    font-size="32"
+    fill="#FFFFFF"
+    font-family="Helvetica, sans-serif"
+    font-weight="bold"
+  >
+    T
+  </text>
+</svg>

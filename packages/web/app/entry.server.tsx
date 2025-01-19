@@ -29,6 +29,7 @@ export default function handleRequest(
       [
         `script-src 'unsafe-inline' https: 'nonce-${scriptNonce}' 'strict-dynamic'`,
         "object-src 'none'",
+        "img-src 'self' data:",
         "default-src 'self'",
         "base-uri 'none'",
         "frame-ancestors 'none'",
