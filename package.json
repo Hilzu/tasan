@@ -18,7 +18,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "clean": "pnpm -r clean",
-    "fix": "node --run format && eslint --fix .",
+    "fix": "eslint --fix . && node --run format",
     "format": "prettier --write .",
     "test": "pnpm -r test && concurrently --group node:test:*",
     "test:format": "prettier --check .",
@@ -32,6 +32,7 @@
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-n": "^17.15.1",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^15.14.0",
     "prettier": "3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.10",

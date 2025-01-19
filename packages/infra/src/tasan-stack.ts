@@ -1,20 +1,20 @@
 import {
-  Stack,
-  type StackProps,
+  aws_certificatemanager as acm,
   aws_cloudfront as cloudfront,
-  aws_s3 as s3,
+  aws_cloudfront_origins as origins,
   aws_lambda as lambda,
   aws_lambda_nodejs as nodejs,
   aws_logs as logs,
-  aws_cloudfront_origins as origins,
-  aws_s3_deployment as s3deployment,
   aws_route53 as route53,
-  aws_certificatemanager as acm,
   aws_route53_targets as r53targets,
+  aws_s3 as s3,
+  aws_s3_deployment as s3deployment,
   Duration,
+  Stack,
+  type StackProps,
 } from "aws-cdk-lib";
-import type { Construct } from "constructs";
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
+import type { Construct } from "constructs";
 
 const publicRootFiles = ["favicon.ico"];
 

@@ -1,3 +1,4 @@
+import { useContext } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -7,10 +8,10 @@ import {
   ScrollRestoration,
 } from "react-router";
 
+import { NonceContext } from "~/nonce-context";
+
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
-import { useContext } from "react";
-import { NonceContext } from "~/nonce-context";
 
 export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },

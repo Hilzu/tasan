@@ -1,11 +1,12 @@
+import * as process from "node:process";
+
+import * as build from "@tasan/web";
 import type {
   APIGatewayProxyStructuredResultV2,
   LambdaFunctionURLEvent,
   LambdaFunctionURLHandler,
 } from "aws-lambda";
 import { createRequestHandler } from "react-router";
-import * as process from "node:process";
-import * as build from "@tasan/web";
 
 const requestHandler = createRequestHandler(build, process.env.NODE_ENV);
 

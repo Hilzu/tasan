@@ -1,10 +1,12 @@
-import js from "@eslint/js";
-import tsEslint from "typescript-eslint";
-import prettier from "eslint-config-prettier";
-import nodePlugin from "eslint-plugin-n";
-import globals from "globals";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import js from "@eslint/js";
+import prettier from "eslint-config-prettier";
+import nodePlugin from "eslint-plugin-n";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
+import globals from "globals";
+import tsEslint from "typescript-eslint";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +39,14 @@ export default tsEslint.config(
     },
   },
   nodePlugin.configs["flat/recommended"],
+  {
+    plugins: { "simple-import-sort": simpleImportSort },
+    rules: {
+      "simple-import-sort/imports": "error",
+      "simple-import-sort/exports": "error",
+      "sort-imports": "off",
+    },
+  },
   {
     rules: {
       "@typescript-eslint/no-unnecessary-condition": [
