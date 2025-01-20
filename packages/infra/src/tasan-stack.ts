@@ -61,6 +61,7 @@ export class TasanStack extends Stack {
 
     const assetsBucket = new s3.Bucket(this, "AppAssetsBucket");
 
+    // TODO: Replace these deployments with an s3 sync script. These are really slow and don't complete before function is updated.
     new s3deployment.BucketDeployment(this, "AppAssetsDeployment", {
       sources: [
         s3deployment.Source.asset("../web/build/client", {
