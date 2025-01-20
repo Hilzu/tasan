@@ -7,7 +7,7 @@ export const LandingPage = () => {
     <main className="flex flex-col px-4">
       <div className="mx-auto pt-8 text-center">
         <img src={logo} alt="Tasan.app" className="mx-auto h-24 w-24" />
-        <h1 className="pt-1 text-4xl font-extrabold text-slate-800 dark:text-slate-300">
+        <h1 className="text-slate-800 dark:text-slate-300 pt-1 text-4xl font-extrabold">
           Tasan.app
         </h1>
         <p>Split bills with your friends</p>

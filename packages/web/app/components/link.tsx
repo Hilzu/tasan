@@ -4,7 +4,7 @@ import { Link as ReactRouterLink } from "react-router";
 
 type Props = ComponentProps<typeof ReactRouterLink>;
 
-const linkClasses = "text-blue-600 hover:underline";
+const linkClasses = "text-blue-600 dark:text-blue-500 hover:underline";
 
 export const Link = (props: Props) => (
   <ReactRouterLink
