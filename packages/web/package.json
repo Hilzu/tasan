@@ -12,9 +12,9 @@
   },
   "scripts": {
     "build": "NODE_ENV=production react-router build --sourcemapServer",
-    "clean": "rm -rf .react-router build node_modules/.vite",
+    "clean": "rm -rf .react-router build dist node_modules/.vite",
     "dev": "react-router dev",
-    "test": "react-router typegen && tsc"
+    "test": "react-router typegen"
   },
   "engines": {
     "node": "^22.11.0",

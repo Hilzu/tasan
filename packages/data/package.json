@@ -6,9 +6,7 @@
   "exports": "./dist/main.js",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist",
-    "dev": "tsc -w",
-    "test": "tsc --noEmit"
+    "clean": "rm -rf dist"
   },
   "engines": {
     "node": "^22.11.0",
