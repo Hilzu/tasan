@@ -14,7 +14,7 @@ export interface Session {
 interface SessionItem {
   pk: string;
   sk: string;
-  createdAt: number;
+  createdAt: string;
   expiresAt: number;
 }
 
@@ -24,7 +24,7 @@ export const putSession = async (session: Session): Promise<void> => {
     Item: {
       pk: session.id,
       sk: session.userId,
-      createdAt: toUnixTime(new Date()),
+      createdAt: new Date().toISOString(),
       expiresAt: toUnixTime(session.expiresAt),
     } satisfies SessionItem,
   });

@@ -2,7 +2,6 @@ import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import { toUnixTime } from "../date.js";
 import { genUserId } from "../ids.js";
 
 export interface User {
@@ -14,7 +13,7 @@ interface UserItem {
   pk: string;
   sk: string;
   name: string;
-  createdAt: number;
+  createdAt: string;
 }
 
 export type CreateUser = Omit<User, "id">;
@@ -26,7 +25,7 @@ export const createUser = async (user: CreateUser): Promise<{ id: string }> => {
     Item: {
       pk: id,
       sk: id,
-      createdAt: toUnixTime(new Date()),
+      createdAt: new Date().toISOString(),
       name: user.name,
     } satisfies UserItem,
   });
