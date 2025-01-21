@@ -10,7 +10,7 @@
     "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
     "dev": "tsc -w",
-    "start": "node --enable-source-maps .",
+    "start": "node --env-file=.env --enable-source-maps .",
     "test": "tsc --noEmit"
   },
   "engines": {

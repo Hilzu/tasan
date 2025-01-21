@@ -11,5 +11,10 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true
   },
-  "exclude": ["node_modules", "build", "dist"]
+  "exclude": ["node_modules", "build", "dist"],
+  "references": [
+    { "path": "./packages/data" },
+    { "path": "./packages/infra" },
+    { "path": "./packages/web" }
+  ]
 }

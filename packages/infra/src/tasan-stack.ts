@@ -2,6 +2,7 @@ import {
   aws_certificatemanager as acm,
   aws_cloudfront as cloudfront,
   aws_cloudfront_origins as origins,
+  aws_dynamodb as dynamodb,
   aws_lambda as lambda,
   aws_lambda_nodejs as nodejs,
   aws_logs as logs,
@@ -16,17 +17,30 @@ import {
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import type { Construct } from "constructs";
 
+import { getEnv } from "./env.js";
+
 const publicRootFiles = ["favicon.ico"];
 
 export class TasanStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
+    // TODO: Manage this certificate in the CDK in a separate us-east-1 stack
     const certificate = acm.Certificate.fromCertificateArn(
       this,
       "AppCertificate",
       "arn:aws:acm:us-east-1:412381763181:certificate/a2c73df1-9752-4e36-8291-57a24c48b9f4",
     );
+
+    const appTable = new dynamodb.TableV2(this, "AppTable", {
+      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
+      timeToLiveAttribute: "expiresAt",
+      billing: dynamodb.Billing.provisioned({
+        readCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
+        writeCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
+      }),
+    });
 
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -45,8 +59,12 @@ export class TasanStack extends Stack {
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
         NODE_ENV: "production",
+        TABLE_NAME: appTable.tableName,
+        COOKIE_SIGN_SECRET: getEnv("COOKIE_SIGN_SECRET"),
       },
     });
+
+    appTable.grantReadWriteData(appFunction);
 
     new logs.LogGroup(this, "AppLogGroup", {
       logGroupName: `/aws/lambda/${appFunction.functionName}`,

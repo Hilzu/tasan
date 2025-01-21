@@ -100,10 +100,13 @@ export const handler: LambdaFunctionURLHandler = async (event) => {
   });
 
   const response = await requestHandler(request);
+
+  const result = await responseToResult(response);
+
   console.log("Responding with", {
-    status: response.status,
-    headers: Object.fromEntries(response.headers),
+    status: result.statusCode,
+    headers: result.headers,
   });
 
-  return await responseToResult(response);
+  return result;
 };

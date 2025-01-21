@@ -6,7 +6,9 @@
     "**/.client/**/*",
     ".react-router/types/**/*"
   ],
+  "exclude": ["node_modules", "dist", "build"],
   "compilerOptions": {
+    "composite": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["node", "vite/client"],
     "target": "ES2022",
@@ -18,7 +20,8 @@
     "paths": {
       "~/*": ["./app/*"]
     },
-    "noEmit": true,
+    "outDir": "dist",
+    "emitDeclarationOnly": true,
     "resolveJsonModule": true,
     "skipLibCheck": true
   }

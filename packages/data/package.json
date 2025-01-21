@@ -1,0 +1,26 @@
+{
+  "name": "@tasan/data",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "exports": "./dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "dev": "tsc -w",
+    "test": "tsc --noEmit"
+  },
+  "engines": {
+    "node": "^22.11.0",
+    "pnpm": "^9.15.3"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.731.1",
+    "@aws-sdk/lib-dynamodb": "^3.731.1",
+    "ulid": "^2.3.0"
+  }
+}
