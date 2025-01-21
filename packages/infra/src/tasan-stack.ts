@@ -123,6 +123,21 @@ export class TasanStack extends Stack {
       },
     );
 
+    const functionCachePolicy = new cloudfront.CachePolicy(
+      this,
+      "AppFunctionCachePolicy",
+      {
+        minTtl: Duration.seconds(0),
+        defaultTtl: Duration.seconds(0),
+        maxTtl: Duration.days(365),
+        enableAcceptEncodingGzip: true,
+        enableAcceptEncodingBrotli: true,
+        queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
+        headerBehavior: cloudfront.CacheHeaderBehavior.none(),
+        cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+      },
+    );
+
     const distribution = new cloudfront.Distribution(this, "AppDistribution", {
       domainNames: ["tasan.app"],
       certificate,
@@ -130,8 +145,7 @@ export class TasanStack extends Stack {
         // TODO: use OAC when we have body hash calculation: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html
         origin: new origins.FunctionUrlOrigin(appFunctionUrl),
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-        // TODO: Cache manifests but not other responses
-        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        cachePolicy: functionCachePolicy,
         originRequestPolicy:
           cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,

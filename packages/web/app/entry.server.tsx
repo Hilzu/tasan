@@ -36,6 +36,7 @@ export default function handleRequest(
         // "form-action 'self'",
       ].join("; "),
     );
+    responseHeaders.set("cache-control", "private, no-cache, max-age=0");
 
     // Ensure requests from bots and SPA Mode renders wait for all content to load before responding
     // https://react.dev/reference/react-dom/server/renderToPipeableStream#waiting-for-all-content-to-load-for-crawlers-and-static-generation
