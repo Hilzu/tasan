@@ -20,18 +20,9 @@ import { getEnv } from "./env.js";
 
 const publicRootFiles = ["favicon.ico"];
 
-interface TasanStackProps {
-  appOriginRequestFunc: cloudfront.experimental.EdgeFunction;
-}
-
 export class TasanStack extends Stack {
-  constructor(
-    scope: Construct,
-    id: string,
-    props: StackProps & TasanStackProps,
-  ) {
-    const { appOriginRequestFunc, ...stackProps } = props;
-    super(scope, id, stackProps);
+  constructor(scope: Construct, id: string, props: StackProps) {
+    super(scope, id, props);
 
     // TODO: Manage this certificate in the CDK in a separate us-east-1 stack
     const certificate = acm.Certificate.fromCertificateArn(
@@ -112,6 +103,18 @@ export class TasanStack extends Stack {
         queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
         headerBehavior: cloudfront.CacheHeaderBehavior.none(),
         cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+      },
+    );
+
+    const appOriginRequestFunc = new cloudfront.experimental.EdgeFunction(
+      this,
+      "AppOriginRequestFunc",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "main.handler",
+        code: lambda.Code.fromAsset("./dist/app-origin-request/", {
+          exclude: ["*.mts", "*.map"],
+        }),
       },
     );
 
