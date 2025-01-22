@@ -3,7 +3,11 @@ import { DeleteCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { fromUnixTime, toUnixTime } from "../date.js";
-import { genSessionId } from "../ids.js";
+import {
+  assertValidSessionId,
+  assertValidUserId,
+  genSessionId,
+} from "../ids.js";
 
 export interface Session {
   id: string;
@@ -22,8 +26,8 @@ export const putSession = async (session: Session): Promise<void> => {
   const cmd = new PutCommand({
     TableName,
     Item: {
-      pk: session.id,
-      sk: session.userId,
+      pk: assertValidSessionId(session.id),
+      sk: assertValidUserId(session.userId),
       createdAt: new Date().toISOString(),
       expiresAt: toUnixTime(session.expiresAt),
     } satisfies SessionItem,
@@ -46,7 +50,7 @@ export const readSession = async (id: string): Promise<Session | undefined> => {
     TableName,
     KeyConditionExpression: "pk = :pk",
     ExpressionAttributeValues: {
-      ":pk": id,
+      ":pk": assertValidSessionId(id),
     },
   });
   const { Items } = await documentClient.send(cmd);

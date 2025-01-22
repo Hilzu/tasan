@@ -2,7 +2,7 @@ import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import { genUserId } from "../ids.js";
+import { assertValidUserId, genUserId } from "../ids.js";
 
 export interface User {
   id: string;
@@ -34,6 +34,7 @@ export const createUser = async (user: CreateUser): Promise<{ id: string }> => {
 };
 
 export const getUser = async (id: string): Promise<User | undefined> => {
+  assertValidUserId(id);
   const cmd = new GetCommand({
     TableName,
     Key: {
