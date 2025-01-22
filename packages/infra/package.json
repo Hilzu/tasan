@@ -5,9 +5,10 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
-    "cdk:deploy": "cdk deploy",
+    "cdk:deploy": "pnpm sync-assets && cdk deploy",
     "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
+    "sync-assets": "../../scripts/sync-client-assets.sh",
     "clean": "rm -rf cdk.out dist",
     "start": "node --env-file=.env --enable-source-maps ."
   },
