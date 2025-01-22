@@ -9,7 +9,6 @@ import {
   aws_route53 as route53,
   aws_route53_targets as r53targets,
   aws_s3 as s3,
-  aws_s3_deployment as s3deployment,
   Duration,
   Stack,
   type StackProps,
@@ -78,36 +77,6 @@ export class TasanStack extends Stack {
     });
 
     const assetsBucket = new s3.Bucket(this, "AppAssetsBucket");
-
-    // TODO: Replace these deployments with an s3 sync script. These are really slow and don't complete before function is updated.
-    new s3deployment.BucketDeployment(this, "AppAssetsDeployment", {
-      sources: [
-        s3deployment.Source.asset("../web/build/client", {
-          exclude: publicRootFiles,
-        }),
-      ],
-      destinationBucket: assetsBucket,
-      cacheControl: [
-        s3deployment.CacheControl.setPublic(),
-        s3deployment.CacheControl.maxAge(Duration.days(365)),
-        s3deployment.CacheControl.immutable(),
-      ],
-      prune: false,
-    });
-
-    new s3deployment.BucketDeployment(this, "AppNonAssetsDeployment", {
-      sources: [
-        s3deployment.Source.asset("../web/build/client", {
-          exclude: ["*", ...publicRootFiles.map((file) => `!${file}`)],
-        }),
-      ],
-      destinationBucket: assetsBucket,
-      cacheControl: [
-        s3deployment.CacheControl.setPublic(),
-        s3deployment.CacheControl.maxAge(Duration.days(14)),
-      ],
-      prune: false,
-    });
 
     const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(
       this,
