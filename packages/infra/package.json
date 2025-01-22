@@ -5,7 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
-    "cdk:deploy": "pnpm sync-assets && cdk deploy",
+    "cdk:deploy": "pnpm sync-assets && cdk deploy --all",
     "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
     "sync-assets": "../../scripts/sync-client-assets.sh",

@@ -20,9 +20,18 @@ import { getEnv } from "./env.js";
 
 const publicRootFiles = ["favicon.ico"];
 
+interface TasanStackProps {
+  appOriginRequestFunc: cloudfront.experimental.EdgeFunction;
+}
+
 export class TasanStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+  constructor(
+    scope: Construct,
+    id: string,
+    props: StackProps & TasanStackProps,
+  ) {
+    const { appOriginRequestFunc, ...stackProps } = props;
+    super(scope, id, stackProps);
 
     // TODO: Manage this certificate in the CDK in a separate us-east-1 stack
     const certificate = acm.Certificate.fromCertificateArn(
@@ -71,8 +80,7 @@ export class TasanStack extends Stack {
     });
 
     const appFunctionUrl = appFunction.addFunctionUrl({
-      // TODO: set auth and lambda@edge to calculate body hash
-      authType: lambda.FunctionUrlAuthType.NONE,
+      authType: lambda.FunctionUrlAuthType.AWS_IAM,
       invokeMode: lambda.InvokeMode.BUFFERED,
     });
 
@@ -111,14 +119,21 @@ export class TasanStack extends Stack {
       domainNames: ["tasan.app"],
       certificate,
       defaultBehavior: {
-        // TODO: use OAC when we have body hash calculation: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html
-        origin: new origins.FunctionUrlOrigin(appFunctionUrl),
+        origin:
+          origins.FunctionUrlOrigin.withOriginAccessControl(appFunctionUrl),
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         cachePolicy: functionCachePolicy,
         originRequestPolicy:
           cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         responseHeadersPolicy,
+        edgeLambdas: [
+          {
+            eventType: cloudfront.LambdaEdgeEventType.ORIGIN_REQUEST,
+            functionVersion: appOriginRequestFunc.currentVersion,
+            includeBody: true,
+          },
+        ],
       },
       priceClass: cloudfront.PriceClass.PRICE_CLASS_ALL,
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
