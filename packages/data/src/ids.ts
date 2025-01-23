@@ -10,6 +10,7 @@ const assertValidId = (prefix: string, id: string) => {
   const [p, u] = id.split("_");
   if (p !== prefix) throw new Error(`Invalid ${prefix} id: ${id}`);
   if (!ulidRegex.test(u)) throw new Error(`Invalid ulid in id: ${id}`);
+  // TODO: extract timestamp and check it's not in the future or too old
   return id;
 };
 
