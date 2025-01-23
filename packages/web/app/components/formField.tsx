@@ -24,7 +24,7 @@ export function FormField({ label, errors, ...rest }: FieldProps) {
       <input
         {...rest}
         id={id}
-        className="rounded border px-2 py-1 focus:outline-2"
+        className="rounded-sm border px-2 py-1 outline-brand-700 focus:outline-2"
       />
       {errors && <FieldError errors={errors} />}
       {rest.description && <p className="text-sm">{rest.description}</p>}

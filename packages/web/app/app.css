@@ -1,11 +1,52 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  /* Disable colors we don't use */
+  --color-amber-*: initial;
+  --color-lime-*: initial;
+  --color-emerald-*: initial;
+  --color-teal-*: initial;
+  --color-cyan-*: initial;
+  --color-sky-*: initial;
+  --color-indigo-*: initial;
+  --color-violet-*: initial;
+  --color-purple-*: initial;
+  --color-fuchsia-*: initial;
+  --color-pink-*: initial;
+  --color-rose-*: initial;
+  --color-slate-*: initial;
+  --color-gray-*: initial;
+  --color-zinc-*: initial;
+  --color-neutral-*: initial;
+  --color-stone-*: initial;
+
+  --color-gray-50: oklch(0.972 0.001 197.139);
+  --color-gray-100: oklch(0.927 0.001 197.138);
+  --color-gray-200: oklch(0.861 0.004 174.467);
+  --color-gray-300: oklch(0.76 0.005 164.96);
+  --color-gray-400: oklch(0.631 0.008 174.231);
+  --color-gray-500: oklch(0.552 0.009 177.083);
+  --color-gray-600: oklch(0.483 0.008 174.089);
+  --color-gray-700: oklch(0.431 0.005 179.505);
+  --color-gray-800: oklch(0.394 0.006 179.461);
+  --color-gray-900: oklch(0.361 0.004 196.976);
+  --color-gray-950: oklch(0.271 0.003 196.984);
+
+  --color-brand-50: oklch(0.979 0.008 168.758);
+  --color-brand-100: oklch(0.933 0.026 175.553);
+  --color-brand-200: oklch(0.865 0.05 175.556);
+  --color-brand-300: oklch(0.776 0.073 176.77);
+  --color-brand-400: oklch(0.678 0.084 178.276);
+  --color-brand-500: oklch(0.592 0.082 178.195);
+  --color-brand-600: oklch(0.521 0.072 180.203);
+  --color-brand-700: oklch(0.437 0.057 181.99);
+  --color-brand-800: oklch(0.38 0.044 184.317);
+  --color-brand-900: oklch(0.343 0.036 184.483);
+  --color-brand-950: oklch(0.242 0.028 183.707);
+}
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
-
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
   }
