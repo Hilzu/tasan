@@ -1,8 +1,8 @@
 import {
   createSession,
   deleteSession,
+  findSession,
   putSession,
-  readSession,
 } from "@tasan/data";
 import { type CookieOptions, createSessionStorage } from "react-router";
 
@@ -28,7 +28,7 @@ const createDataSessionStorage = (
       return id;
     },
     async readData(id) {
-      const session = await readSession(id);
+      const session = await findSession(id);
       if (!session) return null;
       return {
         userId: session.userId,

@@ -2,22 +2,30 @@ import { ulid } from "ulid";
 
 const genUlid = () => ulid().toLowerCase();
 
-const genId = (prefix: string) => `${prefix}_${genUlid()}`;
+type ID<T extends string> = string & { __prefix: T };
 
-const ulidRegex = /^[0-9abcdefghjkmnpqrstvwxyz]{26}$/;
+const genID = <T extends string>(prefix: T): ID<T> =>
+  `${prefix}_${genUlid()}` as ID<T>;
 
-const assertValidId = (prefix: string, id: string) => {
+const ulidRegex = /^[0-7][0-9abcdefghjkmnpqrstvwxyz]{25}$/;
+
+const asValidID = <T extends string>(prefix: T, id: string): ID<T> => {
   const [p, u] = id.split("_");
   if (p !== prefix) throw new Error(`Invalid ${prefix} id: ${id}`);
   if (!ulidRegex.test(u)) throw new Error(`Invalid ulid in id: ${id}`);
   // TODO: extract timestamp and check it's not in the future or too old
-  return id;
+  return id as ID<T>;
 };
 
 // user
-export const genUserId = () => genId("usr");
-export const assertValidUserId = (id: string) => assertValidId("usr", id);
+export type UserID = ID<"usr">;
+export const genUserID = () => genID("usr");
+export const asValidUserID = (id: string) => asValidID("usr", id);
+export function assertValidUserID(id: string): asserts id is UserID {
+  asValidUserID(id);
+}
 
 // session
-export const genSessionId = () => genId("ses");
-export const assertValidSessionId = (id: string) => assertValidId("ses", id);
+export type SessionID = ID<"ses">;
+export const genSessionID = () => genID("ses");
+export const asValidSessionID = (id: string) => asValidID("ses", id);

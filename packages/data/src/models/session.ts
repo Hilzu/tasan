@@ -4,9 +4,11 @@ import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { fromUnixTime, toUnixTime } from "../date.js";
 import {
-  assertValidSessionId,
-  assertValidUserId,
-  genSessionId,
+  asValidSessionID,
+  asValidUserID,
+  genSessionID,
+  type SessionID,
+  type UserID,
 } from "../ids.js";
 
 export interface Session {
@@ -16,22 +18,20 @@ export interface Session {
 }
 
 interface SessionItem {
-  pk: string;
-  sk: string;
+  pk: SessionID;
+  sk: UserID;
   createdAt: string;
   expiresAt: number;
 }
 
 export const putSession = async (session: Session): Promise<void> => {
-  const cmd = new PutCommand({
-    TableName,
-    Item: {
-      pk: assertValidSessionId(session.id),
-      sk: assertValidUserId(session.userId),
-      createdAt: new Date().toISOString(),
-      expiresAt: toUnixTime(session.expiresAt),
-    } satisfies SessionItem,
-  });
+  const Item: SessionItem = {
+    pk: asValidSessionID(session.id),
+    sk: asValidUserID(session.userId),
+    createdAt: new Date().toISOString(),
+    expiresAt: toUnixTime(session.expiresAt),
+  };
+  const cmd = new PutCommand({ TableName, Item });
   await documentClient.send(cmd);
 };
 
@@ -40,17 +40,17 @@ export type CreateSession = Omit<Session, "id">;
 export const createSession = async (
   session: CreateSession,
 ): Promise<{ id: string }> => {
-  const id = genSessionId();
+  const id = genSessionID();
   await putSession({ ...session, id });
   return { id };
 };
 
-export const readSession = async (id: string): Promise<Session | undefined> => {
+export const findSession = async (id: string): Promise<Session | undefined> => {
   const cmd = new QueryCommand({
     TableName,
     KeyConditionExpression: "pk = :pk",
     ExpressionAttributeValues: {
-      ":pk": assertValidSessionId(id),
+      ":pk": asValidSessionID(id),
     },
   });
   const { Items } = await documentClient.send(cmd);
@@ -64,7 +64,7 @@ export const readSession = async (id: string): Promise<Session | undefined> => {
 };
 
 export const deleteSession = async (id: string): Promise<void> => {
-  const session = await readSession(id);
+  const session = await findSession(id);
   if (!session) return;
 
   const deleteCmd = new DeleteCommand({

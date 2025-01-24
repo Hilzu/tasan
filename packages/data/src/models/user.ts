@@ -2,7 +2,7 @@ import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import { assertValidUserId, genUserId } from "../ids.js";
+import { assertValidUserID, genUserID, type UserID } from "../ids.js";
 
 export interface User {
   id: string;
@@ -10,38 +10,33 @@ export interface User {
 }
 
 interface UserItem {
-  pk: string;
-  sk: string;
+  pk: UserID;
+  sk: UserID;
   name: string;
   createdAt: string;
 }
 
+type PrimaryKey = Pick<UserItem, "pk" | "sk">;
+
 export type CreateUser = Omit<User, "id">;
 
 export const createUser = async (user: CreateUser): Promise<{ id: string }> => {
-  const id = genUserId();
-  const cmd = new PutCommand({
-    TableName,
-    Item: {
-      pk: id,
-      sk: id,
-      createdAt: new Date().toISOString(),
-      name: user.name,
-    } satisfies UserItem,
-  });
+  const id = genUserID();
+  const Item: UserItem = {
+    pk: id,
+    sk: id,
+    createdAt: new Date().toISOString(),
+    name: user.name,
+  };
+  const cmd = new PutCommand({ TableName, Item });
   await documentClient.send(cmd);
   return { id };
 };
 
 export const getUser = async (id: string): Promise<User | undefined> => {
-  assertValidUserId(id);
-  const cmd = new GetCommand({
-    TableName,
-    Key: {
-      pk: id,
-      sk: id,
-    },
-  });
+  assertValidUserID(id);
+  const Key: PrimaryKey = { pk: id, sk: id };
+  const cmd = new GetCommand({ TableName, Key });
   const { Item } = await documentClient.send(cmd);
   if (!Item) return;
   const item = Item as UserItem;
