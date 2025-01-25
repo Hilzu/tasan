@@ -1,0 +1,28 @@
+import { findUser } from "@tasan/data";
+import { Outlet } from "react-router";
+
+import { Footer } from "~/components/footer";
+import { Header } from "~/components/header";
+import { getSession } from "~/sessions.server";
+
+import type { Route } from "./+types/layout";
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const session = await getSession(request.headers.get("cookie"));
+  const userId = session.get("userId");
+  const user = userId ? await findUser(userId) : undefined;
+  return { user };
+}
+
+export default function Layout({ loaderData }: Route.ComponentProps) {
+  const { user } = loaderData;
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header user={user} />
+      <main className="container mt-4">
+        <Outlet />
+      </main>
+      <Footer className="mt-auto" />
+    </div>
+  );
+}
