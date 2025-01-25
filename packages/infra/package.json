@@ -5,12 +5,12 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
-    "cdk:deploy": "pnpm sync-assets && cdk deploy --all",
     "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
-    "sync-assets": "../../scripts/sync-client-assets.sh",
     "clean": "rm -rf cdk.out dist",
-    "start": "node --env-file=.env --enable-source-maps ."
+    "deploy": "pnpm sync-assets && cdk deploy --all",
+    "start": "node --env-file=.env --enable-source-maps .",
+    "sync-assets": "../../scripts/sync-client-assets.sh"
   },
   "engines": {
     "node": "^22.11.0",
