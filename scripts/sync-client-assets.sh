@@ -5,14 +5,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 export AWS_PROFILE=SCOy-TasanApp
-export bucket_name=tasanstack-appassetsbucket64b3098e-jilfxtz5osd3
-export client_path=./packages/web/build/client
+bucket_name=tasanstack-appassetsbucket64b3098e-jilfxtz5osd3
+client_path=./packages/web/build/client
 
 # Check if credentials are valid and log in if not
 if ! aws sts get-caller-identity &>/dev/null; then
   aws sso login
 fi
 
+git_hash=$(git rev-parse --short HEAD)
+export VITE_APP_VERSION=$git_hash
 pnpm --filter=@tasan/web build
 
 aws s3 sync $client_path/assets s3://$bucket_name/assets \

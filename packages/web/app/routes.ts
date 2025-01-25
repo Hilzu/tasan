@@ -6,5 +6,7 @@ export default [
   route("login", "routes/login.tsx"),
   route("logout", "routes/logout.tsx"),
   route("welcome", "routes/welcome.tsx"),
-  route("splits", "routes/split-index.tsx"),
+  route("splits", "routes/splits-parent.tsx",[
+    index("routes/splits-index.tsx"),
+  ]),
 ] satisfies RouteConfig;

@@ -45,6 +45,11 @@
   --color-brand-950: oklch(0.242 0.028 183.707);
 }
 
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+}
+
 html,
 body {
   @media (prefers-color-scheme: dark) {

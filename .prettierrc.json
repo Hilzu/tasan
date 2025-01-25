@@ -1,6 +1,5 @@
 {
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindConfig": "./packages/web/tailwind.config.ts",
   "endOfLine": "auto",
   "experimentalTernaries": true
 }

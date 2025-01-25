@@ -33,7 +33,7 @@ export const createUser = async (user: CreateUser): Promise<{ id: string }> => {
   return { id };
 };
 
-export const getUser = async (id: string): Promise<User | undefined> => {
+export const findUser = async (id: string): Promise<User | undefined> => {
   assertValidUserID(id);
   const Key: PrimaryKey = { pk: id, sk: id };
   const cmd = new GetCommand({ TableName, Key });
