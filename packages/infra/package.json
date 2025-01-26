@@ -8,9 +8,9 @@
     "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
-    "deploy": "pnpm sync-assets && cdk deploy --all",
+    "deploy": "pnpm build-and-sync && cdk deploy --all",
     "start": "node --env-file=.env --enable-source-maps .",
-    "sync-assets": "../../scripts/sync-client-assets.sh"
+    "build-and-sync": "../../scripts/build-and-sync.sh"
   },
   "engines": {
     "node": "^22.11.0",

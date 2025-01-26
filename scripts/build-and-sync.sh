@@ -14,7 +14,8 @@ if ! aws sts get-caller-identity &>/dev/null; then
 fi
 
 git_hash=$(git rev-parse --short HEAD)
-export VITE_APP_VERSION=$git_hash
+git_dirty=$(git diff --quiet || echo '*')
+export VITE_APP_VERSION=$git_hash$git_dirty
 pnpm --filter=@tasan/web build
 
 aws s3 sync $client_path/assets s3://$bucket_name/assets \
