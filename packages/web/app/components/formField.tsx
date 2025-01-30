@@ -1,10 +1,10 @@
 import { type ComponentProps, useId } from "react";
 
-export type FieldProps = ComponentProps<"input"> & {
+export interface FieldProps {
   label: string;
   description?: string;
   errors?: string[];
-};
+}
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (
@@ -16,7 +16,9 @@ export function FieldError({ errors }: { errors: string[] }) {
   );
 }
 
-export function FormField({ label, errors, ...rest }: FieldProps) {
+export type FormFieldProps = FieldProps & ComponentProps<"input">;
+
+export function FormField({ label, errors, ...rest }: FormFieldProps) {
   const id = useId();
   return (
     <div className="flex flex-col">
@@ -24,7 +26,30 @@ export function FormField({ label, errors, ...rest }: FieldProps) {
       <input
         {...rest}
         id={id}
-        className="rounded-sm border px-2 py-1 outline-brand-700 focus:outline-2"
+        autoCapitalize={rest.autoCapitalize ?? "sentences"}
+        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
+      />
+      {errors && <FieldError errors={errors} />}
+      {rest.description && <p className="text-sm">{rest.description}</p>}
+    </div>
+  );
+}
+
+export type TextFieldProps = FieldProps & ComponentProps<"textarea">;
+
+export function TextField({ label, errors, ...rest }: TextFieldProps) {
+  const id = useId();
+
+  return (
+    <div className="flex flex-col">
+      <label htmlFor={id}>{label}</label>
+      <textarea
+        {...rest}
+        id={id}
+        rows={rest.rows ?? 3}
+        cols={rest.cols ?? 40}
+        autoCapitalize={rest.autoCapitalize ?? "sentences"}
+        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
       />
       {errors && <FieldError errors={errors} />}
       {rest.description && <p className="text-sm">{rest.description}</p>}

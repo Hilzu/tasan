@@ -1,7 +1,7 @@
 import type { User } from "@tasan/data";
 import classNames from "classnames";
 
-import { Link } from "~/components/link";
+import { Link, NavLink } from "~/components/link";
 
 import logo from "../marketing/logo.svg";
 
@@ -12,11 +12,19 @@ export interface HeaderProps {
 
 export function Header({ className, user }: HeaderProps) {
   return (
-    <header className={classNames(className, "")}>
+    <header
+      className={classNames(
+        className,
+        "border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900",
+      )}
+    >
       <div className="container flex py-4">
         <Link to="/" variant="plain">
-          <img src={logo} alt="Tasan.app" className="inline h-6 w-6" />
+          <img src={logo} alt="Tasan.app" className="h-6 w-6" />
         </Link>
+        <NavLink to="/splits" className="ml-4">
+          Splits
+        </NavLink>
         <div className="ml-auto">
           {user ?
             <div className="flex gap-1">
@@ -24,7 +32,7 @@ export function Header({ className, user }: HeaderProps) {
               <Link to="/logout">Logout</Link>
             </div>
           : <>
-              <Link to="/login">Login</Link> |{" "}
+              <Link to="/log-in">Log in</Link> |{" "}
               <Link to="/sign-up">Sign up</Link>
             </>
           }

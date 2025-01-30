@@ -11,7 +11,7 @@ export function Button({ children, ...rest }: ButtonProps) {
       type={type}
       className={classNames(
         rest.className,
-        "rounded bg-brand-500 px-3 py-1 text-center text-white outline-brand-700 hover:bg-brand-600 focus:outline-2",
+        "bg-brand-500 outline-brand-700 hover:bg-brand-600 cursor-pointer rounded px-3 py-1 text-center text-white focus:outline-2",
       )}
     >
       {children}

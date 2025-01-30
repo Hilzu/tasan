@@ -1,6 +1,7 @@
 import { Form, redirect } from "react-router";
 
 import { Button } from "~/components/button";
+import { MainHeading } from "~/components/heading";
 import { destroySession, getSession } from "~/sessions.server";
 
 import type { Route } from "./+types/logout";
@@ -19,10 +20,10 @@ export async function action({ request }: Route.ActionArgs) {
   });
 }
 
-export default function SignUp(_: Route.ComponentProps) {
+export default function LogOut(_: Route.ComponentProps) {
   return (
     <main className="mx-auto max-w-md px-4 text-center">
-      <h1 className="pt-16 text-xl font-bold">Log out</h1>
+      <MainHeading>Log out</MainHeading>
       <p>Are you sure you want to log out?</p>
       <Form method="post" className="mt-4">
         <Button type="submit" className="mt-4">

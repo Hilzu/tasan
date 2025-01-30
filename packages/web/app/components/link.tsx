@@ -1,20 +1,41 @@
 import classNames from "classnames";
 import type { ComponentProps } from "react";
-import { Link as ReactRouterLink } from "react-router";
+import {
+  Link as ReactRouterLink,
+  NavLink as ReactRouterNavLink,
+} from "react-router";
 
-type Props = ComponentProps<typeof ReactRouterLink> & {
+type LinkProps = ComponentProps<typeof ReactRouterLink> & {
   variant?: "link" | "plain";
 };
 
 const linkClasses = "text-blue-600 dark:text-blue-500 hover:underline";
 
-export const Link = (props: Props) => {
+export const Link = (props: LinkProps) => {
   const { variant = "link", className, ...rest } = props;
 
   return (
     <ReactRouterLink
       {...rest}
       className={classNames(className, variant === "link" && linkClasses)}
+    />
+  );
+};
+
+type NavLinkProps = Omit<
+  ComponentProps<typeof ReactRouterNavLink>,
+  "className"
+> & { className?: string };
+
+export const NavLink = (props: NavLinkProps) => {
+  const { className, ...rest } = props;
+
+  return (
+    <ReactRouterNavLink
+      {...rest}
+      className={({ isActive }) =>
+        classNames(className, isActive && "font-bold")
+      }
     />
   );
 };

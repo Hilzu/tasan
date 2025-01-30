@@ -7,6 +7,16 @@ import { getSession } from "~/sessions.server";
 
 import type { Route } from "./+types/layout";
 
+export function meta(_: Route.MetaArgs) {
+  return [
+    { title: "Tasan.app - Split bills with your friends" },
+    {
+      name: "description",
+      content: "Easily split bills with your friends using the Tasan web app.",
+    },
+  ];
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSession(request.headers.get("cookie"));
   const userId = session.get("userId");

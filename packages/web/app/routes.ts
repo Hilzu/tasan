@@ -9,11 +9,13 @@ export default [
   layout("routes/layout.tsx", [
     index("routes/index.tsx"),
     route("sign-up", "routes/sign-up.tsx"),
-    route("login", "routes/login.tsx"),
+    route("log-in", "routes/log-in.tsx"),
     route("logout", "routes/logout.tsx"),
     route("welcome", "routes/welcome.tsx"),
-    route("splits", "routes/splits-parent.tsx", [
-      index("routes/splits-index.tsx"),
+    route("splits", "routes/splits/parent.tsx", [
+      index("routes/splits/index.tsx"),
+      route("new", "routes/splits/new.tsx"),
+      route(":splitID", "routes/splits/show.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

@@ -46,6 +46,7 @@ export const createSession = async (
 };
 
 export const findSession = async (id: string): Promise<Session | undefined> => {
+  // TODO: use paginateQuery
   const cmd = new QueryCommand({
     TableName,
     KeyConditionExpression: "pk = :pk",

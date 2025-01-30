@@ -5,6 +5,7 @@ import { zfd } from "zod-form-data";
 
 import { Button } from "~/components/button";
 import { FieldError, FormField } from "~/components/formField";
+import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
 import { commitSession, getSession } from "~/sessions.server";
 import { toRelativePath } from "~/url";
@@ -50,7 +51,7 @@ export default function SignUp({ actionData }: Route.ComponentProps) {
   const [searchParams] = useSearchParams();
   return (
     <main className="mx-auto max-w-md px-4">
-      <h1 className="pt-16 text-center text-xl font-bold">Sign Up</h1>
+      <MainHeading>Sign Up</MainHeading>
       <Form method="post" className="mt-4" navigate>
         <FormField
           label="Name"

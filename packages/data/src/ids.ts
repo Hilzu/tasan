@@ -29,3 +29,11 @@ export function assertValidUserID(id: string): asserts id is UserID {
 export type SessionID = ID<"ses">;
 export const genSessionID = () => genID("ses");
 export const asValidSessionID = (id: string) => asValidID("ses", id);
+
+// split
+export type SplitID = ID<"spl">;
+export const genSplitID = () => genID("spl");
+export const asValidSplitID = (id: string) => asValidID("spl", id);
+export function assertValidSplitID(id: string): asserts id is SplitID {
+  asValidSplitID(id);
+}
