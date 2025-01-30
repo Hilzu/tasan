@@ -13,7 +13,7 @@ import {
 
 export interface Session {
   id: string;
-  userId: string;
+  userID: string;
   expiresAt: Date;
 }
 
@@ -27,7 +27,7 @@ interface SessionItem {
 export const putSession = async (session: Session): Promise<void> => {
   const Item: SessionItem = {
     pk: asValidSessionID(session.id),
-    sk: asValidUserID(session.userId),
+    sk: asValidUserID(session.userID),
     createdAt: new Date().toISOString(),
     expiresAt: toUnixTime(session.expiresAt),
   };
@@ -58,7 +58,7 @@ export const findSession = async (id: string): Promise<Session | undefined> => {
   const item = Items[0] as SessionItem;
   return {
     id: item.pk,
-    userId: item.sk,
+    userID: item.sk,
     expiresAt: fromUnixTime(item.expiresAt),
   };
 };
@@ -71,7 +71,7 @@ export const deleteSession = async (id: string): Promise<void> => {
     TableName,
     Key: {
       pk: id,
-      sk: session.userId,
+      sk: session.userID,
     },
   });
   await documentClient.send(deleteCmd);

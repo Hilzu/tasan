@@ -22,7 +22,7 @@ const createDataSessionStorage = (
       if (!expires) throw new Error("Missing expires");
 
       const { id } = await createSession({
-        userId: data.userId,
+        userID: data.userId,
         expiresAt: expires,
       });
       return id;
@@ -31,14 +31,14 @@ const createDataSessionStorage = (
       const session = await findSession(id);
       if (!session) return null;
       return {
-        userId: session.userId,
+        userId: session.userID,
       };
     },
     async updateData(id, data, expires) {
       if (!data.userId) throw new Error("Missing userId");
       if (!expires) throw new Error("Missing expires");
 
-      await putSession({ id, userId: data.userId, expiresAt: expires });
+      await putSession({ id, userID: data.userId, expiresAt: expires });
     },
     async deleteData(id) {
       await deleteSession(id);
