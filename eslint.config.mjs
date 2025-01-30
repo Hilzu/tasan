@@ -49,15 +49,19 @@ export default tsEslint.config(
   },
   {
     rules: {
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/no-import-type-side-effects": "error",
       "@typescript-eslint/no-unnecessary-condition": [
         "error",
         { allowConstantLoopConditions: true },
       ],
-      "@typescript-eslint/consistent-type-imports": "error",
-      "@typescript-eslint/no-import-type-side-effects": "error",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/only-throw-error": [
+        "error",
+        { allow: [{ from: "react-router", name: ["data"] }] },
       ],
       "n/prefer-node-protocol": "error",
     },
