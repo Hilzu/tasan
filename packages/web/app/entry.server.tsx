@@ -8,7 +8,7 @@ import { renderToPipeableStream } from "react-dom/server";
 import type { AppLoadContext, EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 
-import { NonceContext } from "~/nonce-context";
+import { NonceContext } from "~/context";
 
 export const streamTimeout = 5_000;
 

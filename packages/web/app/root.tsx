@@ -8,7 +8,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 
-import { NonceContext } from "~/nonce-context";
+import { NonceContext } from "~/context";
 
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
