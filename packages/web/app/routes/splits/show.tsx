@@ -6,6 +6,10 @@ import { getUserOrRedirect } from "~/auth.server";
 import type { Route } from "./+types/show";
 import { MainHeading } from "~/components/heading";
 
+export function meta({ data }: Route.MetaArgs) {
+  return [{ title: `${data.split.name} split - Tasan.app` }];
+}
+
 export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await getUserOrRedirect(request);
   if (user instanceof Response) return user;

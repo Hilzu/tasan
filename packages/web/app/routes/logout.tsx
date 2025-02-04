@@ -9,7 +9,7 @@ import type { Route } from "./+types/logout";
 export function meta() {
   return [
     { title: "Log out - Tasan.app" },
-    { name: "description", content: "Log out from an account." },
+    { name: "description", content: "Log out from your account." },
   ];
 }
 
