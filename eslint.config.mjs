@@ -61,7 +61,15 @@ export default tsEslint.config(
       ],
       "@typescript-eslint/only-throw-error": [
         "error",
-        { allow: [{ from: "react-router", name: ["data"] }] },
+        {
+          allow: [
+            {
+              from: "package",
+              package: "react-router",
+              name: "DataWithResponseInit",
+            },
+          ],
+        },
       ],
       "n/prefer-node-protocol": "error",
     },

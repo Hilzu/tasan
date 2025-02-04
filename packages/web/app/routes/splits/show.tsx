@@ -2,9 +2,9 @@ import { findUsersSplits } from "@tasan/data";
 import { data } from "react-router";
 
 import { getUserOrRedirect } from "~/auth.server";
+import { MainHeading } from "~/components/heading";
 
 import type { Route } from "./+types/show";
-import { MainHeading } from "~/components/heading";
 
 export function meta({ data }: Route.MetaArgs) {
   return [{ title: `${data.split.name} split - Tasan.app` }];
