@@ -59,6 +59,9 @@ export const createSplit = async (
   return { id };
 };
 
+const compareById = (a: { id: string }, b: { id: string }) =>
+  a.id.localeCompare(b.id);
+
 export const findUsersSplits = async (userID: string): Promise<Split[]> => {
   assertValidUserID(userID);
 
@@ -86,5 +89,7 @@ export const findUsersSplits = async (userID: string): Promise<Split[]> => {
       createdBy: item.createdBy,
       users: item.users,
     };
-  });
+  })
+    .sort(compareById)
+    .reverse();
 };
