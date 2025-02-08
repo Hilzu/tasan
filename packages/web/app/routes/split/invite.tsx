@@ -6,6 +6,7 @@ import { getUserOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
+import { originURL } from "~/config";
 import type { SplitLoader } from "~/routes/split/parent";
 import { canShare, copyToClipboard, createShareHandler } from "~/utils.client";
 
@@ -26,7 +27,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const inviteURL = new URL(
     `/accept-invite/${encodeURIComponent(inviteForSplit.id)}`,
-    request.url,
+    originURL,
   );
   return { inviteURL };
 }
