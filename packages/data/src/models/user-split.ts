@@ -1,4 +1,4 @@
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
@@ -21,6 +21,8 @@ interface UserSplitItem {
   createdAt: string;
   createdBy: UserID;
 }
+
+type PrimaryKey = Pick<UserSplitItem, "pk" | "sk">;
 
 export const createUserSplit = async (userSplit: UserSplit): Promise<void> => {
   assertValidUserID(userSplit.userID);
@@ -51,4 +53,23 @@ export const findUserSplitIDs = async (userID: string): Promise<SplitID[]> => {
   if (!Items?.length) return [];
 
   return Items.map((item) => (item as UserSplitItem).sk);
+};
+
+export const getUserSplit = async ({
+  userID,
+  splitID,
+}: Pick<UserSplit, "userID" | "splitID">): Promise<UserSplit | undefined> => {
+  assertValidUserID(userID);
+  assertValidSplitID(splitID);
+
+  const Key: PrimaryKey = { pk: userID, sk: splitID };
+  const cmd = new GetCommand({ TableName, Key });
+  const { Item } = await documentClient.send(cmd);
+  if (!Item) return;
+  const item = Item as UserSplitItem;
+  return {
+    userID: item.pk,
+    splitID: item.sk,
+    createdBy: item.createdBy,
+  };
 };

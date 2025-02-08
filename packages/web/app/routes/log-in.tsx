@@ -1,4 +1,4 @@
-import { findUser } from "@tasan/data";
+import { getUser } from "@tasan/data";
 import { data, Form, redirect, useSearchParams } from "react-router";
 import { type inferFlattenedErrors, z } from "zod";
 import { zfd } from "zod-form-data";
@@ -33,7 +33,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ errors }, { status: 400 });
   }
 
-  const user = await findUser(result.data.userid);
+  const user = await getUser(result.data.userid);
   if (!user) {
     return data({
       errors: {

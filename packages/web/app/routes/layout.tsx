@@ -1,4 +1,4 @@
-import { findUser } from "@tasan/data";
+import { getUser } from "@tasan/data";
 import { Outlet } from "react-router";
 
 import { Footer } from "~/components/footer";
@@ -20,7 +20,7 @@ export function meta(_: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSession(request.headers.get("cookie"));
   const userId = session.get("userId");
-  const user = userId ? await findUser(userId) : undefined;
+  const user = userId ? await getUser(userId) : undefined;
   return { user };
 }
 

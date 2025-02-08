@@ -14,7 +14,7 @@
   "scripts": {
     "build": "NODE_ENV=production react-router build --sourcemapServer",
     "clean": "rm -rf .react-router build dist node_modules/.vite",
-    "dev": "react-router dev",
+    "dev": "react-router dev --host 0.0.0.0",
     "test": "react-router typegen"
   },
   "engines": {

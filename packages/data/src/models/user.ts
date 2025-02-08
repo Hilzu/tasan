@@ -1,8 +1,13 @@
-import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { BatchGetCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import { assertValidUserID, genUserID, type UserID } from "../ids.js";
+import {
+  assertValidUserID,
+  asValidUserID,
+  genUserID,
+  type UserID,
+} from "../ids.js";
 
 export interface User {
   id: string;
@@ -33,7 +38,7 @@ export const createUser = async (user: CreateUser): Promise<{ id: string }> => {
   return { id };
 };
 
-export const findUser = async (id: string): Promise<User | undefined> => {
+export const getUser = async (id: string): Promise<User | undefined> => {
   assertValidUserID(id);
   const Key: PrimaryKey = { pk: id, sk: id };
   const cmd = new GetCommand({ TableName, Key });
@@ -44,4 +49,29 @@ export const findUser = async (id: string): Promise<User | undefined> => {
     id: item.pk,
     name: item.name,
   };
+};
+
+export const getUsers = async (idSet: Set<string>): Promise<User[]> => {
+  const pks = Array.from(idSet, (id) => {
+    const userId = asValidUserID(id);
+    return { pk: userId, sk: userId } satisfies PrimaryKey;
+  });
+  if (!pks.length) return [];
+  const cmd = new BatchGetCommand({
+    RequestItems: {
+      [TableName]: {
+        Keys: pks,
+      },
+    },
+  });
+  const { Responses } = await documentClient.send(cmd);
+  const items = Responses?.[TableName];
+  if (!items?.length) return [];
+  return items.map((item_) => {
+    const item = item_ as UserItem;
+    return {
+      id: item.pk,
+      name: item.name,
+    };
+  });
 };

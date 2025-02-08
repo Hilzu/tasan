@@ -60,6 +60,7 @@ export class TasanStack extends Stack {
         NODE_ENV: "production",
         TABLE_NAME: appTable.tableName,
         COOKIE_SIGN_SECRET: getEnv("COOKIE_SIGN_SECRET"),
+        ORIGIN_URL: "https://tasan.app",
       },
     });
 

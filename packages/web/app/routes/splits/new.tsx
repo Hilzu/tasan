@@ -23,6 +23,7 @@ export async function action({ request }: Route.ActionArgs) {
   const user = await getUserOrRedirect(request);
   if (user instanceof Response) return user;
 
+  // TODO: extract form validation to a shared function
   const formData = await request.formData();
   const result = schema.safeParse(formData);
   if (!result.success) {

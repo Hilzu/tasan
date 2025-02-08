@@ -6,7 +6,7 @@ import {
 } from "@tasan/data";
 import { type CookieOptions, createSessionStorage } from "react-router";
 
-import { cookieSignSecret } from "~/config";
+import { cookieSignSecret, originURL } from "~/config";
 
 interface SessionData {
   userId: string;
@@ -46,15 +46,16 @@ const createDataSessionStorage = (
   });
 };
 
+// TODO: make the cookies work when using the local site from phone
 const { getSession, commitSession, destroySession } = createDataSessionStorage({
   name: "__session",
-  // domain
+  domain: originURL.hostname,
   httpOnly: true,
   maxAge: 14 * 24 * 60 * 60,
   path: "/",
   sameSite: "lax",
   secrets: [cookieSignSecret],
-  secure: true,
+  secure: originURL.protocol === "https:",
 });
 
 export { commitSession, destroySession, getSession };

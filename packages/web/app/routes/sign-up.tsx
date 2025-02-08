@@ -71,7 +71,7 @@ export default function SignUp({ actionData }: Route.ComponentProps) {
       </Form>
       <p className="mt-4">
         Already have an account?{" "}
-        <Link to={{ pathname: "/login", search: searchParams.toString() }}>
+        <Link to={{ pathname: "/log-in", search: searchParams.toString() }}>
           Log in
         </Link>
       </p>

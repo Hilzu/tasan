@@ -96,4 +96,10 @@ export default tsEslint.config(
       "n/no-missing-import": "off",
     },
   },
+  {
+    files: ["**/*.client.ts", "**/*.client.tsx"],
+    rules: {
+      "n/no-unsupported-features/node-builtins": "off",
+    },
+  },
 );

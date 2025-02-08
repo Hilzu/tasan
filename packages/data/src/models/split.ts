@@ -1,8 +1,14 @@
-import { BatchGetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  BatchGetCommand,
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import {
+  assertValidSplitID,
   assertValidUserID,
   genSplitID,
   type SplitID,
@@ -25,7 +31,7 @@ interface SplitItem {
   createdBy: UserID;
   name: string;
   description?: string;
-  users: Set<string>;
+  users?: Set<string>;
 }
 
 type PrimaryKey = Pick<SplitItem, "pk" | "sk">;
@@ -62,6 +68,17 @@ export const createSplit = async (
 const compareById = (a: { id: string }, b: { id: string }) =>
   a.id.localeCompare(b.id);
 
+const fromItem = (Item: Record<string, unknown>): Split => {
+  const item = Item as unknown as SplitItem;
+  return {
+    id: item.pk,
+    name: item.name,
+    description: item.description,
+    createdBy: item.createdBy,
+    users: item.users ?? new Set(),
+  };
+};
+
 export const findUsersSplits = async (userID: string): Promise<Split[]> => {
   assertValidUserID(userID);
 
@@ -80,16 +97,33 @@ export const findUsersSplits = async (userID: string): Promise<Split[]> => {
   const Items = Responses?.[TableName];
   if (!Items?.length) return [];
 
-  return Items.map((Item) => {
-    const item = Item as SplitItem;
-    return {
-      id: item.pk,
-      name: item.name,
-      description: item.description,
-      createdBy: item.createdBy,
-      users: item.users,
-    };
-  })
-    .sort(compareById)
-    .reverse();
+  return Items.map(fromItem).sort(compareById).reverse();
+};
+
+export const getSplit = async (splitID: string) => {
+  assertValidSplitID(splitID);
+  const Key: PrimaryKey = { pk: splitID, sk: splitID };
+  const cmd = new GetCommand({ TableName, Key });
+  const { Item } = await documentClient.send(cmd);
+  if (!Item) return;
+  return fromItem(Item);
+};
+
+// TODO: remove the users attribute and use GSI to query split users?
+export const addUserToSplit = async (
+  splitID: string,
+  userID: string,
+): Promise<void> => {
+  assertValidSplitID(splitID);
+  assertValidUserID(userID);
+
+  const Key: PrimaryKey = { pk: splitID, sk: splitID };
+  const cmd = new UpdateCommand({
+    TableName,
+    Key,
+    UpdateExpression: "ADD #users :userID",
+    ExpressionAttributeNames: { "#users": "users" },
+    ExpressionAttributeValues: { ":userID": new Set([userID]) },
+  });
+  await documentClient.send(cmd);
 };

@@ -13,3 +13,16 @@ export function MainHeading({ children, className }: MainHeadingProps) {
     </h1>
   );
 }
+
+export interface SubHeadingProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export function SubHeading({ children, className }: SubHeadingProps) {
+  return (
+    <h2 className={classNames(className, "text-xl font-semibold")}>
+      {children}
+    </h2>
+  );
+}

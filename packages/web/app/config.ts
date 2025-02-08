@@ -7,3 +7,5 @@ const getEnv = (key: string): string => {
 };
 
 export const cookieSignSecret = getEnv("COOKIE_SIGN_SECRET");
+
+export const originURL = new URL(getEnv("ORIGIN_URL"));

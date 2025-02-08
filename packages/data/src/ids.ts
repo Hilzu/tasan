@@ -37,3 +37,11 @@ export const asValidSplitID = (id: string) => asValidID("spl", id);
 export function assertValidSplitID(id: string): asserts id is SplitID {
   asValidSplitID(id);
 }
+
+// invite
+export type InviteID = ID<"inv">;
+export const genInviteID = () => genID("inv");
+export const asValidInviteID = (id: string) => asValidID("inv", id);
+export function assertValidInviteID(id: string): asserts id is InviteID {
+  asValidInviteID(id);
+}

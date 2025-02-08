@@ -1,10 +1,9 @@
-import { findUsersSplits } from "@tasan/data";
-import { data } from "react-router";
+import { findUsersSplits, getUsers } from "@tasan/data";
+import { data, Outlet } from "react-router";
 
 import { getUserOrRedirect } from "~/auth.server";
-import { MainHeading } from "~/components/heading";
 
-import type { Route } from "./+types/show";
+import type { Route } from "./+types/parent";
 
 export function meta({ data }: Route.MetaArgs) {
   return [{ title: `${data.split.name} split - Tasan.app` }];
@@ -18,15 +17,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const splits = await findUsersSplits(user.id);
   const split = splits.find((split) => split.id === splitID);
   if (!split) throw data(null, { status: 404 });
-  return { split };
+
+  const users = await getUsers(split.users);
+  return { split, users, user };
 }
 
-export default function ShowSplit({ loaderData }: Route.ComponentProps) {
-  const { split } = loaderData;
-  return (
-    <div>
-      <MainHeading>Split - {split.name}</MainHeading>
-      <p>{split.description}</p>
-    </div>
-  );
+export type SplitLoader = typeof loader;
+
+export default function SplitParent() {
+  return <Outlet />;
 }
