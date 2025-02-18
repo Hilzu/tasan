@@ -30,6 +30,6 @@ function handler(event) {
  * @param {string} base64EncodedText
  * @returns {string}
  */
-function convertBase64ToHex(base64EncodedText) {
-  return Buffer.from(base64EncodedText, "base64").toString("hex");
-}
+// function convertBase64ToHex(base64EncodedText) {
+//   return Buffer.from(base64EncodedText, "base64").toString("hex");
+// }
