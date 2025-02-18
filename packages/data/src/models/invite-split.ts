@@ -12,6 +12,7 @@ import {
   type SplitID,
   type UserID,
 } from "../ids.js";
+import { captureAsync } from "../segment.js";
 
 export interface InviteForSplit {
   id: string;
@@ -31,58 +32,62 @@ type PrimaryKey = Pick<InviteSplitItem, "pk" | "sk">;
 
 export type CreateInviteForSplit = Omit<InviteForSplit, "id">;
 
-export const createInviteForSplit = async ({
-  splitID,
-  createdBy,
-}: CreateInviteForSplit): Promise<{ id: string }> => {
-  assertValidSplitID(splitID);
-  assertValidUserID(createdBy);
-
-  const id = genInviteID();
-  const fiveDaysFromNow = new Date();
-  fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
-  const Item: InviteSplitItem = {
-    pk: id,
-    sk: splitID,
-    createdAt: new Date().toISOString(),
+export const createInviteForSplit = captureAsync(
+  "createInviteForSplit",
+  async ({
+    splitID,
     createdBy,
-    expiresAt: toUnixTime(fiveDaysFromNow),
-  };
-  const cmd = new PutCommand({ TableName, Item });
-  await documentClient.send(cmd);
-  return { id };
-};
+  }: CreateInviteForSplit): Promise<{ id: string }> => {
+    assertValidSplitID(splitID);
+    assertValidUserID(createdBy);
 
-export const findInviteForSplit = async (
-  inviteId: string,
-): Promise<InviteForSplit | undefined> => {
-  assertValidInviteID(inviteId);
+    const id = genInviteID();
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
+    const Item: InviteSplitItem = {
+      pk: id,
+      sk: splitID,
+      createdAt: new Date().toISOString(),
+      createdBy,
+      expiresAt: toUnixTime(fiveDaysFromNow),
+    };
+    const cmd = new PutCommand({ TableName, Item });
+    await documentClient.send(cmd);
+    return { id };
+  },
+);
 
-  const cmd = new QueryCommand({
-    TableName,
-    KeyConditionExpression: "pk = :pk and begins_with(sk, :prefix)",
-    ExpressionAttributeValues: {
-      ":pk": inviteId,
-      ":prefix": "spl_",
-    },
-  });
-  const { Items } = await documentClient.send(cmd);
-  if (!Items?.length) return;
-  const [item] = Items as InviteSplitItem[];
-  return {
-    id: item.pk,
-    splitID: item.sk,
-    createdBy: item.createdBy,
-  };
-};
+export const findInviteForSplit = captureAsync(
+  "findInviteForSplit",
+  async (inviteId: string): Promise<InviteForSplit | undefined> => {
+    assertValidInviteID(inviteId);
 
-export const deleteInviteForSplit = async (
-  inviteID: string,
-  splitID: string,
-): Promise<void> => {
-  assertValidInviteID(inviteID);
-  assertValidSplitID(splitID);
-  const Key: PrimaryKey = { pk: inviteID, sk: splitID };
-  const cmd = new DeleteCommand({ TableName, Key });
-  await documentClient.send(cmd);
-};
+    const cmd = new QueryCommand({
+      TableName,
+      KeyConditionExpression: "pk = :pk and begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": inviteId,
+        ":prefix": "spl_",
+      },
+    });
+    const { Items } = await documentClient.send(cmd);
+    if (!Items?.length) return;
+    const [item] = Items as InviteSplitItem[];
+    return {
+      id: item.pk,
+      splitID: item.sk,
+      createdBy: item.createdBy,
+    };
+  },
+);
+
+export const deleteInviteForSplit = captureAsync(
+  "deleteInviteForSplit",
+  async (inviteID: string, splitID: string): Promise<void> => {
+    assertValidInviteID(inviteID);
+    assertValidSplitID(splitID);
+    const Key: PrimaryKey = { pk: inviteID, sk: splitID };
+    const cmd = new DeleteCommand({ TableName, Key });
+    await documentClient.send(cmd);
+  },
+);

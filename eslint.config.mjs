@@ -51,6 +51,10 @@ export default tsEslint.config(
     rules: {
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-import-type-side-effects": "error",
+      "@typescript-eslint/no-require-imports": [
+        "error",
+        { allowAsImport: true },
+      ],
       "@typescript-eslint/no-unnecessary-condition": [
         "error",
         { allowConstantLoopConditions: true },

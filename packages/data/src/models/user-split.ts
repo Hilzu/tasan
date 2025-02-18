@@ -8,6 +8,7 @@ import {
   type SplitID,
   type UserID,
 } from "../ids.js";
+import { captureAsync } from "../segment.js";
 
 export interface UserSplit {
   userID: string;
@@ -24,52 +25,61 @@ interface UserSplitItem {
 
 type PrimaryKey = Pick<UserSplitItem, "pk" | "sk">;
 
-export const createUserSplit = async (userSplit: UserSplit): Promise<void> => {
-  assertValidUserID(userSplit.userID);
-  assertValidUserID(userSplit.createdBy);
-  assertValidSplitID(userSplit.splitID);
+export const createUserSplit = captureAsync(
+  "createUserSplit",
+  async (userSplit: UserSplit): Promise<void> => {
+    assertValidUserID(userSplit.userID);
+    assertValidUserID(userSplit.createdBy);
+    assertValidSplitID(userSplit.splitID);
 
-  const Item: UserSplitItem = {
-    pk: userSplit.userID,
-    sk: userSplit.splitID,
-    createdAt: new Date().toISOString(),
-    createdBy: userSplit.createdBy,
-  };
+    const Item: UserSplitItem = {
+      pk: userSplit.userID,
+      sk: userSplit.splitID,
+      createdAt: new Date().toISOString(),
+      createdBy: userSplit.createdBy,
+    };
 
-  const cmd = new PutCommand({ TableName, Item });
-  await documentClient.send(cmd);
-};
+    const cmd = new PutCommand({ TableName, Item });
+    await documentClient.send(cmd);
+  },
+);
 
-export const findUserSplitIDs = async (userID: string): Promise<SplitID[]> => {
-  assertValidUserID(userID);
+export const findUserSplitIDs = captureAsync(
+  "findUserSplitIDs",
+  async (userID: string): Promise<SplitID[]> => {
+    assertValidUserID(userID);
 
-  const cmd = new QueryCommand({
-    TableName,
-    KeyConditionExpression: "pk = :pk and begins_with(sk, :prefix)",
-    ExpressionAttributeValues: { ":pk": userID, ":prefix": "spl_" },
-  });
+    const cmd = new QueryCommand({
+      TableName,
+      KeyConditionExpression: "pk = :pk and begins_with(sk, :prefix)",
+      ExpressionAttributeValues: { ":pk": userID, ":prefix": "spl_" },
+    });
 
-  const { Items } = await documentClient.send(cmd);
-  if (!Items?.length) return [];
+    const { Items } = await documentClient.send(cmd);
+    if (!Items?.length) return [];
 
-  return Items.map((item) => (item as UserSplitItem).sk);
-};
+    return Items.map((item) => (item as UserSplitItem).sk);
+  },
+);
 
-export const getUserSplit = async ({
-  userID,
-  splitID,
-}: Pick<UserSplit, "userID" | "splitID">): Promise<UserSplit | undefined> => {
-  assertValidUserID(userID);
-  assertValidSplitID(splitID);
+export const getUserSplit = captureAsync(
+  "getUserSplit",
+  async ({
+    userID,
+    splitID,
+  }: Pick<UserSplit, "userID" | "splitID">): Promise<UserSplit | undefined> => {
+    assertValidUserID(userID);
+    assertValidSplitID(splitID);
 
-  const Key: PrimaryKey = { pk: userID, sk: splitID };
-  const cmd = new GetCommand({ TableName, Key });
-  const { Item } = await documentClient.send(cmd);
-  if (!Item) return;
-  const item = Item as UserSplitItem;
-  return {
-    userID: item.pk,
-    splitID: item.sk,
-    createdBy: item.createdBy,
-  };
-};
+    const Key: PrimaryKey = { pk: userID, sk: splitID };
+    const cmd = new GetCommand({ TableName, Key });
+    const { Item } = await documentClient.send(cmd);
+    if (!Item) return;
+    const item = Item as UserSplitItem;
+    return {
+      userID: item.pk,
+      splitID: item.sk,
+      createdBy: item.createdBy,
+    };
+  },
+);

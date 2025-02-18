@@ -32,6 +32,7 @@ export class TasanStack extends Stack {
     );
 
     const appTable = new dynamodb.TableV2(this, "AppTable", {
+      tableName: "TasanAppTable",
       partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
       timeToLiveAttribute: "expiresAt",
@@ -42,10 +43,12 @@ export class TasanStack extends Stack {
     });
 
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {
+      functionName: "TasanAppFn",
       runtime: lambda.Runtime.NODEJS_22_X,
       memorySize: 256,
       entry: "./src/app-function.mts",
       architecture: lambda.Architecture.ARM_64,
+      tracing: lambda.Tracing.ACTIVE,
       bundling: {
         charset: nodejs.Charset.UTF8,
         minify: true,
@@ -54,6 +57,22 @@ export class TasanStack extends Stack {
         format: OutputFormat.ESM,
         banner:
           'import {createRequire} from "module"; const require = createRequire(import.meta.url);',
+        commandHooks: {
+          beforeBundling: (_inputDir, _outputDir) => {
+            return [];
+          },
+          beforeInstall: (_inputDir, _outputDir) => {
+            return [];
+          },
+          afterBundling: (_inputDir, outputDir) => {
+            // For XRay SDK
+            return [
+              `cd ${outputDir}`,
+              "echo {} > package.json",
+              `npm install @smithy/service-error-classification@^2.0.4`,
+            ];
+          },
+        },
       },
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
@@ -111,11 +130,38 @@ export class TasanStack extends Stack {
       this,
       "AppOriginRequestFunc",
       {
+        functionName: "AppOriginRequestFn",
         runtime: lambda.Runtime.NODEJS_22_X,
         handler: "main.handler",
         code: lambda.Code.fromAsset("./dist/app-origin-request/", {
           exclude: ["*.mts", "*.map"],
         }),
+      },
+    );
+
+    const appViewerRequestFn = new cloudfront.Function(
+      this,
+      "AppViewerRequestFn",
+      {
+        functionName: "AppViewerRequestFn",
+        code: cloudfront.FunctionCode.fromFile({
+          filePath: "./src/cloudfront-functions/app-viewer-request.cjs",
+        }),
+        runtime: cloudfront.FunctionRuntime.JS_2_0,
+        autoPublish: true,
+      },
+    );
+
+    const appViewerResponseFn = new cloudfront.Function(
+      this,
+      "AppViewerResponseFn",
+      {
+        functionName: "AppViewerResponseFn",
+        code: cloudfront.FunctionCode.fromFile({
+          filePath: "./src/cloudfront-functions/app-viewer-response.cjs",
+        }),
+        runtime: cloudfront.FunctionRuntime.JS_2_0,
+        autoPublish: true,
       },
     );
 
@@ -136,6 +182,16 @@ export class TasanStack extends Stack {
             eventType: cloudfront.LambdaEdgeEventType.ORIGIN_REQUEST,
             functionVersion: appOriginRequestFunc.currentVersion,
             includeBody: true,
+          },
+        ],
+        functionAssociations: [
+          {
+            function: appViewerRequestFn,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          },
+          {
+            function: appViewerResponseFn,
+            eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE,
           },
         ],
       },
