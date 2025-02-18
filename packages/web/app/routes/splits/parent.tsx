@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
 
-import { getUserOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/auth.server";
 
 import type { Route } from "./+types/parent";
 
@@ -9,9 +9,9 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await getUserOrRedirect(request);
-  if (user instanceof Response) return user;
-  return { user };
+  const session = await getSessionOrRedirect(request);
+  if (session instanceof Response) return session;
+  return { session };
 }
 
 export default function SplitsParent(_: Route.ComponentProps) {

@@ -11,7 +11,7 @@ import type { Route } from "./+types/show";
 export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
-  const { split, users, user } = parentData;
+  const { split, users, session } = parentData;
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>
@@ -26,7 +26,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
       >
         <ul>
           {users.map((u) => {
-            const isYou = user.id === u.id;
+            const isYou = session.userID === u.id;
             return (
               <li key={u.id}>
                 {u.name} {isYou ? " (you!)" : ""}

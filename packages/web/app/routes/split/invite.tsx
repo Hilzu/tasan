@@ -2,7 +2,7 @@ import { createInviteForSplit, getUserSplit } from "@tasan/data";
 import { useState } from "react";
 import { useFetcher, useRouteLoaderData } from "react-router";
 
-import { getUserOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
@@ -13,15 +13,15 @@ import { canShare, copyToClipboard, createShareHandler } from "~/utils.client";
 import type { Route } from "./+types/invite";
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const user = await getUserOrRedirect(request);
-  if (user instanceof Response) return user;
+  const session = await getSessionOrRedirect(request);
+  if (session instanceof Response) return session;
 
   const { splitID } = params;
-  const userSplit = await getUserSplit({ userID: user.id, splitID });
+  const userSplit = await getUserSplit({ userID: session.userID, splitID });
   if (!userSplit) throw new Error("Split not found");
 
   const inviteForSplit = await createInviteForSplit({
-    createdBy: user.id,
+    createdBy: session.userID,
     splitID: userSplit.splitID,
   });
 

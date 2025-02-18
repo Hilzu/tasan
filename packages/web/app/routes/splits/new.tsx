@@ -3,7 +3,7 @@ import { data, Form, redirect } from "react-router";
 import { type inferFlattenedErrors, z } from "zod";
 import { zfd } from "zod-form-data";
 
-import { getUserOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
 import { FieldError, FormField, TextField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
@@ -20,8 +20,8 @@ const schema = zfd.formData({
 });
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await getUserOrRedirect(request);
-  if (user instanceof Response) return user;
+  const session = await getSessionOrRedirect(request);
+  if (session instanceof Response) return session;
 
   // TODO: extract form validation to a shared function
   const formData = await request.formData();
@@ -36,7 +36,7 @@ export async function action({ request }: Route.ActionArgs) {
   const { id } = await createSplit({
     name: result.data.splitName,
     description: result.data.splitDescription,
-    createdBy: user.id,
+    createdBy: session.userID,
   });
   return redirect(`/splits/${id}`);
 }

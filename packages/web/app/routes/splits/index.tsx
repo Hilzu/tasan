@@ -1,6 +1,6 @@
 import { findUsersSplits } from "@tasan/data";
 
-import { getUserOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
@@ -12,10 +12,10 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const userOrRedirect = await getUserOrRedirect(request);
-  if (userOrRedirect instanceof Response) return userOrRedirect;
+  const session = await getSessionOrRedirect(request);
+  if (session instanceof Response) return session;
 
-  const splits = await findUsersSplits(userOrRedirect.id);
+  const splits = await findUsersSplits(session.userID);
   return { splits };
 }
 
