@@ -24,6 +24,14 @@ interface UserItem {
 
 type PrimaryKey = Pick<UserItem, "pk" | "sk">;
 
+const fromItem = (Item: Record<string, unknown>): User => {
+  const item = Item as unknown as UserItem;
+  return {
+    id: item.pk,
+    name: item.name,
+  };
+};
+
 export type CreateUser = Omit<User, "id">;
 
 export const createUser = captureAsync(
@@ -50,11 +58,7 @@ export const getUser = captureAsync(
     const cmd = new GetCommand({ TableName, Key });
     const { Item } = await documentClient.send(cmd);
     if (!Item) return;
-    const item = Item as UserItem;
-    return {
-      id: item.pk,
-      name: item.name,
-    };
+    return fromItem(Item);
   },
 );
 
@@ -76,12 +80,6 @@ export const getUsers = captureAsync(
     const { Responses } = await documentClient.send(cmd);
     const items = Responses?.[TableName];
     if (!items?.length) return [];
-    return items.map((item_) => {
-      const item = item_ as UserItem;
-      return {
-        id: item.pk,
-        name: item.name,
-      };
-    });
+    return items.map(fromItem);
   },
 );

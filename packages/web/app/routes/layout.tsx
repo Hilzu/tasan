@@ -19,8 +19,8 @@ export function meta(_: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSession(request.headers.get("cookie"));
-  const userId = session.get("userId");
-  const user = userId ? await getUser(userId) : undefined;
+  const userID = session.get("userID");
+  const user = userID ? await getUser(userID) : undefined;
   return { user };
 }
 

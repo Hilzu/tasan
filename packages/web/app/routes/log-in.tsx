@@ -45,7 +45,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const session = await getSession(request.headers.get("cookie"));
-  session.set("userId", user.id);
+  session.set("userID", user.id);
 
   const url = new URL(request.url);
   const redirectParam = url.searchParams.get("redirect");

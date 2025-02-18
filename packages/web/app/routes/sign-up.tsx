@@ -36,7 +36,7 @@ export async function action({ request }: Route.ActionArgs) {
   const { id } = await createUser({ name: result.data.name });
 
   const session = await getSession(request.headers.get("cookie"));
-  session.set("userId", id);
+  session.set("userID", id);
 
   const url = new URL(request.url);
   const redirectParam = url.searchParams.get("redirect");

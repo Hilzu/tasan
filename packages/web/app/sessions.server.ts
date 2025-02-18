@@ -1,7 +1,7 @@
 import {
   createSession,
   deleteSession,
-  findSession,
+  getSession as getSessionData,
   putSession,
 } from "@tasan/data";
 import { type CookieOptions, createSessionStorage } from "react-router";
@@ -9,7 +9,7 @@ import { type CookieOptions, createSessionStorage } from "react-router";
 import { cookieSignSecret, originURL } from "~/config";
 
 interface SessionData {
-  userId: string;
+  userID: string;
 }
 
 const createDataSessionStorage = (
@@ -18,27 +18,27 @@ const createDataSessionStorage = (
   return createSessionStorage<SessionData, unknown>({
     cookie,
     async createData(data, expires) {
-      if (!data.userId) throw new Error("Missing userId");
+      if (!data.userID) throw new Error("Missing userId");
       if (!expires) throw new Error("Missing expires");
 
       const { id } = await createSession({
-        userID: data.userId,
+        userID: data.userID,
         expiresAt: expires,
       });
       return id;
     },
     async readData(id) {
-      const session = await findSession(id);
+      const session = await getSessionData(id);
       if (!session) return null;
       return {
-        userId: session.userID,
+        userID: session.userID,
       };
     },
     async updateData(id, data, expires) {
-      if (!data.userId) throw new Error("Missing userId");
+      if (!data.userID) throw new Error("Missing userId");
       if (!expires) throw new Error("Missing expires");
 
-      await putSession({ id, userID: data.userId, expiresAt: expires });
+      await putSession({ id, userID: data.userID, expiresAt: expires });
     },
     async deleteData(id) {
       await deleteSession(id);

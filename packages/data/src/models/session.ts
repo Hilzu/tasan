@@ -1,11 +1,11 @@
-import { DeleteCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { fromUnixTime, toUnixTime } from "../date.js";
 import {
-  asValidSessionID,
-  asValidUserID,
+  assertValidSessionID,
+  assertValidUserID,
   genSessionID,
   type SessionID,
   type UserID,
@@ -20,19 +20,25 @@ export interface Session {
 
 interface SessionItem {
   pk: SessionID;
-  sk: UserID;
+  sk: SessionID;
   createdAt: string;
   expiresAt: number;
+  forUser: UserID;
 }
+
+type PrimaryKey = Pick<SessionItem, "pk" | "sk">;
 
 export const putSession = captureAsync(
   "putSession",
   async (session: Session): Promise<void> => {
+    assertValidSessionID(session.id);
+    assertValidUserID(session.userID);
     const Item: SessionItem = {
-      pk: asValidSessionID(session.id),
-      sk: asValidUserID(session.userID),
+      pk: session.id,
+      sk: session.id,
       createdAt: new Date().toISOString(),
       expiresAt: toUnixTime(session.expiresAt),
+      forUser: session.userID,
     };
     const cmd = new PutCommand({ TableName, Item });
     await documentClient.send(cmd);
@@ -50,22 +56,21 @@ export const createSession = captureAsync(
   },
 );
 
-export const findSession = captureAsync(
-  "findSession",
+export const getSession = captureAsync(
+  "getSession",
   async (id: string): Promise<Session | undefined> => {
-    const cmd = new QueryCommand({
+    assertValidSessionID(id);
+    const Key: PrimaryKey = { pk: id, sk: id };
+    const cmd = new GetCommand({
       TableName,
-      KeyConditionExpression: "pk = :pk",
-      ExpressionAttributeValues: {
-        ":pk": asValidSessionID(id),
-      },
+      Key,
     });
-    const { Items } = await documentClient.send(cmd);
-    if (!Items?.length) return;
-    const item = Items[0] as SessionItem;
+    const { Item } = await documentClient.send(cmd);
+    if (!Item) return;
+    const item = Item as SessionItem;
     return {
       id: item.pk,
-      userID: item.sk,
+      userID: item.forUser,
       expiresAt: fromUnixTime(item.expiresAt),
     };
   },
@@ -74,15 +79,11 @@ export const findSession = captureAsync(
 export const deleteSession = captureAsync(
   "deleteSession",
   async (id: string): Promise<void> => {
-    const session = await findSession(id);
-    if (!session) return;
-
+    assertValidSessionID(id);
+    const Key: PrimaryKey = { pk: id, sk: id };
     const deleteCmd = new DeleteCommand({
       TableName,
-      Key: {
-        pk: id,
-        sk: session.userID,
-      },
+      Key,
     });
     await documentClient.send(deleteCmd);
   },

@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
+import { compareById } from "../compare.js";
 import { TableName } from "../config.js";
 import {
   assertValidSplitID,
@@ -37,6 +38,17 @@ interface SplitItem {
 
 type PrimaryKey = Pick<SplitItem, "pk" | "sk">;
 
+const fromItem = (Item: Record<string, unknown>): Split => {
+  const item = Item as unknown as SplitItem;
+  return {
+    id: item.pk,
+    name: item.name,
+    description: item.description,
+    createdBy: item.createdBy,
+    users: item.users ?? new Set(),
+  };
+};
+
 export type CreateSplit = Omit<Split, "id" | "users">;
 
 export const createSplit = captureAsync(
@@ -66,20 +78,6 @@ export const createSplit = captureAsync(
     return { id };
   },
 );
-
-const compareById = (a: { id: string }, b: { id: string }) =>
-  a.id.localeCompare(b.id);
-
-const fromItem = (Item: Record<string, unknown>): Split => {
-  const item = Item as unknown as SplitItem;
-  return {
-    id: item.pk,
-    name: item.name,
-    description: item.description,
-    createdBy: item.createdBy,
-    users: item.users ?? new Set(),
-  };
-};
 
 export const findUsersSplits = captureAsync(
   "findUsersSplits",

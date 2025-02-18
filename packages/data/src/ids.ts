@@ -29,6 +29,9 @@ export function assertValidUserID(id: string): asserts id is UserID {
 export type SessionID = ID<"ses">;
 export const genSessionID = () => genID("ses");
 export const asValidSessionID = (id: string) => asValidID("ses", id);
+export function assertValidSessionID(id: string): asserts id is SessionID {
+  asValidSessionID(id);
+}
 
 // split
 export type SplitID = ID<"spl">;

@@ -5,15 +5,15 @@ import { getSession } from "~/sessions.server";
 
 export const getUserOrRedirect = async (request: Request) => {
   const session = await getSession(request.headers.get("cookie"));
-  const userId = session.get("userId");
+  const userID = session.get("userID");
   const currentURL = new URL(request.url);
   const redirectParam = encodeURIComponent(
     `${currentURL.pathname}${currentURL.search}`,
   );
 
-  if (!userId) return redirect(`/log-in?redirect=${redirectParam}`);
+  if (!userID) return redirect(`/log-in?redirect=${redirectParam}`);
 
-  const user = await getUser(userId);
+  const user = await getUser(userID);
   if (!user) return redirect(`/log-in?redirect=${redirectParam}`);
 
   return user;
