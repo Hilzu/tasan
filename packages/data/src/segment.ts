@@ -5,8 +5,8 @@ export const captureAsync = <T, Args extends unknown[]>(
   fn: (...args: Args) => Promise<T>,
 ): ((...args: Args) => Promise<T>) => {
   const segment = AWSXRay.getSegment();
-  return (...args) =>
-    AWSXRay.captureAsyncFunc(
+  return function _captureAsync(...args) {
+    return AWSXRay.captureAsyncFunc(
       name,
       async (subsegment) => {
         const start = Date.now();
@@ -18,4 +18,5 @@ export const captureAsync = <T, Args extends unknown[]>(
       },
       segment,
     );
+  };
 };

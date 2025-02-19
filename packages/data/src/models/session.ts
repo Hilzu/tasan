@@ -10,6 +10,7 @@ import {
   type SessionID,
   type UserID,
 } from "../ids.js";
+import { cachePromise } from "../promise.js";
 import { captureAsync } from "../segment.js";
 
 export interface Session {
@@ -58,7 +59,7 @@ export const createSession = captureAsync(
 
 export const getSession = captureAsync(
   "getSession",
-  async (id: string): Promise<Session | undefined> => {
+  cachePromise(async (id: string): Promise<Session | undefined> => {
     assertValidSessionID(id);
     const Key: PrimaryKey = { pk: id, sk: id };
     const cmd = new GetCommand({
@@ -73,7 +74,7 @@ export const getSession = captureAsync(
       userID: item.forUser,
       expiresAt: fromUnixTime(item.expiresAt),
     };
-  },
+  }),
 );
 
 export const deleteSession = captureAsync(
