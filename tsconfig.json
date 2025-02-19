@@ -15,6 +15,7 @@
   "references": [
     { "path": "./packages/data" },
     { "path": "./packages/infra" },
-    { "path": "./packages/web" }
+    { "path": "./packages/web" },
+    { "path": "./packages/benchmark" }
   ]
 }
