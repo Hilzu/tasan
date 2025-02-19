@@ -42,7 +42,7 @@ export const putSession = captureAsync(
       forUser: session.userID,
     };
     const cmd = new PutCommand({ TableName, Item });
-    await documentClient.send(cmd);
+    await documentClient().send(cmd);
   },
 );
 
@@ -66,7 +66,7 @@ export const getSession = captureAsync(
       TableName,
       Key,
     });
-    const { Item } = await documentClient.send(cmd);
+    const { Item } = await documentClient().send(cmd);
     if (!Item) return;
     const item = Item as SessionItem;
     return {
@@ -86,6 +86,6 @@ export const deleteSession = captureAsync(
       TableName,
       Key,
     });
-    await documentClient.send(deleteCmd);
+    await documentClient().send(deleteCmd);
   },
 );

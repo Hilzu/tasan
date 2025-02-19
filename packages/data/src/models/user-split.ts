@@ -40,7 +40,7 @@ export const createUserSplit = captureAsync(
     };
 
     const cmd = new PutCommand({ TableName, Item });
-    await documentClient.send(cmd);
+    await documentClient().send(cmd);
   },
 );
 
@@ -55,7 +55,7 @@ export const findUserSplitIDs = captureAsync(
       ExpressionAttributeValues: { ":pk": userID, ":prefix": "spl_" },
     });
 
-    const { Items } = await documentClient.send(cmd);
+    const { Items } = await documentClient().send(cmd);
     if (!Items?.length) return [];
 
     return Items.map((item) => (item as UserSplitItem).sk);
@@ -73,7 +73,7 @@ export const getUserSplit = captureAsync(
 
     const Key: PrimaryKey = { pk: userID, sk: splitID };
     const cmd = new GetCommand({ TableName, Key });
-    const { Item } = await documentClient.send(cmd);
+    const { Item } = await documentClient().send(cmd);
     if (!Item) return;
     const item = Item as UserSplitItem;
     return {

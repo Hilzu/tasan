@@ -73,7 +73,7 @@ export const createSplit = captureAsync(
       createdBy: split.createdBy,
     });
 
-    await Promise.all([documentClient.send(cmd), userSplitPromise]);
+    await Promise.all([documentClient().send(cmd), userSplitPromise]);
 
     return { id };
   },
@@ -94,7 +94,7 @@ export const findUsersSplits = captureAsync(
     const cmd = new BatchGetCommand({
       RequestItems: { [TableName]: { Keys } },
     });
-    const { Responses } = await documentClient.send(cmd);
+    const { Responses } = await documentClient().send(cmd);
 
     const Items = Responses?.[TableName];
     if (!Items?.length) return [];
@@ -107,7 +107,7 @@ export const getSplit = captureAsync("getSplit", async (splitID: string) => {
   assertValidSplitID(splitID);
   const Key: PrimaryKey = { pk: splitID, sk: splitID };
   const cmd = new GetCommand({ TableName, Key });
-  const { Item } = await documentClient.send(cmd);
+  const { Item } = await documentClient().send(cmd);
   if (!Item) return;
   return fromItem(Item);
 });
@@ -127,6 +127,6 @@ export const addUserToSplit = captureAsync(
       ExpressionAttributeNames: { "#users": "users" },
       ExpressionAttributeValues: { ":userID": new Set([userID]) },
     });
-    await documentClient.send(cmd);
+    await documentClient().send(cmd);
   },
 );

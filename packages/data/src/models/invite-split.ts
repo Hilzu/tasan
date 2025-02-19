@@ -52,7 +52,7 @@ export const createInviteForSplit = captureAsync(
       expiresAt: toUnixTime(fiveDaysFromNow),
     };
     const cmd = new PutCommand({ TableName, Item });
-    await documentClient.send(cmd);
+    await documentClient().send(cmd);
     return { id };
   },
 );
@@ -70,7 +70,7 @@ export const findInviteForSplit = captureAsync(
         ":prefix": "spl_",
       },
     });
-    const { Items } = await documentClient.send(cmd);
+    const { Items } = await documentClient().send(cmd);
     if (!Items?.length) return;
     const [item] = Items as InviteSplitItem[];
     return {
@@ -88,6 +88,6 @@ export const deleteInviteForSplit = captureAsync(
     assertValidSplitID(splitID);
     const Key: PrimaryKey = { pk: inviteID, sk: splitID };
     const cmd = new DeleteCommand({ TableName, Key });
-    await documentClient.send(cmd);
+    await documentClient().send(cmd);
   },
 );

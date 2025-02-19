@@ -45,7 +45,7 @@ export const createUser = captureAsync(
       name: user.name,
     };
     const cmd = new PutCommand({ TableName, Item });
-    await documentClient.send(cmd);
+    await documentClient().send(cmd);
     return { id };
   },
 );
@@ -56,7 +56,7 @@ export const getUser = captureAsync(
     assertValidUserID(id);
     const Key: PrimaryKey = { pk: id, sk: id };
     const cmd = new GetCommand({ TableName, Key });
-    const { Item } = await documentClient.send(cmd);
+    const { Item } = await documentClient().send(cmd);
     if (!Item) return;
     return fromItem(Item);
   },
@@ -77,7 +77,7 @@ export const getUsers = captureAsync(
         },
       },
     });
-    const { Responses } = await documentClient.send(cmd);
+    const { Responses } = await documentClient().send(cmd);
     const items = Responses?.[TableName];
     if (!items?.length) return [];
     return items.map(fromItem);
