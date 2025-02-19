@@ -45,9 +45,9 @@ export class TasanStack extends Stack {
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {
       functionName: "TasanAppFn",
       runtime: lambda.Runtime.NODEJS_22_X,
-      memorySize: 256,
+      memorySize: 512,
       entry: "./src/app-function.mts",
-      architecture: lambda.Architecture.ARM_64,
+      architecture: lambda.Architecture.X86_64,
       tracing: lambda.Tracing.ACTIVE,
       bundling: {
         charset: nodejs.Charset.UTF8,
