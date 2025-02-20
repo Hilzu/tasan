@@ -8,7 +8,7 @@ import {
   genUserID,
   type UserID,
 } from "../ids.js";
-import { captureAsync } from "../segment.js";
+import { captureAsync } from "../tracing.js";
 
 export interface User {
   id: string;

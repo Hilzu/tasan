@@ -11,7 +11,7 @@ import {
   type UserID,
 } from "../ids.js";
 import { cachePromise } from "../promise.js";
-import { captureAsync } from "../segment.js";
+import { captureAsync } from "../tracing.js";
 
 export interface Session {
   id: string;

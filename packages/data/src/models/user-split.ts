@@ -8,7 +8,7 @@ import {
   type SplitID,
   type UserID,
 } from "../ids.js";
-import { captureAsync } from "../segment.js";
+import { captureAsync } from "../tracing.js";
 
 export interface UserSplit {
   userID: string;
