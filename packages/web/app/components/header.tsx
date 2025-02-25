@@ -31,11 +31,7 @@ export function Header({ className, user }: HeaderProps) {
               <p className="text-right">Hello, {user.name}!</p>
               <Link to="/logout">Logout</Link>
             </div>
-          : <>
-              <Link to="/log-in">Log in</Link> |{" "}
-              <Link to="/sign-up">Sign up</Link>
-            </>
-          }
+          : <Link to="/login">Log in / Sign up</Link>}
         </div>
       </div>
     </header>

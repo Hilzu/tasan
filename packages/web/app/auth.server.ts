@@ -6,12 +6,14 @@ import { getSession } from "~/sessions.server";
 export const getSessionOrRedirect = async (request: Request) => {
   const session = await getSession(request.headers.get("cookie"));
   const userID = session.get("userID");
-  const currentURL = new URL(request.url);
-  const redirectParam = encodeURIComponent(
-    `${currentURL.pathname}${currentURL.search}`,
-  );
 
-  if (!userID) return redirect(`/log-in?redirect=${redirectParam}`);
+  if (!userID) {
+    const currentURL = new URL(request.url);
+    const redirectParam = encodeURIComponent(
+      `${currentURL.pathname}${currentURL.search}`,
+    );
+    return redirect(`/login?redirect=${redirectParam}`);
+  }
 
   return { userID };
 };
@@ -24,10 +26,10 @@ export const getUserOrRedirect = async (request: Request) => {
     `${currentURL.pathname}${currentURL.search}`,
   );
 
-  if (!userID) return redirect(`/log-in?redirect=${redirectParam}`);
+  if (!userID) return redirect(`/login?redirect=${redirectParam}`);
 
   const user = await getUser(userID);
-  if (!user) return redirect(`/log-in?redirect=${redirectParam}`);
+  if (!user) return redirect(`/login?redirect=${redirectParam}`);
 
   return user;
 };

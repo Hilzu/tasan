@@ -6,10 +6,16 @@ import {
 } from "@tasan/data";
 import { type CookieOptions, createSessionStorage } from "react-router";
 
-import { cookieSignSecret, originURL } from "~/config";
+import { originURL } from "~/config";
+import { cookieSignSecrets } from "~/secrets.server";
 
 interface SessionData {
   userID: string;
+  authState: string;
+  authNonce: string;
+  authRedirect: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 const createDataSessionStorage = (
@@ -18,27 +24,20 @@ const createDataSessionStorage = (
   return createSessionStorage<SessionData, unknown>({
     cookie,
     async createData(data, expires) {
-      if (!data.userID) throw new Error("Missing userId");
       if (!expires) throw new Error("Missing expires");
 
-      const { id } = await createSession({
-        userID: data.userID,
-        expiresAt: expires,
-      });
+      const { id } = await createSession({ ...data, expiresAt: expires });
       return id;
     },
     async readData(id) {
       const session = await getSessionData(id);
       if (!session) return null;
-      return {
-        userID: session.userID,
-      };
+      return session;
     },
     async updateData(id, data, expires) {
-      if (!data.userID) throw new Error("Missing userId");
       if (!expires) throw new Error("Missing expires");
 
-      await putSession({ id, userID: data.userID, expiresAt: expires });
+      await putSession({ ...data, id, expiresAt: expires });
     },
     async deleteData(id) {
       await deleteSession(id);
@@ -54,7 +53,7 @@ const { getSession, commitSession, destroySession } = createDataSessionStorage({
   maxAge: 14 * 24 * 60 * 60,
   path: "/",
   sameSite: "lax",
-  secrets: [cookieSignSecret],
+  secrets: cookieSignSecrets,
   secure: originURL.protocol === "https:",
 });
 

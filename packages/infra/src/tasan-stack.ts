@@ -2,7 +2,9 @@ import {
   aws_certificatemanager as acm,
   aws_cloudfront as cloudfront,
   aws_cloudfront_origins as origins,
+  aws_cognito as cognito,
   aws_dynamodb as dynamodb,
+  aws_iam as iam,
   aws_lambda as lambda,
   aws_lambda_nodejs as nodejs,
   aws_logs as logs,
@@ -16,8 +18,6 @@ import {
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import type { Construct } from "constructs";
 
-import { getEnv } from "./env.js";
-
 const publicRootFiles = ["favicon.ico"];
 
 export class TasanStack extends Stack {
@@ -30,6 +30,67 @@ export class TasanStack extends Stack {
       "AppCertificate",
       "arn:aws:acm:us-east-1:412381763181:certificate/a2c73df1-9752-4e36-8291-57a24c48b9f4",
     );
+
+    const userPool = new cognito.UserPool(this, "UserPool", {
+      userPoolName: "TasanUserPool",
+      featurePlan: cognito.FeaturePlan.ESSENTIALS,
+      signInCaseSensitive: false,
+      selfSignUpEnabled: true,
+      userVerification: {
+        emailStyle: cognito.VerificationEmailStyle.CODE,
+        emailSubject: "Verify your email for Tasan.app",
+        emailBody: "Your verification code for Tasan.app is {####}",
+      },
+      standardAttributes: {
+        email: { required: true },
+      },
+      signInAliases: {
+        email: true,
+        username: true,
+        preferredUsername: true,
+      },
+      autoVerify: { email: true },
+      signInPolicy: {
+        allowedFirstAuthFactors: {
+          password: true,
+          passkey: false,
+          emailOtp: false,
+          smsOtp: false,
+        },
+      },
+    });
+
+    const userPoolDomain = userPool.addDomain("AppAuthCustomDomain", {
+      customDomain: {
+        domainName: "auth.tasan.app",
+        certificate,
+      },
+      managedLoginVersion: cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+    });
+
+    const userPoolWebClient = userPool.addClient("TasanAppWeb", {
+      userPoolClientName: "TasanAppWebClient",
+      generateSecret: true,
+      authFlows: {
+        user: true,
+        userPassword: true,
+        userSrp: true,
+      },
+      oAuth: {
+        defaultRedirectUri: "https://tasan.app/auth-callback",
+        callbackUrls: [
+          "https://tasan.app/auth-callback",
+          "http://localhost:5173/auth-callback",
+        ],
+        logoutUrls: ["https://tasan.app/", "http://localhost:5173/"],
+      },
+    });
+
+    new cognito.CfnManagedLoginBranding(this, "AppManagedLoginBranding", {
+      userPoolId: userPool.userPoolId,
+      clientId: userPoolWebClient.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
 
     const appTable = new dynamodb.TableV2(this, "AppTable", {
       tableName: "TasanAppTable",
@@ -58,12 +119,8 @@ export class TasanStack extends Stack {
         banner:
           'import {createRequire} from "module"; const require = createRequire(import.meta.url);',
         commandHooks: {
-          beforeBundling: (_inputDir, _outputDir) => {
-            return [];
-          },
-          beforeInstall: (_inputDir, _outputDir) => {
-            return [];
-          },
+          beforeBundling: (_inputDir, _outputDir) => [],
+          beforeInstall: (_inputDir, _outputDir) => [],
           afterBundling: (_inputDir, outputDir) => {
             // For XRay SDK
             return [
@@ -75,15 +132,26 @@ export class TasanStack extends Stack {
         },
       },
       environment: {
+        APP_ENV: "production",
         NODE_OPTIONS: "--enable-source-maps",
         NODE_ENV: "production",
         TABLE_NAME: appTable.tableName,
-        COOKIE_SIGN_SECRET: getEnv("COOKIE_SIGN_SECRET"),
         ORIGIN_URL: "https://tasan.app",
+        AUTH_SERVER_URL: userPool.userPoolProviderUrl,
+        AUTH_CLIENT_ID: userPoolWebClient.userPoolClientId,
       },
     });
 
     appTable.grantReadWriteData(appFunction);
+
+    appFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ssm:GetParameter"],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app*`,
+        ],
+      }),
+    );
 
     new logs.LogGroup(this, "AppLogGroup", {
       logGroupName: `/aws/lambda/${appFunction.functionName}`,
@@ -220,6 +288,7 @@ export class TasanStack extends Stack {
     const appHostedZone = new route53.HostedZone(this, "AppHostedZone", {
       zoneName: "tasan.app",
     });
+
     const cloudFrontTarget = new r53targets.CloudFrontTarget(distribution);
     new route53.ARecord(this, "AppARecord", {
       zone: appHostedZone,
@@ -228,6 +297,20 @@ export class TasanStack extends Stack {
     new route53.AaaaRecord(this, "AppAaaaRecord", {
       zone: appHostedZone,
       target: route53.RecordTarget.fromAlias(cloudFrontTarget),
+    });
+
+    const userPoolDomainTarget = new r53targets.UserPoolDomainTarget(
+      userPoolDomain,
+    );
+    new route53.ARecord(this, "AuthARecord", {
+      zone: appHostedZone,
+      recordName: "auth",
+      target: route53.RecordTarget.fromAlias(userPoolDomainTarget),
+    });
+    new route53.AaaaRecord(this, "AuthAaaaRecord", {
+      zone: appHostedZone,
+      recordName: "auth",
+      target: route53.RecordTarget.fromAlias(userPoolDomainTarget),
     });
   }
 }

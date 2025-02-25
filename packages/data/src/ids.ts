@@ -17,6 +17,15 @@ const asValidID = <T extends string>(prefix: T, id: string): ID<T> => {
   return id as ID<T>;
 };
 
+const uuidRegex =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+const asValidUUID = (id: string): string => {
+  const uuid = id.toLowerCase().trim();
+  if (!uuidRegex.test(uuid)) throw new Error(`Invalid uuid: ${id}`);
+  return uuid;
+};
+
 // user
 export type UserID = ID<"usr">;
 export const genUserID = () => genID("usr");
@@ -48,3 +57,11 @@ export const asValidInviteID = (id: string) => asValidID("inv", id);
 export function assertValidInviteID(id: string): asserts id is InviteID {
   asValidInviteID(id);
 }
+
+// Cognito user
+export type CognitoUserID = ID<"cog">;
+export const asValidCognitoUserID = (id: string) => {
+  const uuid = id.split("cog_").at(-1);
+  if (!uuid) throw new Error(`Invalid Cognito user id: ${id}`);
+  return `cog_${asValidUUID(uuid)}` as CognitoUserID;
+};

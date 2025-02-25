@@ -9,7 +9,7 @@
     "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
     "deploy": "pnpm build-and-sync && cdk deploy --all",
-    "start": "node --env-file=.env --enable-source-maps .",
+    "start": "node --enable-source-maps .",
     "build-and-sync": "../../scripts/build-and-sync.sh"
   },
   "engines": {

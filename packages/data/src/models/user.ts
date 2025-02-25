@@ -13,6 +13,7 @@ import { captureAsync } from "../tracing.js";
 export interface User {
   id: string;
   name: string;
+  email: string;
 }
 
 interface UserItem {
@@ -20,6 +21,7 @@ interface UserItem {
   sk: UserID;
   name: string;
   createdAt: string;
+  email: string;
 }
 
 type PrimaryKey = Pick<UserItem, "pk" | "sk">;
@@ -29,23 +31,32 @@ const fromItem = (Item: Record<string, unknown>): User => {
   return {
     id: item.pk,
     name: item.name,
+    email: item.email,
   };
 };
 
-export type CreateUser = Omit<User, "id">;
+export const putUser = captureAsync(
+  "putUser",
+  async (user: User): Promise<void> => {
+    assertValidUserID(user.id);
+    const Item: UserItem = {
+      pk: user.id,
+      sk: user.id,
+      name: user.name,
+      createdAt: new Date().toISOString(),
+      email: user.email,
+    };
+    const cmd = new PutCommand({ TableName, Item });
+    await documentClient().send(cmd);
+  },
+);
 
+export type CreateUser = Omit<User, "id">;
 export const createUser = captureAsync(
   "createUser",
   async (user: CreateUser): Promise<{ id: string }> => {
     const id = genUserID();
-    const Item: UserItem = {
-      pk: id,
-      sk: id,
-      createdAt: new Date().toISOString(),
-      name: user.name,
-    };
-    const cmd = new PutCommand({ TableName, Item });
-    await documentClient().send(cmd);
+    await putUser({ ...user, id });
     return { id };
   },
 );

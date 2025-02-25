@@ -5,18 +5,23 @@ import { TableName } from "../config.js";
 import { fromUnixTime, toUnixTime } from "../date.js";
 import {
   assertValidSessionID,
-  assertValidUserID,
+  asValidUserID,
   genSessionID,
   type SessionID,
   type UserID,
 } from "../ids.js";
-import { cachePromise } from "../promise.js";
+import { memoizeSingleFlight } from "../promise.js";
 import { captureAsync } from "../tracing.js";
 
 export interface Session {
   id: string;
-  userID: string;
+  userID?: string;
   expiresAt: Date;
+  authState?: string;
+  authNonce?: string;
+  authRedirect?: string;
+  accessToken?: string;
+  refreshToken?: string;
 }
 
 interface SessionItem {
@@ -24,7 +29,12 @@ interface SessionItem {
   sk: SessionID;
   createdAt: string;
   expiresAt: number;
-  forUser: UserID;
+  forUser?: UserID;
+  authState?: string;
+  authNonce?: string;
+  authRedirect?: string;
+  accessToken?: string;
+  refreshToken?: string;
 }
 
 type PrimaryKey = Pick<SessionItem, "pk" | "sk">;
@@ -33,13 +43,17 @@ export const putSession = captureAsync(
   "putSession",
   async (session: Session): Promise<void> => {
     assertValidSessionID(session.id);
-    assertValidUserID(session.userID);
     const Item: SessionItem = {
       pk: session.id,
       sk: session.id,
       createdAt: new Date().toISOString(),
       expiresAt: toUnixTime(session.expiresAt),
-      forUser: session.userID,
+      forUser: session.userID ? asValidUserID(session.userID) : undefined,
+      authState: session.authState,
+      authNonce: session.authNonce,
+      authRedirect: session.authRedirect,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
     };
     const cmd = new PutCommand({ TableName, Item });
     await documentClient().send(cmd);
@@ -59,7 +73,7 @@ export const createSession = captureAsync(
 
 export const getSession = captureAsync(
   "getSession",
-  cachePromise(async (id: string): Promise<Session | undefined> => {
+  memoizeSingleFlight(async (id: string): Promise<Session | undefined> => {
     assertValidSessionID(id);
     const Key: PrimaryKey = { pk: id, sk: id };
     const cmd = new GetCommand({
@@ -73,6 +87,11 @@ export const getSession = captureAsync(
       id: item.pk,
       userID: item.forUser,
       expiresAt: fromUnixTime(item.expiresAt),
+      authState: item.authState,
+      authNonce: item.authNonce,
+      authRedirect: item.authRedirect,
+      accessToken: item.accessToken,
+      refreshToken: item.refreshToken,
     };
   }),
 );

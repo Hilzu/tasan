@@ -8,8 +8,8 @@ import {
 export default [
   layout("routes/layout.tsx", [
     index("routes/index.tsx"),
-    route("sign-up", "routes/sign-up.tsx"),
-    route("log-in", "routes/log-in.tsx"),
+    route("login", "routes/login.tsx"),
+    route("auth-callback", "routes/auth-callback.tsx"),
     route("logout", "routes/logout.tsx"),
     route("accept-invite/:inviteID", "routes/accept-invite.tsx"),
 

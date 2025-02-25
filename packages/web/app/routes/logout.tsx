@@ -1,35 +1,13 @@
-import { Form, redirect } from "react-router";
+import { redirect } from "react-router";
 
-import { Button } from "~/components/button";
-import { MainHeading } from "~/components/heading";
+import { buildLogoutURL } from "~/openid.server";
 import { destroySession, getSession } from "~/sessions.server";
 
 import type { Route } from "./+types/logout";
 
-export function meta() {
-  return [
-    { title: "Log out - Tasan.app" },
-    { name: "description", content: "Log out from your account." },
-  ];
-}
-
-export async function action({ request }: Route.ActionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSession(request.headers.get("cookie"));
-  return redirect("/", {
+  return redirect(buildLogoutURL().href, {
     headers: { "set-cookie": await destroySession(session) },
   });
-}
-
-export default function LogOut(_: Route.ComponentProps) {
-  return (
-    <main className="mx-auto max-w-md px-4 text-center">
-      <MainHeading>Log out</MainHeading>
-      <p>Are you sure you want to log out?</p>
-      <Form method="post" className="mt-4">
-        <Button type="submit" className="mt-4">
-          Logout
-        </Button>
-      </Form>
-    </main>
-  );
 }
