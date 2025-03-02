@@ -1,3 +1,5 @@
+import { href } from "react-router";
+
 import { Link } from "~/components/link";
 
 import logo from "./logo.svg";
@@ -13,7 +15,7 @@ export const LandingPage = () => {
         <p>Split bills with your friends</p>
       </div>
       <div className="mx-auto pt-4">
-        <Link to="/splits">View your splits</Link>
+        <Link to={href("/splits")}>View your splits</Link>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useRouteLoaderData } from "react-router";
+import { href, useRouteLoaderData } from "react-router";
 
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
@@ -19,7 +19,10 @@ export default function ShowSplit(_: Route.ComponentProps) {
       <Card
         heading={<SubHeading>Participants</SubHeading>}
         action={
-          <Link to={`/splits/${split.id}/invite`} variant="plain">
+          <Link
+            to={href("/splits/:splitID/invite", { splitID: split.id })}
+            variant="plain"
+          >
             <Button>Invite</Button>
           </Link>
         }

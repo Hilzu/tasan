@@ -1,4 +1,5 @@
 import { findUsersSplits } from "@tasan/data";
+import { href } from "react-router";
 
 import { getSessionOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
@@ -25,7 +26,7 @@ export default function SplitsIndex({ loaderData }: Route.ComponentProps) {
     <div>
       <div className="flex justify-between">
         <MainHeading>Your splits</MainHeading>
-        <Link to="/splits/new" variant="plain">
+        <Link to={href("/splits/new")} variant="plain">
           <Button>Create</Button>
         </Link>
       </div>
@@ -40,7 +41,9 @@ export default function SplitsIndex({ loaderData }: Route.ComponentProps) {
       <ul className="ml-4 mt-2 list-disc">
         {splits.map((split) => (
           <li key={split.id}>
-            <Link to={`/splits/${split.id}`}>{split.name}</Link>
+            <Link to={href("/splits/:splitID", { splitID: split.id })}>
+              {split.name}
+            </Link>
           </li>
         ))}
       </ul>

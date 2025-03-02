@@ -1,5 +1,6 @@
 import type { User } from "@tasan/data";
 import classNames from "classnames";
+import { href } from "react-router";
 
 import { Link, NavLink } from "~/components/link";
 
@@ -19,19 +20,19 @@ export function Header({ className, user }: HeaderProps) {
       )}
     >
       <div className="container flex py-4">
-        <Link to="/" variant="plain">
+        <Link to={href("/")} variant="plain">
           <img src={logo} alt="Tasan.app" className="h-6 w-6" />
         </Link>
-        <NavLink to="/splits" className="ml-4">
+        <NavLink to={href("/splits")} className="ml-4">
           Splits
         </NavLink>
         <div className="ml-auto">
           {user ?
             <div className="flex gap-1">
               <p className="text-right">Hello, {user.name}!</p>
-              <Link to="/logout">Logout</Link>
+              <Link to={href("/logout")}>Logout</Link>
             </div>
-          : <Link to="/login">Log in / Sign up</Link>}
+          : <Link to={href("/login")}>Log in / Sign up</Link>}
         </div>
       </div>
     </header>
