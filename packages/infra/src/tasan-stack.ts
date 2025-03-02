@@ -200,6 +200,7 @@ export class TasanStack extends Stack {
       {
         functionName: "AppOriginRequestFn",
         runtime: lambda.Runtime.NODEJS_22_X,
+        memorySize: 256,
         handler: "main.handler",
         code: lambda.Code.fromAsset("./dist/app-origin-request/", {
           exclude: ["*.mts", "*.map"],

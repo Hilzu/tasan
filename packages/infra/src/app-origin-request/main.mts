@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { hash } from "node:crypto";
 
 import type {
   CloudFrontRequestHandler,
@@ -33,9 +33,8 @@ export const handler: CloudFrontRequestHandler = async (event) => {
   }
 
   const encoding = request.body.encoding === "base64" ? "base64" : "utf8";
-  const hash = createHash("sha256");
-  hash.update(request.body.data, encoding);
-  const digest = hash.digest("hex");
+  const buffer = Buffer.from(request.body.data, encoding);
+  const digest = hash("sha256", buffer);
 
   request.headers["x-amz-content-sha256"] = [{ value: digest }];
 
