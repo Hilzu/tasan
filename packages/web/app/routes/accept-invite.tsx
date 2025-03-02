@@ -1,11 +1,10 @@
 import {
-  addUserToSplit,
-  createUserSplit,
+  createSplitUser,
   deleteInviteForSplit,
   findInviteForSplit,
   getSplit,
 } from "@tasan/data";
-import { Form, redirect } from "react-router";
+import { Form, href, redirect } from "react-router";
 
 import { getSessionOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
@@ -36,8 +35,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!inviteForSplit) throw new Error("Invite not found");
 
   await Promise.all([
-    addUserToSplit(inviteForSplit.splitID, session.userID),
-    createUserSplit({
+    createSplitUser({
       userID: session.userID,
       splitID: inviteForSplit.splitID,
       createdBy: inviteForSplit.createdBy,
@@ -45,7 +43,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     deleteInviteForSplit(inviteForSplit.id, inviteForSplit.splitID),
   ]);
 
-  return redirect(`/splits/${inviteForSplit.splitID}`);
+  return redirect(
+    href("/splits/:splitID", { splitID: inviteForSplit.splitID }),
+  );
 }
 
 export default function AcceptInvite({ loaderData }: Route.ComponentProps) {

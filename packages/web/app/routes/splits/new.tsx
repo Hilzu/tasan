@@ -1,5 +1,5 @@
 import { createSplit } from "@tasan/data";
-import { data, Form, redirect } from "react-router";
+import { data, Form, href, redirect } from "react-router";
 import { type inferFlattenedErrors, z } from "zod";
 import { zfd } from "zod-form-data";
 
@@ -38,7 +38,7 @@ export async function action({ request }: Route.ActionArgs) {
     description: result.data.splitDescription,
     createdBy: session.userID,
   });
-  return redirect(`/splits/${id}`);
+  return redirect(href("/splits/:splitID", { splitID: id }));
 }
 
 export default function NewSplit({ actionData }: Route.ComponentProps) {

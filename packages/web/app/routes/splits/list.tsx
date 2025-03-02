@@ -6,7 +6,7 @@ import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
 
-import type { Route } from "./+types/index";
+import type { Route } from "./+types/list";
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "Your splits - Tasan.app" }];
@@ -20,7 +20,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { splits };
 }
 
-export default function SplitsIndex({ loaderData }: Route.ComponentProps) {
+export default function SplitsList({ loaderData }: Route.ComponentProps) {
   const { splits } = loaderData;
   return (
     <div>

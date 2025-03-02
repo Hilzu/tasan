@@ -5,3 +5,5 @@ export const getEnv = (key: string): string => {
 };
 
 export const TableName = getEnv("TABLE_NAME");
+
+export const reversedKeyIndexName = "GSI-SK-PK";

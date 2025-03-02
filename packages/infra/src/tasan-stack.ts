@@ -101,6 +101,14 @@ export class TasanStack extends Stack {
         readCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
         writeCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
       }),
+      globalSecondaryIndexes: [
+        {
+          indexName: "GSI-SK-PK",
+          partitionKey: { name: "sk", type: dynamodb.AttributeType.STRING },
+          sortKey: { name: "pk", type: dynamodb.AttributeType.STRING },
+          projectionType: dynamodb.ProjectionType.KEYS_ONLY,
+        },
+      ],
     });
 
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {

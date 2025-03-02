@@ -1,4 +1,4 @@
-import { createInviteForSplit, getUserSplit } from "@tasan/data";
+import { createInviteForSplit, getSplitUser } from "@tasan/data";
 import { useState } from "react";
 import { useFetcher, useRouteLoaderData } from "react-router";
 
@@ -17,7 +17,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (session instanceof Response) return session;
 
   const { splitID } = params;
-  const userSplit = await getUserSplit({ userID: session.userID, splitID });
+  const userSplit = await getSplitUser({ userID: session.userID, splitID });
   if (!userSplit) throw new Error("Split not found");
 
   const inviteForSplit = await createInviteForSplit({

@@ -1,8 +1,7 @@
 import {
   BatchGetCommand,
-  GetCommand,
   PutCommand,
-  UpdateCommand,
+  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 
 import { documentClient } from "../client.js";
@@ -16,14 +15,13 @@ import {
   type UserID,
 } from "../ids.js";
 import { captureAsync } from "../tracing.js";
-import { createUserSplit, findUserSplitIDs } from "./user-split.js";
+import { createSplitUser, findUserSplitIDs } from "./split-user.js";
 
 export interface Split {
   id: string;
   name: string;
   description?: string;
   createdBy: string;
-  users: Set<string>;
 }
 
 interface SplitItem {
@@ -33,7 +31,6 @@ interface SplitItem {
   createdBy: UserID;
   name: string;
   description?: string;
-  users?: Set<string>;
 }
 
 type PrimaryKey = Pick<SplitItem, "pk" | "sk">;
@@ -45,7 +42,6 @@ const fromItem = (Item: Record<string, unknown>): Split => {
     name: item.name,
     description: item.description,
     createdBy: item.createdBy,
-    users: item.users ?? new Set(),
   };
 };
 
@@ -63,17 +59,16 @@ export const createSplit = captureAsync(
       createdBy: split.createdBy,
       name: split.name,
       description: split.description,
-      users: new Set([split.createdBy]),
     };
     const cmd = new PutCommand({ TableName, Item });
 
-    const userSplitPromise = createUserSplit({
+    const splitUserPromise = createSplitUser({
       userID: split.createdBy,
       splitID: id,
       createdBy: split.createdBy,
     });
 
-    await Promise.all([documentClient().send(cmd), userSplitPromise]);
+    await Promise.all([documentClient().send(cmd), splitUserPromise]);
 
     return { id };
   },
@@ -103,30 +98,29 @@ export const findUsersSplits = captureAsync(
   },
 );
 
-export const getSplit = captureAsync("getSplit", async (splitID: string) => {
-  assertValidSplitID(splitID);
-  const Key: PrimaryKey = { pk: splitID, sk: splitID };
-  const cmd = new GetCommand({ TableName, Key });
-  const { Item } = await documentClient().send(cmd);
-  if (!Item) return;
-  return fromItem(Item);
-});
+export type WithUsers<T> = T & { userIDs: Set<string> };
 
-// TODO: remove the users attribute and use GSI to query split users?
-export const addUserToSplit = captureAsync(
-  "addUserToSplit",
-  async (splitID: string, userID: string): Promise<void> => {
+export const getSplit = captureAsync(
+  "getSplit",
+  async (splitID: string): Promise<WithUsers<Split> | undefined> => {
     assertValidSplitID(splitID);
-    assertValidUserID(userID);
 
-    const Key: PrimaryKey = { pk: splitID, sk: splitID };
-    const cmd = new UpdateCommand({
+    const cmd = new QueryCommand({
       TableName,
-      Key,
-      UpdateExpression: "ADD #users :userID",
-      ExpressionAttributeNames: { "#users": "users" },
-      ExpressionAttributeValues: { ":userID": new Set([userID]) },
+      KeyConditionExpression: "pk = :pk",
+      ExpressionAttributeValues: { ":pk": splitID },
     });
-    await documentClient().send(cmd);
+    const { Items } = await documentClient().send(cmd);
+    if (!Items?.length) return;
+
+    let split: Split | undefined;
+    const userIDs = new Set<string>();
+    for (const Item of Items) {
+      if (typeof Item.sk !== "string") continue;
+      if (Item.sk === splitID) split = fromItem(Item);
+      else if (Item.sk.startsWith("usr_")) userIDs.add(Item.sk);
+    }
+
+    return split ? { ...split, userIDs } : undefined;
   },
 );

@@ -1,5 +1,5 @@
 import { getUser } from "@tasan/data";
-import { redirect } from "react-router";
+import { href, redirect } from "react-router";
 
 import { getSession } from "~/sessions.server";
 
@@ -12,7 +12,7 @@ export const getSessionOrRedirect = async (request: Request) => {
     const redirectParam = encodeURIComponent(
       `${currentURL.pathname}${currentURL.search}`,
     );
-    return redirect(`/login?redirect=${redirectParam}`);
+    return redirect(`${href("/login")}?redirect=${redirectParam}`);
   }
 
   return { userID };
@@ -26,10 +26,10 @@ export const getUserOrRedirect = async (request: Request) => {
     `${currentURL.pathname}${currentURL.search}`,
   );
 
-  if (!userID) return redirect(`/login?redirect=${redirectParam}`);
+  if (!userID) return redirect(`${href("/login")}?redirect=${redirectParam}`);
 
   const user = await getUser(userID);
-  if (!user) return redirect(`/login?redirect=${redirectParam}`);
+  if (!user) return redirect(`${href("/login")}?redirect=${redirectParam}`);
 
   return user;
 };

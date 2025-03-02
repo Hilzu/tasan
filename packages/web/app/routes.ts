@@ -14,7 +14,7 @@ export default [
     route("accept-invite/:inviteID", "routes/accept-invite.tsx"),
 
     route("splits", "routes/splits/parent.tsx", [
-      index("routes/splits/index.tsx"),
+      index("routes/splits/list.tsx"),
       route("new", "routes/splits/new.tsx"),
       route(":splitID", "routes/split/parent.tsx", { id: "split-parent" }, [
         index("routes/split/show.tsx"),
