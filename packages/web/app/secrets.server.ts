@@ -1,29 +1,47 @@
-import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
+import { GetParametersCommand, SSMClient } from "@aws-sdk/client-ssm";
 import { captureAsync } from "@tasan/data";
 
 import { appEnv } from "~/config";
 
 const client = new SSMClient();
 
-const getSecret = captureAsync(
-  "getSecret",
-  async (name: string): Promise<string> => {
+const toSSMSecretName = (name: string): string =>
+  `/tasan-app/${name.toLowerCase().replaceAll("_", "-")}`;
+
+const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
+
+const getSecrets = captureAsync(
+  "getSecrets",
+  async (secretNames: string[]): Promise<string[]> => {
     if (appEnv === "local") {
-      const secret = process.env[name];
-      if (secret) return secret;
-      throw new Error(`Secret ${name} not found`);
+      const secrets = [];
+      for (const name of secretNames) {
+        const secret = process.env[name];
+        if (secret) secrets.push(secret);
+        else throw new Error(`Secret ${name} not found`);
+      }
+      return secrets;
     }
 
-    const Name = `/tasan-app/${name.toLowerCase().replaceAll("_", "-")}`;
-    const cmd = new GetParameterCommand({ Name, WithDecryption: true });
+    const Names = secretNames.map(toSSMSecretName);
+    const cmd = new GetParametersCommand({ Names, WithDecryption: true });
     const res = await client.send(cmd);
-    if (res.Parameter?.Value) return res.Parameter.Value;
-    console.log("Failed to get secret", { Name, metadata: res.$metadata });
-    throw new Error(`Secret ${Name} not found`);
+    if (res.InvalidParameters?.length) {
+      console.error("Failed to get secrets", {
+        InvalidParameters: res.InvalidParameters,
+      });
+      throw new Error(`Secrets ${res.InvalidParameters.join(", ")} not found`);
+    }
+    return res.Parameters?.map((p) => p.Value).filter(isDefined) ?? [];
   },
 );
 
-export const authClientSecret = await getSecret("AUTH_CLIENT_SECRET");
+const [authClientSecret, cookieSignSecret] = await getSecrets([
+  "AUTH_CLIENT_SECRET",
+  "COOKIE_SIGN_SECRET",
+]);
 
 // TODO: expand to support multiple secrets. First item is used for cookie signing.
-export const cookieSignSecrets = [await getSecret("COOKIE_SIGN_SECRET")];
+const cookieSignSecrets = [cookieSignSecret];
+
+export { authClientSecret, cookieSignSecrets };

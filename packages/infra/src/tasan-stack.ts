@@ -146,7 +146,7 @@ export class TasanStack extends Stack {
 
     appFunction.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["ssm:GetParameter"],
+        actions: ["ssm:GetParameter*"],
         resources: [
           `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app*`,
         ],
