@@ -1,0 +1,494 @@
+{
+  "ManagedLoginBranding": {
+    "ManagedLoginBrandingId": "258e9a90-98b7-4862-808e-84ac8e84e84f",
+    "UserPoolId": "eu-central-1_IZpw4ziIq",
+    "UseCognitoProvidedValues": false,
+    "Settings": {
+      "components": {
+        "secondaryButton": {
+          "lightMode": {
+            "hover": {
+              "backgroundColor": "E6E7E7ff",
+              "borderColor": "3E8E7Eff",
+              "textColor": "3E8E7Eff"
+            },
+            "defaults": {
+              "backgroundColor": "ffffffff",
+              "borderColor": "3E8E7Eff",
+              "textColor": "3E8E7Eff"
+            },
+            "active": {
+              "backgroundColor": "CFD2D1ff",
+              "borderColor": "3E8E7Eff",
+              "textColor": "3E8E7Eff"
+            }
+          },
+          "darkMode": {
+            "hover": {
+              "backgroundColor": "4D5150ff",
+              "borderColor": "3E8E7Eff",
+              "textColor": "3E8E7Eff"
+            },
+            "defaults": {
+              "backgroundColor": "3B3E3Eff",
+              "borderColor": "3E8E7Eff",
+              "textColor": "3E8E7Eff"
+            },
+            "active": {
+              "backgroundColor": "5A605Eff",
+              "borderColor": "3E8E7Eff",
+              "textColor": "3E8E7Eff"
+            }
+          }
+        },
+        "form": {
+          "lightMode": {
+            "backgroundColor": "ffffffff",
+            "borderColor": "c6c6cdff"
+          },
+          "borderRadius": 4.0,
+          "backgroundImage": {
+            "enabled": false
+          },
+          "logo": {
+            "location": "CENTER",
+            "position": "TOP",
+            "enabled": true,
+            "formInclusion": "IN"
+          },
+          "darkMode": {
+            "backgroundColor": "3B3E3Eff",
+            "borderColor": "4D5150ff"
+          }
+        },
+        "alert": {
+          "lightMode": {
+            "error": {
+              "backgroundColor": "fff7f7ff",
+              "borderColor": "d91515ff"
+            }
+          },
+          "borderRadius": 12.0,
+          "darkMode": {
+            "error": {
+              "backgroundColor": "1a0000ff",
+              "borderColor": "eb6f6fff"
+            }
+          }
+        },
+        "favicon": {
+          "enabledTypes": ["ICO", "SVG"]
+        },
+        "pageBackground": {
+          "image": {
+            "enabled": false
+          },
+          "lightMode": {
+            "color": "ffffffff"
+          },
+          "darkMode": {
+            "color": "252727ff"
+          }
+        },
+        "pageText": {
+          "lightMode": {
+            "bodyColor": "434746ff",
+            "headingColor": "434746ff",
+            "descriptionColor": "434746ff"
+          },
+          "darkMode": {
+            "bodyColor": "E6E7E7ff",
+            "headingColor": "E6E7E7ff",
+            "descriptionColor": "E6E7E7ff"
+          }
+        },
+        "phoneNumberSelector": {
+          "displayType": "TEXT"
+        },
+        "primaryButton": {
+          "lightMode": {
+            "hover": {
+              "backgroundColor": "32776Bff",
+              "textColor": "ffffffff"
+            },
+            "defaults": {
+              "backgroundColor": "3E8E7Eff",
+              "textColor": "ffffffff"
+            },
+            "active": {
+              "backgroundColor": "295C54ff",
+              "textColor": "ffffffff"
+            },
+            "disabled": {
+              "backgroundColor": "ffffffff",
+              "borderColor": "ffffffff"
+            }
+          },
+          "darkMode": {
+            "hover": {
+              "backgroundColor": "32776Bff",
+              "textColor": "ffffffff"
+            },
+            "defaults": {
+              "backgroundColor": "3E8E7Eff",
+              "textColor": "ffffffff"
+            },
+            "active": {
+              "backgroundColor": "295C54ff",
+              "textColor": "ffffffff"
+            },
+            "disabled": {
+              "backgroundColor": "ffffffff",
+              "borderColor": "ffffffff"
+            }
+          }
+        },
+        "pageFooter": {
+          "lightMode": {
+            "borderColor": "d5dbdbff",
+            "background": {
+              "color": "fafafaff"
+            }
+          },
+          "backgroundImage": {
+            "enabled": false
+          },
+          "logo": {
+            "location": "START",
+            "enabled": false
+          },
+          "darkMode": {
+            "borderColor": "424650ff",
+            "background": {
+              "color": "0f141aff"
+            }
+          }
+        },
+        "pageHeader": {
+          "lightMode": {
+            "borderColor": "d5dbdbff",
+            "background": {
+              "color": "fafafaff"
+            }
+          },
+          "backgroundImage": {
+            "enabled": false
+          },
+          "logo": {
+            "location": "START",
+            "enabled": false
+          },
+          "darkMode": {
+            "borderColor": "424650ff",
+            "background": {
+              "color": "0f141aff"
+            }
+          }
+        },
+        "idpButton": {
+          "standard": {
+            "lightMode": {
+              "hover": {
+                "backgroundColor": "f2f8fdff",
+                "borderColor": "033160ff",
+                "textColor": "033160ff"
+              },
+              "defaults": {
+                "backgroundColor": "ffffffff",
+                "borderColor": "424650ff",
+                "textColor": "424650ff"
+              },
+              "active": {
+                "backgroundColor": "d3e7f9ff",
+                "borderColor": "033160ff",
+                "textColor": "033160ff"
+              }
+            },
+            "darkMode": {
+              "hover": {
+                "backgroundColor": "192534ff",
+                "borderColor": "89bdeeff",
+                "textColor": "89bdeeff"
+              },
+              "defaults": {
+                "backgroundColor": "0f1b2aff",
+                "borderColor": "c6c6cdff",
+                "textColor": "c6c6cdff"
+              },
+              "active": {
+                "backgroundColor": "354150ff",
+                "borderColor": "89bdeeff",
+                "textColor": "89bdeeff"
+              }
+            }
+          },
+          "custom": {}
+        }
+      },
+      "componentClasses": {
+        "dropDown": {
+          "lightMode": {
+            "hover": {
+              "itemBackgroundColor": "f4f4f4ff",
+              "itemBorderColor": "7d8998ff",
+              "itemTextColor": "000716ff"
+            },
+            "defaults": {
+              "itemBackgroundColor": "ffffffff"
+            },
+            "match": {
+              "itemBackgroundColor": "414d5cff",
+              "itemTextColor": "0972d3ff"
+            }
+          },
+          "borderRadius": 8.0,
+          "darkMode": {
+            "hover": {
+              "itemBackgroundColor": "081120ff",
+              "itemBorderColor": "5f6b7aff",
+              "itemTextColor": "e9ebedff"
+            },
+            "defaults": {
+              "itemBackgroundColor": "192534ff"
+            },
+            "match": {
+              "itemBackgroundColor": "d1d5dbff",
+              "itemTextColor": "89bdeeff"
+            }
+          }
+        },
+        "input": {
+          "lightMode": {
+            "defaults": {
+              "backgroundColor": "ffffffff",
+              "borderColor": "6D7472ff"
+            },
+            "placeholderColor": "5A605Eff"
+          },
+          "borderRadius": 4.0,
+          "darkMode": {
+            "defaults": {
+              "backgroundColor": "0f1b2aff",
+              "borderColor": "6D7472ff"
+            },
+            "placeholderColor": "AEB2B0ff"
+          }
+        },
+        "inputDescription": {
+          "lightMode": {
+            "textColor": "434746ff"
+          },
+          "darkMode": {
+            "textColor": "E6E7E7ff"
+          }
+        },
+        "buttons": {
+          "borderRadius": 4.0
+        },
+        "optionControls": {
+          "lightMode": {
+            "defaults": {
+              "backgroundColor": "ffffffff",
+              "borderColor": "7d8998ff"
+            },
+            "selected": {
+              "backgroundColor": "0972d3ff",
+              "foregroundColor": "ffffffff"
+            }
+          },
+          "darkMode": {
+            "defaults": {
+              "backgroundColor": "0f1b2aff",
+              "borderColor": "7d8998ff"
+            },
+            "selected": {
+              "backgroundColor": "539fe5ff",
+              "foregroundColor": "000716ff"
+            }
+          }
+        },
+        "statusIndicator": {
+          "lightMode": {
+            "success": {
+              "backgroundColor": "f2fcf3ff",
+              "borderColor": "037f0cff",
+              "indicatorColor": "037f0cff"
+            },
+            "pending": {
+              "indicatorColor": "AAAAAAAA"
+            },
+            "warning": {
+              "backgroundColor": "fffce9ff",
+              "borderColor": "8d6605ff",
+              "indicatorColor": "8d6605ff"
+            },
+            "error": {
+              "backgroundColor": "fff7f7ff",
+              "borderColor": "d91515ff",
+              "indicatorColor": "d91515ff"
+            }
+          },
+          "darkMode": {
+            "success": {
+              "backgroundColor": "001a02ff",
+              "borderColor": "29ad32ff",
+              "indicatorColor": "29ad32ff"
+            },
+            "pending": {
+              "indicatorColor": "AAAAAAAA"
+            },
+            "warning": {
+              "backgroundColor": "1d1906ff",
+              "borderColor": "e0ca57ff",
+              "indicatorColor": "e0ca57ff"
+            },
+            "error": {
+              "backgroundColor": "1a0000ff",
+              "borderColor": "eb6f6fff",
+              "indicatorColor": "eb6f6fff"
+            }
+          }
+        },
+        "divider": {
+          "lightMode": {
+            "borderColor": "ebebf0ff"
+          },
+          "darkMode": {
+            "borderColor": "232b37ff"
+          }
+        },
+        "idpButtons": {
+          "icons": {
+            "enabled": true
+          }
+        },
+        "focusState": {
+          "lightMode": {
+            "borderColor": "3E8E7Eff"
+          },
+          "darkMode": {
+            "borderColor": "3E8E7Eff"
+          }
+        },
+        "inputLabel": {
+          "lightMode": {
+            "textColor": "434746ff"
+          },
+          "darkMode": {
+            "textColor": "E6E7E7ff"
+          }
+        },
+        "link": {
+          "lightMode": {
+            "hover": {
+              "textColor": "033160ff"
+            },
+            "defaults": {
+              "textColor": "0972d3ff"
+            }
+          },
+          "darkMode": {
+            "hover": {
+              "textColor": "89bdeeff"
+            },
+            "defaults": {
+              "textColor": "539fe5ff"
+            }
+          }
+        }
+      },
+      "categories": {
+        "form": {
+          "sessionTimerDisplay": "NONE",
+          "instructions": {
+            "enabled": false
+          },
+          "languageSelector": {
+            "enabled": false
+          },
+          "displayGraphics": true,
+          "location": {
+            "horizontal": "CENTER",
+            "vertical": "CENTER"
+          }
+        },
+        "auth": {
+          "federation": {
+            "interfaceStyle": "BUTTON_LIST",
+            "order": []
+          },
+          "authMethodOrder": [
+            [
+              {
+                "display": "BUTTON",
+                "type": "FEDERATED"
+              },
+              {
+                "display": "INPUT",
+                "type": "USERNAME_PASSWORD"
+              }
+            ]
+          ]
+        },
+        "global": {
+          "colorSchemeMode": "DYNAMIC",
+          "pageHeader": {
+            "enabled": false
+          },
+          "pageFooter": {
+            "enabled": false
+          },
+          "spacingDensity": "REGULAR"
+        },
+        "signUp": {
+          "acceptanceElements": [
+            {
+              "enforcement": "NONE",
+              "textKey": "en"
+            }
+          ]
+        }
+      }
+    },
+    "Assets": [
+      {
+        "Category": "FAVICON_ICO",
+        "ColorMode": "DARK",
+        "Extension": "ICO",
+        "Bytes": "AAABAAEAMDAAAAEAIACoJQAAFgAAACgAAAAwAAAAYAAAAAEAIAAAAAAAACQAAAAAAAAAAAAAAAAAAAAAAABreQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/3iFF/+HkjD/h5Iw/4eSMP+HkjD/h5Iw/4eSMP/L0KX//////////////////////6mxav+HkjD/h5Iw/4eSMP+HkjD/h5Iw/4eSMP9wfQj/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      },
+      {
+        "Category": "FAVICON_SVG",
+        "ColorMode": "DARK",
+        "Extension": "SVG",
+        "Bytes": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZwogICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICAgd2lkdGg9IjQ4IgogICAgaGVpZ2h0PSI0OCIKICAgIHZpZXdCb3g9IjAgMCA0OCA0OCIKPgogIDxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0iIzAwNzk2QiIgLz4KCiAgPHRleHQKICAgIHg9IjUwJSIKICAgIHk9IjM1IgogICAgdGV4dC1hbmNob3I9Im1pZGRsZSIKICAgIGZvbnQtc2l6ZT0iMzIiCiAgICBmaWxsPSIjRkZGRkZGIgogICAgZm9udC1mYW1pbHk9IkhlbHZldGljYSwgc2Fucy1zZXJpZiIKICAgIGZvbnQtd2VpZ2h0PSJib2xkIgogID4KICAgIFQKICA8L3RleHQ+Cjwvc3ZnPgo="
+      },
+      {
+        "Category": "FORM_LOGO",
+        "ColorMode": "DARK",
+        "Extension": "SVG",
+        "Bytes": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZwogICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICAgd2lkdGg9IjQ4IgogICAgaGVpZ2h0PSI0OCIKICAgIHZpZXdCb3g9IjAgMCA0OCA0OCIKPgogIDxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0iIzAwNzk2QiIgLz4KCiAgPHRleHQKICAgIHg9IjUwJSIKICAgIHk9IjM1IgogICAgdGV4dC1hbmNob3I9Im1pZGRsZSIKICAgIGZvbnQtc2l6ZT0iMzIiCiAgICBmaWxsPSIjRkZGRkZGIgogICAgZm9udC1mYW1pbHk9IkhlbHZldGljYSwgc2Fucy1zZXJpZiIKICAgIGZvbnQtd2VpZ2h0PSJib2xkIgogID4KICAgIFQKICA8L3RleHQ+Cjwvc3ZnPgo="
+      },
+      {
+        "Category": "FAVICON_ICO",
+        "ColorMode": "LIGHT",
+        "Extension": "ICO",
+        "Bytes": "AAABAAEAMDAAAAEAIACoJQAAFgAAACgAAAAwAAAAYAAAAAEAIAAAAAAAACQAAAAAAAAAAAAAAAAAAAAAAABreQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP+/xZD//////////////////////5WfSP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/3iFF/+HkjD/h5Iw/4eSMP+HkjD/h5Iw/4eSMP/L0KX//////////////////////6mxav+HkjD/h5Iw/4eSMP+HkjD/h5Iw/4eSMP9wfQj/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/7O6fP////////////////////////////////////////////////////////////////////////////////////////////////+FkCz/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP9reQD/a3kA/2t5AP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      },
+      {
+        "Category": "FAVICON_SVG",
+        "ColorMode": "LIGHT",
+        "Extension": "SVG",
+        "Bytes": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZwogICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICAgd2lkdGg9IjQ4IgogICAgaGVpZ2h0PSI0OCIKICAgIHZpZXdCb3g9IjAgMCA0OCA0OCIKPgogIDxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0iIzAwNzk2QiIgLz4KCiAgPHRleHQKICAgIHg9IjUwJSIKICAgIHk9IjM1IgogICAgdGV4dC1hbmNob3I9Im1pZGRsZSIKICAgIGZvbnQtc2l6ZT0iMzIiCiAgICBmaWxsPSIjRkZGRkZGIgogICAgZm9udC1mYW1pbHk9IkhlbHZldGljYSwgc2Fucy1zZXJpZiIKICAgIGZvbnQtd2VpZ2h0PSJib2xkIgogID4KICAgIFQKICA8L3RleHQ+Cjwvc3ZnPgo="
+      },
+      {
+        "Category": "FORM_LOGO",
+        "ColorMode": "LIGHT",
+        "Extension": "SVG",
+        "Bytes": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZwogICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICAgd2lkdGg9IjQ4IgogICAgaGVpZ2h0PSI0OCIKICAgIHZpZXdCb3g9IjAgMCA0OCA0OCIKPgogIDxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0iIzAwNzk2QiIgLz4KCiAgPHRleHQKICAgIHg9IjUwJSIKICAgIHk9IjM1IgogICAgdGV4dC1hbmNob3I9Im1pZGRsZSIKICAgIGZvbnQtc2l6ZT0iMzIiCiAgICBmaWxsPSIjRkZGRkZGIgogICAgZm9udC1mYW1pbHk9IkhlbHZldGljYSwgc2Fucy1zZXJpZiIKICAgIGZvbnQtd2VpZ2h0PSJib2xkIgogID4KICAgIFQKICA8L3RleHQ+Cjwvc3ZnPgo="
+      }
+    ],
+    "CreationDate": "2025-02-23T22:31:36.542000+02:00",
+    "LastModifiedDate": "2025-03-02T14:24:22.569000+02:00"
+  }
+}
