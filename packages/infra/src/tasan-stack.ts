@@ -262,14 +262,14 @@ export class TasanStack extends Stack {
           },
         ],
         functionAssociations: [
-          {
-            function: appViewerRequestFn,
-            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-          },
-          {
-            function: appViewerResponseFn,
-            eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE,
-          },
+          // {
+          //   function: appViewerRequestFn,
+          //   eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          // },
+          // {
+          //   function: appViewerResponseFn,
+          //   eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE,
+          // },
         ],
       },
       priceClass: cloudfront.PriceClass.PRICE_CLASS_ALL,
