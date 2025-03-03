@@ -20,8 +20,8 @@ import { createSplitUser, findUserSplitIDs } from "./split-user.js";
 export interface Split {
   id: string;
   name: string;
-  description?: string;
   createdBy: string;
+  homeCurrency: string;
 }
 
 interface SplitItem {
@@ -30,7 +30,7 @@ interface SplitItem {
   createdAt: string;
   createdBy: UserID;
   name: string;
-  description?: string;
+  homeCurrency: string;
 }
 
 type PrimaryKey = Pick<SplitItem, "pk" | "sk">;
@@ -40,8 +40,8 @@ const fromItem = (Item: Record<string, unknown>): Split => {
   return {
     id: item.pk,
     name: item.name,
-    description: item.description,
     createdBy: item.createdBy,
+    homeCurrency: item.homeCurrency,
   };
 };
 
@@ -58,7 +58,7 @@ export const createSplit = captureAsync(
       createdAt: new Date().toISOString(),
       createdBy: split.createdBy,
       name: split.name,
-      description: split.description,
+      homeCurrency: split.homeCurrency,
     };
     const cmd = new PutCommand({ TableName, Item });
 

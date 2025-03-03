@@ -18,7 +18,12 @@ export function FieldError({ errors }: { errors: string[] }) {
 
 export type FormFieldProps = FieldProps & ComponentProps<"input">;
 
-export function FormField({ label, errors, ...rest }: FormFieldProps) {
+export function FormField({
+  label,
+  errors,
+  description,
+  ...rest
+}: FormFieldProps) {
   const id = useId();
   return (
     <div className="flex flex-col">
@@ -30,14 +35,19 @@ export function FormField({ label, errors, ...rest }: FormFieldProps) {
         className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
       />
       {errors && <FieldError errors={errors} />}
-      {rest.description && <p className="text-sm">{rest.description}</p>}
+      {description && <p className="text-sm">{description}</p>}
     </div>
   );
 }
 
 export type TextFieldProps = FieldProps & ComponentProps<"textarea">;
 
-export function TextField({ label, errors, ...rest }: TextFieldProps) {
+export function TextField({
+  label,
+  description,
+  errors,
+  ...rest
+}: TextFieldProps) {
   const id = useId();
 
   return (
@@ -52,7 +62,34 @@ export function TextField({ label, errors, ...rest }: TextFieldProps) {
         className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
       />
       {errors && <FieldError errors={errors} />}
-      {rest.description && <p className="text-sm">{rest.description}</p>}
+      {description && <p className="text-sm">{description}</p>}
+    </div>
+  );
+}
+
+type SelectFieldProps = FieldProps & ComponentProps<"select">;
+
+export function SelectField({
+  label,
+  description,
+  errors,
+  children,
+  ...rest
+}: SelectFieldProps) {
+  const id = useId();
+
+  return (
+    <div className="flex flex-col">
+      <label htmlFor={id}>{label}</label>
+      <select
+        {...rest}
+        id={id}
+        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
+      >
+        {children}
+      </select>
+      {errors && <FieldError errors={errors} />}
+      {description && <p className="text-sm">{description}</p>}
     </div>
   );
 }
