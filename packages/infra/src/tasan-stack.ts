@@ -216,31 +216,31 @@ export class TasanStack extends Stack {
       },
     );
 
-    const appViewerRequestFn = new cloudfront.Function(
-      this,
-      "AppViewerRequestFn",
-      {
-        functionName: "AppViewerRequestFn",
-        code: cloudfront.FunctionCode.fromFile({
-          filePath: "./src/cloudfront-functions/app-viewer-request.cjs",
-        }),
-        runtime: cloudfront.FunctionRuntime.JS_2_0,
-        autoPublish: true,
-      },
-    );
-
-    const appViewerResponseFn = new cloudfront.Function(
-      this,
-      "AppViewerResponseFn",
-      {
-        functionName: "AppViewerResponseFn",
-        code: cloudfront.FunctionCode.fromFile({
-          filePath: "./src/cloudfront-functions/app-viewer-response.cjs",
-        }),
-        runtime: cloudfront.FunctionRuntime.JS_2_0,
-        autoPublish: true,
-      },
-    );
+    // const appViewerRequestFn = new cloudfront.Function(
+    //   this,
+    //   "AppViewerRequestFn",
+    //   {
+    //     functionName: "AppViewerRequestFn",
+    //     code: cloudfront.FunctionCode.fromFile({
+    //       filePath: "./src/cloudfront-functions/app-viewer-request.cjs",
+    //     }),
+    //     runtime: cloudfront.FunctionRuntime.JS_2_0,
+    //     autoPublish: true,
+    //   },
+    // );
+    //
+    // const appViewerResponseFn = new cloudfront.Function(
+    //   this,
+    //   "AppViewerResponseFn",
+    //   {
+    //     functionName: "AppViewerResponseFn",
+    //     code: cloudfront.FunctionCode.fromFile({
+    //       filePath: "./src/cloudfront-functions/app-viewer-response.cjs",
+    //     }),
+    //     runtime: cloudfront.FunctionRuntime.JS_2_0,
+    //     autoPublish: true,
+    //   },
+    // );
 
     const distribution = new cloudfront.Distribution(this, "AppDistribution", {
       domainNames: ["tasan.app"],
