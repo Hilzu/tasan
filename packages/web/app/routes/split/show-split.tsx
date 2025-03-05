@@ -4,9 +4,9 @@ import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
-import type { SplitLoader } from "~/routes/split/parent";
+import type { SplitLoader } from "~/routes/split/split-parent";
 
-import type { Route } from "./+types/show";
+import type { Route } from "./+types/show-split";
 
 export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");

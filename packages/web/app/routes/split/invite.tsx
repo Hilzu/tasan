@@ -7,7 +7,7 @@ import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
 import { originURL } from "~/config";
-import type { SplitLoader } from "~/routes/split/parent";
+import type { SplitLoader } from "~/routes/split/split-parent";
 import { canShare, copyToClipboard, createShareHandler } from "~/utils.client";
 
 import type { Route } from "./+types/invite";

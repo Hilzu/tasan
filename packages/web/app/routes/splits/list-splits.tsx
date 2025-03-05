@@ -6,7 +6,7 @@ import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
 
-import type { Route } from "./+types/list";
+import type { Route } from "./+types/list-splits";
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "Your splits - Tasan.app" }];

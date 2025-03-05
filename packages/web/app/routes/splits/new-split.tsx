@@ -10,7 +10,7 @@ import { MainHeading } from "~/components/heading";
 import { currencies } from "~/currencies";
 import { currencySchema, validateOrRespond } from "~/validation";
 
-import type { Route } from "./+types/new";
+import type { Route } from "./+types/new-split";
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "Create a new split - Tasan.app" }];

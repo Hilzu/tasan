@@ -2,7 +2,7 @@ import { Outlet } from "react-router";
 
 import { getSessionOrRedirect } from "~/auth.server";
 
-import type { Route } from "./+types/parent";
+import type { Route } from "./+types/splits-parent";
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "Splits - Tasan.app" }];
