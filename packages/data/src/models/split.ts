@@ -21,7 +21,7 @@ export interface Split {
   id: string;
   name: string;
   createdBy: string;
-  homeCurrency: string;
+  currency: string;
 }
 
 interface SplitItem {
@@ -30,7 +30,7 @@ interface SplitItem {
   createdAt: string;
   createdBy: UserID;
   name: string;
-  homeCurrency: string;
+  currency: string;
 }
 
 type PrimaryKey = Pick<SplitItem, "pk" | "sk">;
@@ -41,7 +41,7 @@ const fromItem = (Item: Record<string, unknown>): Split => {
     id: item.pk,
     name: item.name,
     createdBy: item.createdBy,
-    homeCurrency: item.homeCurrency,
+    currency: item.currency,
   };
 };
 
@@ -58,7 +58,7 @@ export const createSplit = captureAsync(
       createdAt: new Date().toISOString(),
       createdBy: split.createdBy,
       name: split.name,
-      homeCurrency: split.homeCurrency,
+      currency: split.currency,
     };
     const cmd = new PutCommand({ TableName, Item });
 

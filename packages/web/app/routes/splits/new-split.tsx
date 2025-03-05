@@ -18,7 +18,7 @@ export function meta(_: Route.MetaArgs) {
 
 const schema = zfd.formData({
   splitName: zfd.text(z.string().min(1).max(64)),
-  homeCurrency: zfd.text(currencySchema),
+  currency: zfd.text(currencySchema),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -32,7 +32,7 @@ export async function action({ request }: Route.ActionArgs) {
   const { id } = await createSplit({
     name: result.data.splitName,
     createdBy: session.userID,
-    homeCurrency: result.data.homeCurrency,
+    currency: result.data.currency,
   });
   return redirect(href("/splits/:splitID", { splitID: id }));
 }
@@ -51,9 +51,9 @@ export default function NewSplit({ actionData }: Route.ComponentProps) {
         />
         <SelectField
           label="Home currency"
-          name="homeCurrency"
+          name="currency"
           description="All expenses will be converted to this currency."
-          errors={actionData?.errors.fieldErrors.homeCurrency}
+          errors={actionData?.errors.fieldErrors.currency}
         >
           {Object.entries(currencies).map(([symbol, name]) => (
             <option key={symbol} value={symbol}>

@@ -18,11 +18,12 @@ export default function ShowSplit(_: Route.ComponentProps) {
       <p className="mb-2">
         <dl className="grid grid-cols-[max-content_auto] gap-x-4">
           <dt>Home currency:</dt>
-          <dd>{split.homeCurrency}</dd>
+          <dd>{split.currency}</dd>
           <dt>Created by:</dt>
           <dd>{users.find((u) => u.id === split.createdBy)?.name}</dd>
         </dl>
       </p>
+
       <Card
         heading={<SubHeading>Participants</SubHeading>}
         action={
