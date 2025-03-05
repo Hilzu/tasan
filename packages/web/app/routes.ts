@@ -12,6 +12,7 @@ export default [
     route("auth-callback", "routes/auth-callback.tsx"),
     route("logout", "routes/logout.tsx"),
     route("accept-invite/:inviteID", "routes/accept-invite.tsx"),
+    route("components", "routes/components.tsx"),
 
     route("splits", "routes/splits/parent.tsx", [
       index("routes/splits/list.tsx"),
