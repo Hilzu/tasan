@@ -1,10 +1,4 @@
-import { type ComponentProps, useId } from "react";
-
-export interface FieldProps {
-  label: string;
-  description?: string;
-  errors?: string[];
-}
+import { type ComponentProps, type ReactNode, useId } from "react";
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (
@@ -16,31 +10,49 @@ export function FieldError({ errors }: { errors: string[] }) {
   );
 }
 
-export type FormFieldProps = FieldProps & ComponentProps<"input">;
+interface FieldProps {
+  label: string;
+  description?: string;
+  errors?: string[];
+}
 
-export function FormField({
+function FormField({
   label,
-  errors,
   description,
-  ...rest
-}: FormFieldProps) {
-  const id = useId();
+  errors,
+  children,
+}: FieldProps & { id: string; children: ReactNode }) {
   return (
     <div className="flex flex-col">
-      <label htmlFor={id}>{label}</label>
-      <input
-        {...rest}
-        id={id}
-        autoCapitalize={rest.autoCapitalize ?? "sentences"}
-        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
-      />
+      <label>{label}</label>
+      {children}
       {errors && <FieldError errors={errors} />}
       {description && <p className="text-sm">{description}</p>}
     </div>
   );
 }
 
-export type TextFieldProps = FieldProps & ComponentProps<"textarea">;
+type InputFieldProps = FieldProps & ComponentProps<"input">;
+
+export function InputField({
+  label,
+  errors,
+  description,
+  ...rest
+}: InputFieldProps) {
+  const id = useId();
+  return (
+    <FormField id={id} label={label} description={description} errors={errors}>
+      <input
+        {...rest}
+        id={id}
+        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
+      />
+    </FormField>
+  );
+}
+
+type TextFieldProps = FieldProps & ComponentProps<"textarea">;
 
 export function TextField({
   label,
@@ -49,10 +61,8 @@ export function TextField({
   ...rest
 }: TextFieldProps) {
   const id = useId();
-
   return (
-    <div className="flex flex-col">
-      <label htmlFor={id}>{label}</label>
+    <FormField id={id} label={label} description={description} errors={errors}>
       <textarea
         {...rest}
         id={id}
@@ -61,9 +71,7 @@ export function TextField({
         autoCapitalize={rest.autoCapitalize ?? "sentences"}
         className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
       />
-      {errors && <FieldError errors={errors} />}
-      {description && <p className="text-sm">{description}</p>}
-    </div>
+    </FormField>
   );
 }
 
@@ -77,10 +85,8 @@ export function SelectField({
   ...rest
 }: SelectFieldProps) {
   const id = useId();
-
   return (
-    <div className="flex flex-col">
-      <label htmlFor={id}>{label}</label>
+    <FormField id={id} label={label} description={description} errors={errors}>
       <select
         {...rest}
         id={id}
@@ -88,8 +94,6 @@ export function SelectField({
       >
         {children}
       </select>
-      {errors && <FieldError errors={errors} />}
-      {description && <p className="text-sm">{description}</p>}
-    </div>
+    </FormField>
   );
 }

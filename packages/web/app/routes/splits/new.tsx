@@ -5,7 +5,7 @@ import { zfd } from "zod-form-data";
 
 import { getSessionOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
-import { FieldError, FormField, SelectField } from "~/components/formField";
+import { FieldError, InputField, SelectField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { currencies } from "~/currencies";
 import { currencySchema, validateOrRespond } from "~/validation";
@@ -42,7 +42,7 @@ export default function NewSplit({ actionData }: Route.ComponentProps) {
     <div>
       <MainHeading>Create a new split</MainHeading>
       <Form method="post" className="max-w-md space-y-2">
-        <FormField
+        <InputField
           label="Name"
           name="splitName"
           minLength={1}
