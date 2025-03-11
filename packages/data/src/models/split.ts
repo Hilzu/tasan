@@ -15,6 +15,10 @@ import {
   type UserID,
 } from "../ids.js";
 import { captureAsync } from "../tracing.js";
+import {
+  fromItem as fromExpenseItem,
+  type SplitExpense,
+} from "./split-expense.js";
 import { createSplitUser, findUserSplitIDs } from "./split-user.js";
 
 export interface Split {
@@ -98,11 +102,14 @@ export const findUsersSplits = captureAsync(
   },
 );
 
-export type WithUsers<T> = T & { userIDs: Set<string> };
+export type SplitWithData = Split & {
+  userIDs: Set<string>;
+  expenses: SplitExpense[];
+};
 
 export const getSplit = captureAsync(
   "getSplit",
-  async (splitID: string): Promise<WithUsers<Split> | undefined> => {
+  async (splitID: string): Promise<SplitWithData | undefined> => {
     assertValidSplitID(splitID);
 
     const cmd = new QueryCommand({
@@ -115,12 +122,14 @@ export const getSplit = captureAsync(
 
     let split: Split | undefined;
     const userIDs = new Set<string>();
+    const expenses: SplitExpense[] = [];
     for (const Item of Items) {
       if (typeof Item.sk !== "string") continue;
       if (Item.sk === splitID) split = fromItem(Item);
       else if (Item.sk.startsWith("usr_")) userIDs.add(Item.sk);
+      else if (Item.sk.startsWith("exp_")) expenses.push(fromExpenseItem(Item));
     }
 
-    return split ? { ...split, userIDs } : undefined;
+    return split ? { ...split, userIDs, expenses } : undefined;
   },
 );

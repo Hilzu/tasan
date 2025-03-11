@@ -38,21 +38,21 @@ interface SplitExpenseItem {
 }
 
 // type PrimaryKey = Pick<SplitExpenseItem, "pk" | "sk">;
-//
-// const fromItem = (Item: Record<string, unknown>): SplitExpense => {
-//   const item = Item as unknown as SplitExpenseItem;
-//   return {
-//     id: item.sk,
-//     splitID: item.pk,
-//     amount: item.amount,
-//     description: item.description,
-//     createdBy: item.createdBy,
-//     currency: item.currency,
-//     payer: item.payer,
-//     participants: item.participants,
-//     amounts: new Map(Object.entries(item.amounts)),
-//   };
-// };
+
+export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
+  const item = Item as unknown as SplitExpenseItem;
+  return {
+    id: item.sk,
+    splitID: item.pk,
+    name: item.name,
+    amount: item.amount,
+    createdBy: item.createdBy,
+    currency: item.currency,
+    payer: item.payer,
+    participants: item.participants,
+    amounts: item.amounts,
+  };
+};
 
 export type CreateSplitExpense = Omit<SplitExpense, "id">;
 

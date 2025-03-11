@@ -56,7 +56,14 @@ export default function ShowSplit(_: Route.ComponentProps) {
           </Link>
         }
       >
-        Expenses
+        {split.expenses.length === 0 ?
+          "No expenses yet."
+        : <ul>
+            {split.expenses.map((expense) => (
+              <li key={expense.id}>{expense.name}</li>
+            ))}
+          </ul>
+        }
       </Card>
     </div>
   );

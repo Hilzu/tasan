@@ -1,6 +1,6 @@
 import { createSplitExpense, getSplitUser } from "@tasan/data";
 import { useEffect, useState } from "react";
-import { Form, useRouteLoaderData } from "react-router";
+import { Form, href, redirect, useRouteLoaderData } from "react-router";
 import { z } from "zod";
 import { zfd } from "zod-form-data";
 
@@ -29,7 +29,6 @@ const schema = zfd.formData(
       amount: zfd.numeric(z.number().min(0)),
       payer: zfd.text(z.string()),
       participants: zfd.repeatableOfType(z.string()),
-      amounts: z.record(zfd.numeric(z.number().min(0))),
     })
     .catchall(z.record(zfd.numeric(z.number().min(0)))),
 );
@@ -48,7 +47,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   const result = validateOrRespond(schema, formData);
   if (result.response) return result.response;
   const { data } = result;
-  console.log(data);
   await createSplitExpense({
     splitID: splitUser.splitID,
     name: data.name,
@@ -59,6 +57,8 @@ export async function action({ request, params }: Route.ActionArgs) {
     amounts: data.amounts,
     createdBy: splitUser.userID,
   });
+
+  return redirect(href("/splits/:splitID", { splitID: splitUser.splitID }));
 }
 
 export default function NewExpense({ actionData }: Route.ComponentProps) {
