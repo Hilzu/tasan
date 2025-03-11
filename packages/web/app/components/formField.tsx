@@ -1,7 +1,6 @@
+import type { CurrencySymbol } from "@tasan/common/currency";
 import classNames from "classnames";
 import { type ComponentProps, type ReactNode, useId } from "react";
-
-import type { CurrencySymbol } from "~/currencies";
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (

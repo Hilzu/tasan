@@ -3,6 +3,7 @@ import {
   PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
+import type { CurrencySymbol } from "@tasan/common/currency";
 
 import { documentClient } from "../client.js";
 import { compareById } from "../compare.js";
@@ -25,7 +26,7 @@ export interface Split {
   id: string;
   name: string;
   createdBy: string;
-  currency: string;
+  currency: CurrencySymbol;
 }
 
 interface SplitItem {
@@ -34,7 +35,7 @@ interface SplitItem {
   createdAt: string;
   createdBy: UserID;
   name: string;
-  currency: string;
+  currency: CurrencySymbol;
 }
 
 type PrimaryKey = Pick<SplitItem, "pk" | "sk">;

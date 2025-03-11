@@ -1,3 +1,4 @@
+import { currencies } from "@tasan/common/currency";
 import { createSplitExpense, getSplitUser } from "@tasan/data";
 import { useEffect, useState } from "react";
 import { Form, href, redirect, useRouteLoaderData } from "react-router";
@@ -15,7 +16,6 @@ import {
   SelectField,
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
-import { currencies, type CurrencySymbol } from "~/currencies";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { currencySymbolSchema, validateOrRespond } from "~/validation";
 
@@ -101,7 +101,8 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           errors={actionData?.errors.fieldErrors.currency}
           value={currency}
           onChange={(event) => {
-            setCurrency(event.target.value);
+            const currency = currencySymbolSchema.parse(event.target.value);
+            setCurrency(currency);
           }}
         >
           {Object.entries(currencies).map(([symbol, name]) => (
@@ -119,7 +120,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           onChange={(event) => {
             setAmount(Number(event.target.value));
           }}
-          currencySymbol={currency as CurrencySymbol}
+          currencySymbol={currency}
           errors={actionData?.errors.fieldErrors.amount}
         />
 
@@ -158,7 +159,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           <CurrencyInputField
             required
             key={userID}
-            currencySymbol={currency as CurrencySymbol}
+            currencySymbol={currency}
             label={`${users.find((u) => u.id === userID)?.name ?? "Unknown"} amount`}
             name={`amounts.${userID}`}
             value={amount}

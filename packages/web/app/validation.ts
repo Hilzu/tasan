@@ -1,7 +1,6 @@
+import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import { data } from "react-router";
 import { type inferFlattenedErrors, z } from "zod";
-
-import { currencies, type CurrencySymbol } from "~/currencies";
 
 export function validateOrRespond<T extends z.ZodTypeAny>(
   schema: T,

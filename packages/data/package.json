@@ -18,6 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.758.0",
     "@aws-sdk/lib-dynamodb": "^3.758.0",
+    "@tasan/common": "workspace:*",
     "aws-xray-sdk-core": "^3.10.3",
     "ulid": "^2.3.0"
   }

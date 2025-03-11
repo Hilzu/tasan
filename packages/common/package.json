@@ -1,0 +1,21 @@
+{
+  "name": "@tasan/common",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/main.mjs",
+  "exports": {
+    "./currency": "./dist/currency.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "engines": {
+    "node": "^22.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {}
+}

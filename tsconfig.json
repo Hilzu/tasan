@@ -13,9 +13,10 @@
   },
   "exclude": ["node_modules", "build", "dist"],
   "references": [
+    { "path": "./packages/benchmark" },
+    { "path": "./packages/common" },
     { "path": "./packages/data" },
     { "path": "./packages/infra" },
-    { "path": "./packages/web" },
-    { "path": "./packages/benchmark" }
+    { "path": "./packages/web" }
   ]
 }

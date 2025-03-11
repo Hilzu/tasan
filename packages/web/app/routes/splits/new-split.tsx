@@ -1,3 +1,4 @@
+import { currencies } from "@tasan/common/currency";
 import { createSplit } from "@tasan/data";
 import { Form, href, redirect } from "react-router";
 import { z } from "zod";
@@ -7,7 +8,6 @@ import { getSessionOrRedirect } from "~/auth.server";
 import { Button } from "~/components/button";
 import { FieldError, InputField, SelectField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
-import { currencies } from "~/currencies";
 import { currencySymbolSchema, validateOrRespond } from "~/validation";
 
 import type { Route } from "./+types/new-split";

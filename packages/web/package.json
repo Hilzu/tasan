@@ -26,6 +26,7 @@
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.759.0",
     "@react-router/node": "^7.2.0",
+    "@tasan/common": "workspace:*",
     "@tasan/data": "workspace:*",
     "classnames": "^2.5.1",
     "isbot": "^5.1.23",
