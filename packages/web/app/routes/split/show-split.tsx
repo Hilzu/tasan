@@ -60,7 +60,10 @@ export default function ShowSplit(_: Route.ComponentProps) {
           "No expenses yet."
         : <ul>
             {split.expenses.map((expense) => (
-              <li key={expense.id}>{expense.name}</li>
+              <li key={expense.id}>
+                {expense.name} - {expense.currency} {expense.amount} - Paid by{" "}
+                {users.find((u) => u.id === expense.payer)?.name}
+              </li>
             ))}
           </ul>
         }
