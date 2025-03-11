@@ -13,7 +13,9 @@ export function validateOrRespond<T extends z.ZodTypeAny>(
   return { response: data({ errors }, { status: 400 }) };
 }
 
-export const currencySchema = z
+export const currencySymbolSchema = z
   .string()
-  .refine((c) => c in currencies, "Invalid currency symbol")
-  .transform((c) => c as CurrencySymbol);
+  .refine(
+    (c): c is CurrencySymbol => c in currencies,
+    "Invalid currency symbol",
+  );

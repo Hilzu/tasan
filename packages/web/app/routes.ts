@@ -24,6 +24,7 @@ export default [
         [
           index("routes/split/show-split.tsx"),
           route("invite", "routes/split/invite.tsx"),
+          route("new-expense", "routes/split/new-expense.tsx"),
         ],
       ),
     ]),

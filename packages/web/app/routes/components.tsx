@@ -1,6 +1,11 @@
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
-import { InputField, SelectField, TextField } from "~/components/formField";
+import {
+  InputField,
+  RadioGroupField,
+  SelectField,
+  TextField,
+} from "~/components/formField";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
 
@@ -52,6 +57,9 @@ export default function Components(_: Route.ComponentProps) {
         name="test4"
       />
 
+      <SubHeading className="mt-4">Input Field with leading addon</SubHeading>
+      <InputField label="Test 5" name="test5" leadingAddon="USD" />
+
       <SubHeading className="mt-4">Text Field</SubHeading>
       <TextField label="Text" name="text" />
 
@@ -61,6 +69,32 @@ export default function Components(_: Route.ComponentProps) {
         <option value="2">Option 2</option>
         <option value="3">Option 3</option>
       </SelectField>
+
+      <SubHeading className="mt-4">Radio group field</SubHeading>
+      <RadioGroupField
+        label="Radio group"
+        items={[
+          { value: "1", label: "Option 1", name: "radio" },
+          { value: "2", label: "Option 2", name: "radio" },
+          { value: "3", label: "Option 3", name: "radio" },
+        ]}
+      />
+
+      <SubHeading className="mt-4">Radio group field inline</SubHeading>
+      <RadioGroupField
+        label="Radio group inline"
+        inline
+        items={[
+          { value: "1", label: "Option 1", name: "radio2" },
+          {
+            value: "2",
+            label: "Option 2",
+            name: "radio2",
+            defaultChecked: true,
+          },
+          { value: "3", label: "Option 3", name: "radio2" },
+        ]}
+      />
 
       <SubHeading className="mt-4">Card</SubHeading>
       <Card

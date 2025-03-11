@@ -8,7 +8,7 @@ import { Button } from "~/components/button";
 import { FieldError, InputField, SelectField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { currencies } from "~/currencies";
-import { currencySchema, validateOrRespond } from "~/validation";
+import { currencySymbolSchema, validateOrRespond } from "~/validation";
 
 import type { Route } from "./+types/new-split";
 
@@ -18,7 +18,7 @@ export function meta(_: Route.MetaArgs) {
 
 const schema = zfd.formData({
   splitName: zfd.text(z.string().min(1).max(64)),
-  currency: zfd.text(currencySchema),
+  currency: zfd.text(currencySymbolSchema),
 });
 
 export async function action({ request }: Route.ActionArgs) {

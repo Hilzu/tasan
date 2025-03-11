@@ -65,3 +65,11 @@ export const asValidCognitoUserID = (id: string) => {
   if (!uuid) throw new Error(`Invalid Cognito user id: ${id}`);
   return `cog_${asValidUUID(uuid)}` as CognitoUserID;
 };
+
+// expense
+export type ExpenseID = ID<"exp">;
+export const genExpenseID = () => genID("exp");
+export const asValidExpenseID = (id: string) => asValidID("exp", id);
+export function assertValidExpenseID(id: string): asserts id is ExpenseID {
+  asValidExpenseID(id);
+}

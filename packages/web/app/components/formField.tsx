@@ -1,4 +1,7 @@
+import classNames from "classnames";
 import { type ComponentProps, type ReactNode, useId } from "react";
+
+import type { CurrencySymbol } from "~/currencies";
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (
@@ -32,23 +35,50 @@ function FormField({
   );
 }
 
-type InputFieldProps = FieldProps & ComponentProps<"input">;
+type InputFieldProps = FieldProps &
+  ComponentProps<"input"> & { leadingAddon?: ReactNode };
 
 export function InputField({
   label,
   errors,
   description,
+  leadingAddon,
   ...rest
 }: InputFieldProps) {
   const id = useId();
   return (
     <FormField id={id} label={label} description={description} errors={errors}>
-      <input
-        {...rest}
-        id={id}
-        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
-      />
+      <div className="outline-brand-700 flex items-center rounded-sm border border-gray-500 has-[input:focus-within]:outline-2">
+        {leadingAddon && <div className="px-1">{leadingAddon}</div>}
+        <input
+          {...rest}
+          id={id}
+          className="block min-w-0 grow px-2 py-1 focus:outline-none"
+        />
+      </div>
     </FormField>
+  );
+}
+
+type CurrencyInputFieldProps = Omit<
+  InputFieldProps,
+  "type" | "step" | "inputMode" | "min" | "pattern"
+> & {
+  currencySymbol: CurrencySymbol;
+};
+
+export function CurrencyInputField({
+  currencySymbol,
+  ...rest
+}: CurrencyInputFieldProps) {
+  return (
+    <InputField
+      type="text"
+      inputMode="decimal"
+      pattern="\d+([.,]\d{0,2})?"
+      leadingAddon={currencySymbol}
+      {...rest}
+    />
   );
 }
 
@@ -95,5 +125,83 @@ export function SelectField({
         {children}
       </select>
     </FormField>
+  );
+}
+
+function FieldSet({
+  children,
+  label,
+  description,
+  errors,
+}: FieldProps & { children: ReactNode }) {
+  return (
+    <fieldset>
+      <legend>{label}</legend>
+      {children}
+      {errors && <FieldError errors={errors} />}
+      {description && <p className="text-sm">{description}</p>}
+    </fieldset>
+  );
+}
+
+type RadioInputProps = Omit<
+  ComponentProps<"input">,
+  "type" | "id" | "label" | "value" | "name"
+> & {
+  name: string;
+  label: string;
+  value: string;
+};
+
+type RadioGroupFieldProps = FieldProps & {
+  items: RadioInputProps[];
+  inline?: boolean;
+};
+
+export function RadioGroupField({
+  label,
+  description,
+  errors,
+  items,
+  inline,
+}: RadioGroupFieldProps) {
+  return (
+    <FieldSet label={label} description={description} errors={errors}>
+      <div className={classNames("space-x-4", inline && "flex")}>
+        {items.map(({ value, label, ...inputProps }) => {
+          const id = useId();
+          return (
+            <div key={value} className="flex items-center space-x-1">
+              <input id={id} type="radio" value={value} {...inputProps} />
+              <label htmlFor={id}>{label}</label>
+            </div>
+          );
+        })}
+      </div>
+    </FieldSet>
+  );
+}
+
+export function CheckboxGroupField({
+  label,
+  description,
+  errors,
+  items,
+  inline,
+}: RadioGroupFieldProps) {
+  return (
+    <FieldSet label={label} description={description} errors={errors}>
+      <div className={classNames("space-x-4", inline && "flex")}>
+        {items.map(({ value, label, ...inputProps }) => {
+          const id = useId();
+          return (
+            <div key={value} className="flex items-center space-x-1">
+              <input id={id} type="checkbox" value={value} {...inputProps} />
+              <label htmlFor={id}>{label}</label>
+            </div>
+          );
+        })}
+      </div>
+    </FieldSet>
   );
 }

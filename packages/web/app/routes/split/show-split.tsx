@@ -15,14 +15,12 @@ export default function ShowSplit(_: Route.ComponentProps) {
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>
-      <p className="mb-2">
-        <dl className="grid grid-cols-[max-content_auto] gap-x-4">
-          <dt>Home currency:</dt>
-          <dd>{split.currency}</dd>
-          <dt>Created by:</dt>
-          <dd>{users.find((u) => u.id === split.createdBy)?.name}</dd>
-        </dl>
-      </p>
+      <dl className="mb-2 grid grid-cols-[max-content_auto] gap-x-4">
+        <dt>Home currency:</dt>
+        <dd>{split.currency}</dd>
+        <dt>Created by:</dt>
+        <dd>{users.find((u) => u.id === split.createdBy)?.name}</dd>
+      </dl>
 
       <Card
         heading={<SubHeading>Participants</SubHeading>}
@@ -45,6 +43,20 @@ export default function ShowSplit(_: Route.ComponentProps) {
             );
           })}
         </ul>
+      </Card>
+
+      <Card
+        heading={<SubHeading>Expenses</SubHeading>}
+        action={
+          <Link
+            to={href("/splits/:splitID/new-expense", { splitID: split.id })}
+            variant="plain"
+          >
+            <Button>New expense</Button>
+          </Link>
+        }
+      >
+        Expenses
       </Card>
     </div>
   );
