@@ -105,9 +105,9 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
             setCurrency(currency);
           }}
         >
-          {Object.entries(currencies).map(([symbol, name]) => (
+          {Object.entries(currencies).map(([symbol, currency]) => (
             <option key={symbol} value={symbol}>
-              {name} ({symbol})
+              {currency.name} ({symbol})
             </option>
           ))}
         </SelectField>

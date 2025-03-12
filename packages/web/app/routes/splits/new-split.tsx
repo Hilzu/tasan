@@ -55,9 +55,9 @@ export default function NewSplit({ actionData }: Route.ComponentProps) {
           description="All expenses will be converted to this currency."
           errors={actionData?.errors.fieldErrors.currency}
         >
-          {Object.entries(currencies).map(([symbol, name]) => (
+          {Object.entries(currencies).map(([symbol, currency]) => (
             <option key={symbol} value={symbol}>
-              {name} ({symbol})
+              {currency.name} ({symbol})
             </option>
           ))}
         </SelectField>

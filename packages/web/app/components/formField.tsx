@@ -1,4 +1,4 @@
-import type { CurrencySymbol } from "@tasan/common/currency";
+import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import classNames from "classnames";
 import {
   type ComponentProps,
@@ -98,10 +98,13 @@ export function CurrencyInputField({
   ...rest
 }: CurrencyInputFieldProps) {
   const [value, setValue] = useState("");
+  const { fractions } = currencies[currencySymbol];
   useEffect(() => {
     if (valueProp !== undefined) {
       setValue(
-        typeof valueProp === "string" ? valueProp : valueProp.toFixed(2),
+        typeof valueProp === "string" ? valueProp : (
+          valueProp.toFixed(fractions)
+        ),
       );
     }
   }, [valueProp]);
@@ -118,7 +121,7 @@ export function CurrencyInputField({
         onNumberChange(parseNumber(newValue));
       }}
       onBlur={() => {
-        setValue(parseNumber(value).toFixed(2));
+        setValue(parseNumber(value).toFixed(fractions));
       }}
       {...rest}
     />
