@@ -23,7 +23,8 @@
     "format": "prettier --write .",
     "test": "pnpm -r test && concurrently --group node:test:*",
     "test:format": "prettier --check .",
-    "test:lint": "eslint ."
+    "test:lint": "eslint .",
+    "test:types": "tsc --build --force --emitDeclarationOnly"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

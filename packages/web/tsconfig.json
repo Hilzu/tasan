@@ -24,5 +24,6 @@
     "emitDeclarationOnly": true,
     "resolveJsonModule": true,
     "skipLibCheck": true
-  }
+  },
+  "references": [{ "path": "../common" }, { "path": "../data" }]
 }

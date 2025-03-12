@@ -1,5 +1,4 @@
 declare module "@tasan/web" {
-  const serverBuild: import("react-router").ServerBuild;
   export const {
     entry,
     routes,
@@ -9,8 +8,8 @@ declare module "@tasan/web" {
     assetsBuildDirectory,
     future,
     ssr,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
     isSpaMode,
     prerender,
-  } = serverBuild;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }: Record<string, any>;
 }
