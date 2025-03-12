@@ -116,9 +116,8 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           required
           label="Amount"
           name="amount"
-          value={amount}
-          onChange={(event) => {
-            setAmount(Number(event.target.value));
+          onNumberChange={(number) => {
+            setAmount(number);
           }}
           currencySymbol={currency}
           errors={actionData?.errors.fieldErrors.amount}
@@ -163,12 +162,8 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
             label={`${users.find((u) => u.id === userID)?.name ?? "Unknown"} amount`}
             name={`amounts.${userID}`}
             value={amount}
-            onChange={(event) => {
-              setAmounts((prev) => {
-                const newMap = new Map(prev);
-                newMap.set(userID, Number(event.target.value));
-                return newMap;
-              });
+            onNumberChange={(number) => {
+              setAmounts((prev) => new Map(prev).set(userID, number));
             }}
             errors={actionData?.errors.fieldErrors[`amounts.${userID}`]}
           />

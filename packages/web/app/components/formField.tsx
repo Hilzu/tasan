@@ -1,6 +1,12 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import classNames from "classnames";
-import { type ComponentProps, type ReactNode, useId } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (
@@ -48,7 +54,7 @@ export function InputField({
   return (
     <FormField id={id} label={label} description={description} errors={errors}>
       <div className="outline-brand-700 flex items-center rounded-sm border border-gray-500 has-[input:focus-within]:outline-2">
-        {leadingAddon && <div className="px-1">{leadingAddon}</div>}
+        {leadingAddon && <div className="pl-2">{leadingAddon}</div>}
         <input
           {...rest}
           id={id}
@@ -61,21 +67,59 @@ export function InputField({
 
 type CurrencyInputFieldProps = Omit<
   InputFieldProps,
-  "type" | "step" | "inputMode" | "min" | "pattern"
+  | "type"
+  | "step"
+  | "inputMode"
+  | "min"
+  | "pattern"
+  | "onChange"
+  | "onBlur"
+  | "value"
+  | "defaultValue"
 > & {
   currencySymbol: CurrencySymbol;
+  onNumberChange: (value: number) => void;
+  value?: string | number;
+};
+
+const parseNumber = (valueParam: string) => {
+  let value = valueParam;
+  const commaIndex = value.lastIndexOf(",");
+  if (commaIndex !== -1)
+    value = value.slice(0, commaIndex) + "." + value.slice(commaIndex + 1);
+
+  return Number(value.replace(/[^0-9.]/g, ""));
 };
 
 export function CurrencyInputField({
   currencySymbol,
+  onNumberChange,
+  value: valueProp,
   ...rest
 }: CurrencyInputFieldProps) {
+  const [value, setValue] = useState("");
+  useEffect(() => {
+    if (valueProp !== undefined) {
+      setValue(
+        typeof valueProp === "string" ? valueProp : valueProp.toFixed(2),
+      );
+    }
+  }, [valueProp]);
   return (
     <InputField
       type="text"
       inputMode="decimal"
       pattern="\d+([.,]\d{0,2})?"
       leadingAddon={currencySymbol}
+      value={value}
+      onChange={(e) => {
+        const newValue = e.target.value;
+        setValue(newValue);
+        onNumberChange(parseNumber(newValue));
+      }}
+      onBlur={() => {
+        setValue(parseNumber(value).toFixed(2));
+      }}
       {...rest}
     />
   );
