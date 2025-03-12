@@ -138,6 +138,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
 
         <CheckboxGroupField
           label="Participants"
+          inline
           items={users.map((u) => ({
             value: u.id,
             label: u.name,
