@@ -88,6 +88,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
         <InputField
           label="Name"
           name="name"
+          autoComplete="off"
           required
           minLength={1}
           maxLength={64}

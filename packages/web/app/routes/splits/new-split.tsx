@@ -45,6 +45,7 @@ export default function NewSplit({ actionData }: Route.ComponentProps) {
         <InputField
           label="Name"
           name="splitName"
+          autoComplete="off"
           minLength={1}
           maxLength={64}
           errors={actionData?.errors.fieldErrors.splitName}
