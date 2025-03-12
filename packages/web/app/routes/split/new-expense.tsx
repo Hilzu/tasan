@@ -26,11 +26,11 @@ const schema = zfd.formData(
     .object({
       name: zfd.text(z.string().min(1).max(64)),
       currency: zfd.text(currencySymbolSchema),
-      amount: zfd.numeric(z.number().min(0)),
+      amount: zfd.numeric(z.number().positive()),
       payer: zfd.text(z.string()),
       participants: zfd.repeatableOfType(z.string()),
     })
-    .catchall(z.record(zfd.numeric(z.number().min(0)))),
+    .catchall(z.record(zfd.numeric(z.number().positive()))),
 );
 
 export async function action({ request, params }: Route.ActionArgs) {
