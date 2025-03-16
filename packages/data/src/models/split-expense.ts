@@ -1,4 +1,5 @@
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
+import type { CurrencySymbol } from "@tasan/common/currency";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
@@ -18,7 +19,7 @@ export interface SplitExpense {
   name: string;
   amount: number;
   createdBy: string;
-  currency: string;
+  currency: CurrencySymbol;
   payer: string;
   participants: Record<string, number>;
 }
@@ -30,7 +31,7 @@ interface SplitExpenseItem {
   createdAt: string;
   createdBy: UserID;
   amount: number;
-  currency: string;
+  currency: CurrencySymbol;
   payer: UserID;
   participants: Record<UserID, number>;
 }

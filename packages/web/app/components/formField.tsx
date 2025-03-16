@@ -1,4 +1,5 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
+import { Decimal } from "@tasan/common/decimal";
 import classNames from "classnames";
 import {
   type ComponentProps,
@@ -78,8 +79,8 @@ type CurrencyInputFieldProps = Omit<
   | "defaultValue"
 > & {
   currencySymbol: CurrencySymbol;
-  onNumberChange: (value: number) => void;
-  value?: string | number;
+  onDecimalChange: (value: Decimal) => void;
+  value?: Decimal;
 };
 
 const parseNumber = (valueParam: string) => {
@@ -93,7 +94,7 @@ const parseNumber = (valueParam: string) => {
 
 export function CurrencyInputField({
   currencySymbol,
-  onNumberChange,
+  onDecimalChange,
   value: valueProp,
   ...rest
 }: CurrencyInputFieldProps) {
@@ -101,11 +102,7 @@ export function CurrencyInputField({
   const { fractions } = currencies[currencySymbol];
   useEffect(() => {
     if (valueProp !== undefined) {
-      setValue(
-        typeof valueProp === "string" ? valueProp : (
-          valueProp.toFixed(fractions)
-        ),
-      );
+      setValue(valueProp.toString());
     }
   }, [valueProp]);
   return (
@@ -118,10 +115,11 @@ export function CurrencyInputField({
       onChange={(e) => {
         const newValue = e.target.value;
         setValue(newValue);
-        onNumberChange(parseNumber(newValue));
       }}
       onBlur={() => {
-        setValue(parseNumber(value).toFixed(fractions));
+        const newValue = new Decimal(parseNumber(value), fractions);
+        setValue(newValue.toString());
+        onDecimalChange(newValue);
       }}
       {...rest}
     />

@@ -12,6 +12,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
+  console.log("split", split);
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>

@@ -1,4 +1,6 @@
 import { currencies } from "@tasan/common/currency";
+import { Decimal } from "@tasan/common/decimal";
+import { mapObjectValues } from "@tasan/common/object";
 import { createSplitExpense, getSplitUser } from "@tasan/data";
 import { useEffect, useState } from "react";
 import { Form, href, redirect, useRouteLoaderData } from "react-router";
@@ -17,7 +19,11 @@ import {
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import type { SplitLoader } from "~/routes/split/split-parent";
-import { currencySymbolSchema, validateOrRespond } from "~/validation";
+import {
+  currencySchema,
+  currencySymbolSchema,
+  validateOrRespond,
+} from "~/validation";
 
 import type { Route } from "./+types/new-expense";
 
@@ -26,10 +32,32 @@ const schema = zfd.formData(
     .object({
       name: zfd.text(z.string().min(1).max(64)),
       currency: zfd.text(currencySymbolSchema),
-      amount: zfd.numeric(z.number().positive()),
+      amount: zfd.numeric(currencySchema),
       payer: zfd.text(z.string()),
     })
-    .catchall(z.record(zfd.numeric(z.number().positive()))),
+    .catchall(z.record(zfd.numeric(currencySchema)))
+    .superRefine((data, ctx) => {
+      console.log("data", data);
+      const path = ["participants"];
+      const code = z.ZodIssueCode.custom;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (Object.keys(data.participants ?? {}).length === 0) {
+        ctx.addIssue({
+          code,
+          path,
+          message: "Participants are required.",
+        });
+        return;
+      }
+      const total = Object.values(data.participants).reduce((a, b) => a.add(b));
+      if (!total.equals(data.amount)) {
+        ctx.addIssue({
+          code,
+          path,
+          message: "Total amount must match the expense amount.",
+        });
+      }
+    }),
 );
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -51,9 +79,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     splitID: splitUser.splitID,
     name: data.name,
     currency: data.currency,
-    amount: data.amount,
+    amount: data.amount.value,
     payer: data.payer,
-    participants: data.participants,
+    participants: mapObjectValues(data.participants, (v) => v.value),
     createdBy: splitUser.userID,
   });
 
@@ -64,18 +92,23 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
-  const [amount, setAmount] = useState(0);
   const [currency, setCurrency] = useState(split.currency);
+  const fractionDigits = currencies[currency].fractions;
+  const [amount, setAmount] = useState(new Decimal(0, fractionDigits));
   const [participantCount, setParticipantCount] = useState(users.length);
   const [participants, setParticipants] = useState(
-    () => new Map(users.map(({ id }) => [id, 0])),
+    () => new Map(users.map(({ id }) => [id, new Decimal(0, fractionDigits)])),
   );
+  const [total, setTotal] = useState(new Decimal(0, fractionDigits));
   useEffect(() => {
     setParticipants((prev) => {
-      const newAmount = amount / (participantCount || 1);
+      const newAmount = amount.div(participantCount || 1);
       return new Map([...prev.keys()].map((userID) => [userID, newAmount]));
     });
   }, [participantCount, amount]);
+  useEffect(() => {
+    setTotal([...participants.values()].reduce((a, b) => a.add(b)));
+  }, [participants]);
 
   return (
     <div>
@@ -113,8 +146,8 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           required
           label="Amount"
           name="amount"
-          onNumberChange={(number) => {
-            setAmount(number);
+          onDecimalChange={(decimal) => {
+            setAmount(decimal);
           }}
           currencySymbol={currency}
           errors={actionData?.errors.fieldErrors.amount}
@@ -142,14 +175,14 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
             onChange: (event) => {
               setParticipants((prev) => {
                 const newMap = new Map(prev);
-                if (event.target.checked) newMap.set(u.id, 0);
+                if (event.target.checked)
+                  newMap.set(u.id, new Decimal(0, fractionDigits));
                 else newMap.delete(u.id);
                 setParticipantCount(newMap.size);
                 return newMap;
               });
             },
           }))}
-          errors={actionData?.errors.fieldErrors.participants}
         />
 
         {[...participants.entries()].map(([userID, amount]) => (
@@ -160,12 +193,21 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
             label={`${users.find((u) => u.id === userID)?.name ?? "Unknown"} amount`}
             name={`participants.${userID}`}
             value={amount}
-            onNumberChange={(number) => {
-              setParticipants((prev) => new Map(prev).set(userID, number));
+            onDecimalChange={(decimal) => {
+              setParticipants((prev) => new Map(prev).set(userID, decimal));
             }}
-            errors={actionData?.errors.fieldErrors[`amounts.${userID}`]}
           />
         ))}
+        {actionData?.errors.fieldErrors.participants && (
+          <FieldError errors={actionData.errors.fieldErrors.participants} />
+        )}
+        {!total.equals(amount) && (
+          <FieldError
+            errors={[
+              `Total amount must match the expense amount. Difference: ${total.sub(amount).toString()}`,
+            ]}
+          />
+        )}
 
         <Button type="submit" className="mt-2">
           Create
