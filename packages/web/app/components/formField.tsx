@@ -192,9 +192,8 @@ function FieldSet({
 
 type RadioInputProps = Omit<
   ComponentProps<"input">,
-  "type" | "id" | "label" | "value" | "name"
+  "type" | "id" | "label" | "value"
 > & {
-  name: string;
   label: string;
   value: string;
 };

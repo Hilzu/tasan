@@ -28,7 +28,6 @@ const schema = zfd.formData(
       currency: zfd.text(currencySymbolSchema),
       amount: zfd.numeric(z.number().positive()),
       payer: zfd.text(z.string()),
-      participants: zfd.repeatableOfType(z.string()),
     })
     .catchall(z.record(zfd.numeric(z.number().positive()))),
 );
@@ -46,6 +45,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const result = validateOrRespond(schema, formData);
   if (result.response) return result.response;
+
   const { data } = result;
   await createSplitExpense({
     splitID: splitUser.splitID,
@@ -53,8 +53,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     currency: data.currency,
     amount: data.amount,
     payer: data.payer,
-    participants: new Set(data.participants),
-    amounts: data.amounts,
+    participants: data.participants,
     createdBy: splitUser.userID,
   });
 
@@ -67,19 +66,16 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
   const { split, users, session } = parentData;
   const [amount, setAmount] = useState(0);
   const [currency, setCurrency] = useState(split.currency);
+  const [participantCount, setParticipantCount] = useState(users.length);
   const [participants, setParticipants] = useState(
-    () => new Set(users.map((u) => u.id)),
-  );
-  const [amounts, setAmounts] = useState(
-    () => new Map([...participants].map((id) => [id, 0])),
+    () => new Map(users.map(({ id }) => [id, 0])),
   );
   useEffect(() => {
-    setAmounts(
-      new Map(
-        [...participants].map((id) => [id, amount / (participants.size || 1)]),
-      ),
-    );
-  }, [participants, amount]);
+    setParticipants((prev) => {
+      const newAmount = amount / (participantCount || 1);
+      return new Map([...prev.keys()].map((userID) => [userID, newAmount]));
+    });
+  }, [participantCount, amount]);
 
   return (
     <div>
@@ -142,30 +138,30 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           items={users.map((u) => ({
             value: u.id,
             label: u.name,
-            name: "participants",
             checked: participants.has(u.id),
             onChange: (event) => {
               setParticipants((prev) => {
-                const newSet = new Set(prev);
-                if (event.target.checked) newSet.add(u.id);
-                else newSet.delete(u.id);
-                return newSet;
+                const newMap = new Map(prev);
+                if (event.target.checked) newMap.set(u.id, 0);
+                else newMap.delete(u.id);
+                setParticipantCount(newMap.size);
+                return newMap;
               });
             },
           }))}
           errors={actionData?.errors.fieldErrors.participants}
         />
 
-        {[...amounts.entries()].map(([userID, amount]) => (
+        {[...participants.entries()].map(([userID, amount]) => (
           <CurrencyInputField
             required
             key={userID}
             currencySymbol={currency}
             label={`${users.find((u) => u.id === userID)?.name ?? "Unknown"} amount`}
-            name={`amounts.${userID}`}
+            name={`participants.${userID}`}
             value={amount}
             onNumberChange={(number) => {
-              setAmounts((prev) => new Map(prev).set(userID, number));
+              setParticipants((prev) => new Map(prev).set(userID, number));
             }}
             errors={actionData?.errors.fieldErrors[`amounts.${userID}`]}
           />

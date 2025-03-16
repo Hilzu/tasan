@@ -20,8 +20,7 @@ export interface SplitExpense {
   createdBy: string;
   currency: string;
   payer: string;
-  participants: Set<string>;
-  amounts: Record<string, number>;
+  participants: Record<string, number>;
 }
 
 interface SplitExpenseItem {
@@ -33,8 +32,7 @@ interface SplitExpenseItem {
   amount: number;
   currency: string;
   payer: UserID;
-  participants: Set<UserID>;
-  amounts: Record<UserID, number>;
+  participants: Record<UserID, number>;
 }
 
 // type PrimaryKey = Pick<SplitExpenseItem, "pk" | "sk">;
@@ -50,7 +48,6 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
     currency: item.currency,
     payer: item.payer,
     participants: item.participants,
-    amounts: item.amounts,
   };
 };
 
@@ -59,11 +56,12 @@ export type CreateSplitExpense = Omit<SplitExpense, "id">;
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
   async (expense: CreateSplitExpense): Promise<{ id: string }> => {
+    console.log("createSplitExpense", expense);
     assertValidUserID(expense.createdBy);
     assertValidUserID(expense.payer);
     assertValidSplitID(expense.splitID);
-    for (const participant of expense.participants) {
-      assertValidUserID(participant);
+    for (const userID of Object.keys(expense.participants)) {
+      assertValidUserID(userID);
     }
     const id = genExpenseID();
     const Item: SplitExpenseItem = {
@@ -75,8 +73,7 @@ export const createSplitExpense = captureAsync(
       name: expense.name,
       currency: expense.currency,
       payer: expense.payer,
-      participants: expense.participants as Set<UserID>,
-      amounts: expense.amounts,
+      participants: expense.participants as Record<UserID, number>,
     };
     const cmd = new PutCommand({ TableName, Item });
 
