@@ -37,7 +37,6 @@ const schema = zfd.formData(
     })
     .catchall(z.record(zfd.numeric(currencySchema)))
     .superRefine((data, ctx) => {
-      console.log("data", data);
       const path = ["participants"];
       const code = z.ZodIssueCode.custom;
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

@@ -12,7 +12,6 @@ export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
-  console.log("split", split);
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>
@@ -59,13 +58,26 @@ export default function ShowSplit(_: Route.ComponentProps) {
       >
         {split.expenses.length === 0 ?
           "No expenses yet."
-        : <ul>
-            {split.expenses.map((expense) => (
-              <li key={expense.id}>
-                {expense.name} - {expense.currency} {expense.amount} - Paid by{" "}
-                {users.find((u) => u.id === expense.payer)?.name}
-              </li>
-            ))}
+        : <ul className="space-y-2">
+            {split.expenses.map((expense) => {
+              const yourShare = expense.participants[session.userID] ?? 0;
+              return (
+                <li key={expense.id}>
+                  <div>
+                    {expense.name} - {expense.createdAt.toISOString()}
+                  </div>
+                  <div>
+                    {users.find((u) => u.id === expense.payer)?.name} paid{" "}
+                    {expense.currency} {expense.amount}
+                  </div>
+                  <div>
+                    {yourShare === 0 ?
+                      "You didn't participate"
+                    : `Your share: ${expense.currency} ${yourShare.toString()}`}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         }
       </Card>

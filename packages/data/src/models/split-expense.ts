@@ -19,6 +19,7 @@ export interface SplitExpense {
   name: string;
   amount: number;
   createdBy: string;
+  createdAt: Date;
   currency: CurrencySymbol;
   payer: string;
   participants: Record<string, number>;
@@ -46,18 +47,18 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
     name: item.name,
     amount: item.amount,
     createdBy: item.createdBy,
+    createdAt: new Date(item.createdAt),
     currency: item.currency,
     payer: item.payer,
     participants: item.participants,
   };
 };
 
-export type CreateSplitExpense = Omit<SplitExpense, "id">;
+export type CreateSplitExpense = Omit<SplitExpense, "id" | "createdAt">;
 
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
   async (expense: CreateSplitExpense): Promise<{ id: string }> => {
-    console.log("createSplitExpense", expense);
     assertValidUserID(expense.createdBy);
     assertValidUserID(expense.payer);
     assertValidSplitID(expense.splitID);

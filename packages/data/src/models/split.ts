@@ -1,7 +1,7 @@
 import {
   BatchGetCommand,
+  paginateQuery,
   PutCommand,
-  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { CurrencySymbol } from "@tasan/common/currency";
 
@@ -26,6 +26,7 @@ export interface Split {
   id: string;
   name: string;
   createdBy: string;
+  createdAt: Date;
   currency: CurrencySymbol;
 }
 
@@ -47,10 +48,11 @@ const fromItem = (Item: Record<string, unknown>): Split => {
     name: item.name,
     createdBy: item.createdBy,
     currency: item.currency,
+    createdAt: new Date(item.createdAt),
   };
 };
 
-export type CreateSplit = Omit<Split, "id" | "users">;
+export type CreateSplit = Omit<Split, "id" | "users" | "createdAt">;
 
 export const createSplit = captureAsync(
   "createSplit",
@@ -113,13 +115,20 @@ export const getSplit = captureAsync(
   async (splitID: string): Promise<SplitWithData | undefined> => {
     assertValidSplitID(splitID);
 
-    const cmd = new QueryCommand({
-      TableName,
-      KeyConditionExpression: "pk = :pk",
-      ExpressionAttributeValues: { ":pk": splitID },
-    });
-    const { Items } = await documentClient().send(cmd);
-    if (!Items?.length) return;
+    const paginator = paginateQuery(
+      { client: documentClient() },
+      {
+        TableName,
+        KeyConditionExpression: "pk = :pk",
+        ExpressionAttributeValues: { ":pk": splitID },
+      },
+    );
+    const Items: Record<string, unknown>[] = [];
+    for await (const page of paginator) {
+      if (!page.Items?.length) continue;
+      Items.push(...page.Items);
+    }
+    if (!Items.length) return;
 
     let split: Split | undefined;
     const userIDs = new Set<string>();
@@ -130,6 +139,7 @@ export const getSplit = captureAsync(
       else if (Item.sk.startsWith("usr_")) userIDs.add(Item.sk);
       else if (Item.sk.startsWith("exp_")) expenses.push(fromExpenseItem(Item));
     }
+    expenses.reverse();
 
     return split ? { ...split, userIDs, expenses } : undefined;
   },
