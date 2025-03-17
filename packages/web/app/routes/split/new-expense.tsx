@@ -1,10 +1,10 @@
-import { currencies } from "@tasan/common/currency";
+import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import { Decimal } from "@tasan/common/decimal";
 import { mapObjectValues } from "@tasan/common/object";
 import { currencySchema, currencySymbolSchema } from "@tasan/common/validation";
 import { createSplitExpense, getSplitUser } from "@tasan/data";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Form, href, redirect, useRouteLoaderData } from "react-router";
 import { z } from "zod";
 import { zfd } from "zod-form-data";
@@ -20,6 +20,7 @@ import {
   SelectField,
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
+import { useStorage } from "~/hooks";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
 
@@ -99,6 +100,8 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
+  const [preferredCurrency, setPreferredCurrency] =
+    useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
   const fractionDigits = currencies[currency].fractions;
   const [amount, setAmount] = useState(new Decimal(0, fractionDigits));
@@ -107,6 +110,9 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
     () => new Map(users.map(({ id }) => [id, new Decimal(0, fractionDigits)])),
   );
   const [total, setTotal] = useState(new Decimal(0, fractionDigits));
+  useLayoutEffect(() => {
+    if (preferredCurrency) setCurrency(preferredCurrency);
+  }, []);
   useEffect(() => {
     setParticipants((prev) => {
       const newAmount = amount.div(participantCount || 1);
@@ -140,6 +146,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           onChange={(event) => {
             const currency = currencySymbolSchema.parse(event.target.value);
             setCurrency(currency);
+            setPreferredCurrency(currency);
           }}
         >
           {Object.entries(currencies).map(([symbol, currency]) => (
