@@ -4,6 +4,7 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { CurrencySymbol } from "@tasan/common/currency";
+import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { compareById } from "../compare.js";
@@ -15,7 +16,6 @@ import {
   type SplitID,
   type UserID,
 } from "../ids.js";
-import { captureAsync } from "../tracing.js";
 import {
   fromItem as fromExpenseItem,
   type SplitExpense,

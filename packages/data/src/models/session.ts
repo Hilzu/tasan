@@ -1,4 +1,5 @@
 import { DeleteCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
@@ -11,7 +12,6 @@ import {
   type UserID,
 } from "../ids.js";
 import { memoizeSingleFlight } from "../promise.js";
-import { captureAsync } from "../tracing.js";
 
 export interface Session {
   id: string;

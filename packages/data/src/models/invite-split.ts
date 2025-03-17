@@ -1,4 +1,5 @@
 import { DeleteCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
@@ -12,7 +13,6 @@ import {
   type SplitID,
   type UserID,
 } from "../ids.js";
-import { captureAsync } from "../tracing.js";
 
 export interface InviteForSplit {
   id: string;

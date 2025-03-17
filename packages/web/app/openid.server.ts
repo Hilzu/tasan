@@ -1,4 +1,4 @@
-import { captureAsync } from "@tasan/data";
+import { captureAsync } from "@tasan/common/tracing";
 import {
   authorizationCodeGrant,
   buildAuthorizationUrl,

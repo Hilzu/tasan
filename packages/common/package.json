@@ -5,8 +5,11 @@
   "main": "./dist/main.mjs",
   "exports": {
     "./currency": "./dist/currency.js",
+    "./currency-convert": "./dist/currency-convert.js",
     "./decimal": "./dist/decimal.js",
-    "./object": "./dist/object.js"
+    "./object": "./dist/object.js",
+    "./tracing": "./dist/tracing.js",
+    "./validation": "./dist/validation.js"
   },
   "scripts": {
     "build": "tsc",
@@ -19,5 +22,8 @@
     "@types/node": "catalog:",
     "typescript": "catalog:"
   },
-  "dependencies": {}
+  "dependencies": {
+    "aws-xray-sdk-core": "^3.10.3",
+    "zod": "^3.24.2"
+  }
 }

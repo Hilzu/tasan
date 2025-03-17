@@ -1,4 +1,4 @@
-const toValue = (value: number | Decimal) =>
+const toValue = (value: number | Decimal): number =>
   value instanceof Decimal ? value.value : value;
 
 export class Decimal {
@@ -10,27 +10,31 @@ export class Decimal {
     this._fractions = fractions;
   }
 
-  get value() {
+  get value(): number {
     return this._value;
   }
 
-  toString() {
+  toString(): string {
     return this._value.toFixed(this._fractions);
   }
 
-  equals(other: Decimal) {
+  equals(other: Decimal): boolean {
     return this._value === other._value;
   }
 
-  add(other: Decimal | number) {
+  add(other: Decimal | number): Decimal {
     return new Decimal(this._value + toValue(other), this._fractions);
   }
 
-  sub(other: Decimal | number) {
+  sub(other: Decimal | number): Decimal {
     return new Decimal(this._value - toValue(other), this._fractions);
   }
 
-  div(other: Decimal | number) {
+  mul(other: Decimal | number): Decimal {
+    return new Decimal(this._value * toValue(other), this._fractions);
+  }
+
+  div(other: Decimal | number): Decimal {
     return new Decimal(this._value / toValue(other), this._fractions);
   }
 }

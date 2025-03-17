@@ -1,4 +1,5 @@
 import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { reversedKeyIndexName, TableName } from "../config.js";
@@ -8,7 +9,6 @@ import {
   type SplitID,
   type UserID,
 } from "../ids.js";
-import { captureAsync } from "../tracing.js";
 
 export interface SplitUser {
   userID: string;

@@ -1,5 +1,6 @@
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
 import type { CurrencySymbol } from "@tasan/common/currency";
+import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
@@ -11,7 +12,6 @@ import {
   type SplitID,
   type UserID,
 } from "../ids.js";
-import { captureAsync } from "../tracing.js";
 
 export interface SplitExpense {
   id: string;
@@ -21,6 +21,7 @@ export interface SplitExpense {
   createdBy: string;
   createdAt: Date;
   currency: CurrencySymbol;
+  conversionRate?: number;
   payer: string;
   participants: Record<string, number>;
 }
@@ -33,6 +34,7 @@ interface SplitExpenseItem {
   createdBy: UserID;
   amount: number;
   currency: CurrencySymbol;
+  conversionRate?: number;
   payer: UserID;
   participants: Record<UserID, number>;
 }
@@ -49,6 +51,7 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
     createdBy: item.createdBy,
     createdAt: new Date(item.createdAt),
     currency: item.currency,
+    conversionRate: item.conversionRate,
     payer: item.payer,
     participants: item.participants,
   };
@@ -74,6 +77,7 @@ export const createSplitExpense = captureAsync(
       amount: expense.amount,
       name: expense.name,
       currency: expense.currency,
+      conversionRate: expense.conversionRate,
       payer: expense.payer,
       participants: expense.participants as Record<UserID, number>,
     };

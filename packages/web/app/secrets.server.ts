@@ -1,5 +1,5 @@
 import { GetParametersCommand, SSMClient } from "@aws-sdk/client-ssm";
-import { captureAsync } from "@tasan/data";
+import { captureAsync } from "@tasan/common/tracing";
 
 import { appEnv } from "~/config";
 

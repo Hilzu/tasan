@@ -1,3 +1,5 @@
+import { currencies } from "@tasan/common/currency";
+import { Decimal } from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
 import { Button } from "~/components/button";
@@ -68,7 +70,9 @@ export default function ShowSplit(_: Route.ComponentProps) {
                   </div>
                   <div>
                     {users.find((u) => u.id === expense.payer)?.name} paid{" "}
-                    {expense.currency} {expense.amount}
+                    {expense.currency} {expense.amount}{" "}
+                    {expense.conversionRate &&
+                      `(${split.currency} ${new Decimal(expense.amount, currencies[split.currency].fractions).mul(expense.conversionRate).toString()})`}
                   </div>
                   <div>
                     {yourShare === 0 ?

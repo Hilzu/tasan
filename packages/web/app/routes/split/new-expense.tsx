@@ -1,6 +1,8 @@
 import { currencies } from "@tasan/common/currency";
+import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import { Decimal } from "@tasan/common/decimal";
 import { mapObjectValues } from "@tasan/common/object";
+import { currencySchema, currencySymbolSchema } from "@tasan/common/validation";
 import { createSplitExpense, getSplitUser } from "@tasan/data";
 import { useEffect, useState } from "react";
 import { Form, href, redirect, useRouteLoaderData } from "react-router";
@@ -19,11 +21,7 @@ import {
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import type { SplitLoader } from "~/routes/split/split-parent";
-import {
-  currencySchema,
-  currencySymbolSchema,
-  validateOrRespond,
-} from "~/validation";
+import { validateOrRespond } from "~/validation";
 
 import type { Route } from "./+types/new-expense";
 
@@ -32,6 +30,7 @@ const schema = zfd.formData(
     .object({
       name: zfd.text(z.string().min(1).max(64)),
       currency: zfd.text(currencySymbolSchema),
+      splitCurrency: zfd.text(currencySymbolSchema),
       amount: zfd.numeric(currencySchema),
       payer: zfd.text(z.string()),
     })
@@ -40,7 +39,7 @@ const schema = zfd.formData(
       const path = ["participants"];
       const code = z.ZodIssueCode.custom;
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (Object.keys(data.participants ?? {}).length === 0) {
+      if (!data.participants || Object.keys(data.participants).length === 0) {
         ctx.addIssue({
           code,
           path,
@@ -72,12 +71,21 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const result = validateOrRespond(schema, formData);
   if (result.response) return result.response;
-
   const { data } = result;
+
+  let conversionRate: number | undefined;
+  if (data.currency !== data.splitCurrency) {
+    conversionRate = await fetchCurrencyConversionRate(
+      data.currency,
+      data.splitCurrency,
+    );
+  }
+
   await createSplitExpense({
     splitID: splitUser.splitID,
     name: data.name,
     currency: data.currency,
+    conversionRate,
     amount: data.amount.value,
     payer: data.payer,
     participants: mapObjectValues(data.participants, (v) => v.value),
@@ -207,6 +215,8 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
             ]}
           />
         )}
+
+        <input type="hidden" name="splitCurrency" value={split.currency} />
 
         <Button type="submit" className="mt-2">
           Create
