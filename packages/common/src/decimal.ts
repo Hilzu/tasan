@@ -15,7 +15,8 @@ export const create = (value: number, fractions = 2): Decimal => {
 export const toString = (decimal: Decimal): string =>
   decimal.value.toFixed(decimal.fractions);
 
-export const equals = (a: Decimal, b: Decimal): boolean => a.value === b.value;
+export const equals = (a: Decimal, b: Decimal | number): boolean =>
+  a.value === toNumber(b);
 
 export const add = (a: Decimal, b: Decimal | number): Decimal => {
   return create(a.value + toNumber(b), a.fractions);

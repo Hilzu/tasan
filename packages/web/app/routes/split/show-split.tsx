@@ -1,4 +1,3 @@
-import { currencies } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
@@ -62,8 +61,8 @@ export default function ShowSplit(_: Route.ComponentProps) {
           "No expenses yet."
         : <ul className="space-y-2">
             {split.expenses.map((expense) => {
-              const yourShare = expense.participants[session.userID] ?? 0;
-              const fractions = currencies[split.currency].fractions;
+              const yourShare =
+                expense.participants[session.userID] ?? D.create(0);
               return (
                 <li key={expense.id}>
                   <div>
@@ -71,14 +70,14 @@ export default function ShowSplit(_: Route.ComponentProps) {
                   </div>
                   <div>
                     {users.find((u) => u.id === expense.payer)?.name} paid{" "}
-                    {expense.currency} {expense.amount}{" "}
+                    {expense.currency} {D.toString(expense.amount)}{" "}
                     {expense.conversionRate &&
-                      `(${split.currency} ${D.toString(D.mul(D.create(expense.amount, fractions), expense.conversionRate))})`}
+                      `(${split.currency} ${D.toString(D.mul(expense.amount, expense.conversionRate))})`}
                   </div>
                   <div>
-                    {yourShare === 0 ?
+                    {D.equals(yourShare, 0) ?
                       "You didn't participate"
-                    : `Your share: ${expense.currency} ${D.toString(D.create(yourShare, currencies[expense.currency].fractions))}`
+                    : `Your share: ${expense.currency} ${D.toString(yourShare)}`
                     }
                   </div>
                 </li>

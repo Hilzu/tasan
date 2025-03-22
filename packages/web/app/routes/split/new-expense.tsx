@@ -1,7 +1,6 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import * as Decimal from "@tasan/common/decimal";
-import { mapObjectValues } from "@tasan/common/object";
 import { currencySchema, currencySymbolSchema } from "@tasan/common/validation";
 import { createSplitExpense, getSplitUser } from "@tasan/data";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -90,9 +89,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     name: data.name,
     currency: data.currency,
     conversionRate,
-    amount: data.amount.value,
+    amount: data.amount,
     payer: data.payer,
-    participants: mapObjectValues(data.participants, (v) => v.value),
+    participants: data.participants,
     createdBy: splitUser.userID,
   });
 

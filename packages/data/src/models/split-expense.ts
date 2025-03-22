@@ -1,5 +1,7 @@
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
-import type { CurrencySymbol } from "@tasan/common/currency";
+import { currencies, type CurrencySymbol } from "@tasan/common/currency";
+import * as Decimal from "@tasan/common/decimal";
+import { mapObjectValues } from "@tasan/common/object";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -17,13 +19,13 @@ export interface SplitExpense {
   id: string;
   splitID: string;
   name: string;
-  amount: number;
+  amount: Decimal.Decimal;
   createdBy: string;
   createdAt: Date;
   currency: CurrencySymbol;
   conversionRate?: number;
   payer: string;
-  participants: Record<string, number>;
+  participants: Record<string, Decimal.Decimal>;
 }
 
 interface SplitExpenseItem {
@@ -43,17 +45,20 @@ interface SplitExpenseItem {
 
 export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   const item = Item as unknown as SplitExpenseItem;
+  const fractionDigits = currencies[item.currency].fractions;
   return {
     id: item.sk,
     splitID: item.pk,
     name: item.name,
-    amount: item.amount,
+    amount: Decimal.create(item.amount, fractionDigits),
     createdBy: item.createdBy,
     createdAt: new Date(item.createdAt),
     currency: item.currency,
     conversionRate: item.conversionRate,
     payer: item.payer,
-    participants: item.participants,
+    participants: mapObjectValues(item.participants, (v) =>
+      Decimal.create(v, fractionDigits),
+    ),
   };
 };
 
@@ -74,12 +79,12 @@ export const createSplitExpense = captureAsync(
       sk: id,
       createdAt: new Date().toISOString(),
       createdBy: expense.createdBy,
-      amount: expense.amount,
+      amount: expense.amount.value,
       name: expense.name,
       currency: expense.currency,
       conversionRate: expense.conversionRate,
       payer: expense.payer,
-      participants: expense.participants as Record<UserID, number>,
+      participants: mapObjectValues(expense.participants, (v) => v.value),
     };
     const cmd = new PutCommand({ TableName, Item });
 
