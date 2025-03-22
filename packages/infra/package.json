@@ -18,13 +18,13 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.147",
     "@types/node": "catalog:",
-    "aws-cdk": "^2.1004.0",
+    "aws-cdk": "^2.1005.0",
     "esbuild": "^0.25.1",
     "typescript": "catalog:"
   },
   "dependencies": {
     "@tasan/web": "workspace:*",
-    "aws-cdk-lib": "^2.184.1",
+    "aws-cdk-lib": "^2.185.0",
     "aws-xray-sdk-core": "^3.10.3",
     "constructs": "^10.4.2",
     "react-router": "catalog:"

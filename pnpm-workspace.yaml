@@ -3,5 +3,5 @@ packages:
 
 catalog:
   "@types/node": ^22.13.10
-  react-router: ^7.3.0
+  react-router: ^7.4.0
   typescript: ~5.8.2
