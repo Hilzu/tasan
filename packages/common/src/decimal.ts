@@ -1,40 +1,34 @@
-const toValue = (value: number | Decimal): number =>
-  value instanceof Decimal ? value.value : value;
+const toNumber = (value: number | Decimal): number =>
+  typeof value === "number" ? value : value.value;
 
-export class Decimal {
-  private readonly _value: number;
-  private readonly _fractions: number;
+export type Decimal = Readonly<{ value: number; fractions: number }> & {
+  __type: "Decimal";
+};
 
-  constructor(value: number, fractions = 2) {
-    this._value = Number(value.toFixed(fractions));
-    this._fractions = fractions;
-  }
+export const create = (value: number, fractions = 2): Decimal => {
+  return {
+    value: Number(value.toFixed(fractions)),
+    fractions,
+  } as Decimal;
+};
 
-  get value(): number {
-    return this._value;
-  }
+export const toString = (decimal: Decimal): string =>
+  decimal.value.toFixed(decimal.fractions);
 
-  toString(): string {
-    return this._value.toFixed(this._fractions);
-  }
+export const equals = (a: Decimal, b: Decimal): boolean => a.value === b.value;
 
-  equals(other: Decimal): boolean {
-    return this._value === other._value;
-  }
+export const add = (a: Decimal, b: Decimal | number): Decimal => {
+  return create(a.value + toNumber(b), a.fractions);
+};
 
-  add(other: Decimal | number): Decimal {
-    return new Decimal(this._value + toValue(other), this._fractions);
-  }
+export const sub = (a: Decimal, b: Decimal | number): Decimal => {
+  return create(a.value - toNumber(b), a.fractions);
+};
 
-  sub(other: Decimal | number): Decimal {
-    return new Decimal(this._value - toValue(other), this._fractions);
-  }
+export const mul = (a: Decimal, b: Decimal | number): Decimal => {
+  return create(a.value * toNumber(b), a.fractions);
+};
 
-  mul(other: Decimal | number): Decimal {
-    return new Decimal(this._value * toValue(other), this._fractions);
-  }
-
-  div(other: Decimal | number): Decimal {
-    return new Decimal(this._value / toValue(other), this._fractions);
-  }
-}
+export const div = (a: Decimal, b: Decimal | number): Decimal => {
+  return create(a.value / toNumber(b), a.fractions);
+};

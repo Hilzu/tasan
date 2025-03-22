@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import type { CurrencySymbol } from "./currency.js";
-import type { Decimal } from "./decimal.js";
 import { captureAsync } from "./tracing.js";
 import { currencySymbolSchema } from "./validation.js";
 
@@ -32,6 +31,3 @@ export const fetchCurrencyConversionRate = captureAsync(
     return rate;
   },
 );
-
-export const convertCurrency = (amount: Decimal, rate: number): Decimal =>
-  amount.mul(rate);

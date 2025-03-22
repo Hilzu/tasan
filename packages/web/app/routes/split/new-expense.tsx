@@ -1,6 +1,6 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
-import { Decimal } from "@tasan/common/decimal";
+import * as Decimal from "@tasan/common/decimal";
 import { mapObjectValues } from "@tasan/common/object";
 import { currencySchema, currencySymbolSchema } from "@tasan/common/validation";
 import { createSplitExpense, getSplitUser } from "@tasan/data";
@@ -39,6 +39,7 @@ const schema = zfd.formData(
     .superRefine((data, ctx) => {
       const path = ["participants"];
       const code = z.ZodIssueCode.custom;
+
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!data.participants || Object.keys(data.participants).length === 0) {
         ctx.addIssue({
@@ -48,8 +49,10 @@ const schema = zfd.formData(
         });
         return;
       }
-      const total = Object.values(data.participants).reduce((a, b) => a.add(b));
-      if (!total.equals(data.amount)) {
+      const total = Object.values(data.participants).reduce((a, b) =>
+        Decimal.add(a, b),
+      );
+      if (!Decimal.equals(total, data.amount)) {
         ctx.addIssue({
           code,
           path,
@@ -104,23 +107,24 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
   const fractionDigits = currencies[currency].fractions;
-  const [amount, setAmount] = useState(new Decimal(0, fractionDigits));
+  const [amount, setAmount] = useState(Decimal.create(0, fractionDigits));
   const [participantCount, setParticipantCount] = useState(users.length);
   const [participants, setParticipants] = useState(
-    () => new Map(users.map(({ id }) => [id, new Decimal(0, fractionDigits)])),
+    () =>
+      new Map(users.map(({ id }) => [id, Decimal.create(0, fractionDigits)])),
   );
-  const [total, setTotal] = useState(new Decimal(0, fractionDigits));
+  const [total, setTotal] = useState(Decimal.create(0, fractionDigits));
   useLayoutEffect(() => {
     if (preferredCurrency) setCurrency(preferredCurrency);
   }, []);
   useEffect(() => {
     setParticipants((prev) => {
-      const newAmount = amount.div(participantCount || 1);
+      const newAmount = Decimal.div(amount, participantCount || 1);
       return new Map([...prev.keys()].map((userID) => [userID, newAmount]));
     });
   }, [participantCount, amount]);
   useEffect(() => {
-    setTotal([...participants.values()].reduce((a, b) => a.add(b)));
+    setTotal([...participants.values()].reduce((a, b) => Decimal.add(a, b)));
   }, [participants]);
 
   return (
@@ -190,7 +194,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
               setParticipants((prev) => {
                 const newMap = new Map(prev);
                 if (event.target.checked)
-                  newMap.set(u.id, new Decimal(0, fractionDigits));
+                  newMap.set(u.id, Decimal.create(0, fractionDigits));
                 else newMap.delete(u.id);
                 setParticipantCount(newMap.size);
                 return newMap;
@@ -215,10 +219,10 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
         {actionData?.errors.fieldErrors.participants && (
           <FieldError errors={actionData.errors.fieldErrors.participants} />
         )}
-        {!total.equals(amount) && (
+        {!Decimal.equals(total, amount) && (
           <FieldError
             errors={[
-              `Total amount must match the expense amount. Difference: ${total.sub(amount).toString()}`,
+              `Total amount must match the expense amount. Difference: ${Decimal.toString(Decimal.sub(total, amount))}`,
             ]}
           />
         )}

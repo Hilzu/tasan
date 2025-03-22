@@ -1,5 +1,5 @@
 import { currencies } from "@tasan/common/currency";
-import { Decimal } from "@tasan/common/decimal";
+import * as D from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
 import { Button } from "~/components/button";
@@ -63,6 +63,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
         : <ul className="space-y-2">
             {split.expenses.map((expense) => {
               const yourShare = expense.participants[session.userID] ?? 0;
+              const fractions = currencies[split.currency].fractions;
               return (
                 <li key={expense.id}>
                   <div>
@@ -72,12 +73,13 @@ export default function ShowSplit(_: Route.ComponentProps) {
                     {users.find((u) => u.id === expense.payer)?.name} paid{" "}
                     {expense.currency} {expense.amount}{" "}
                     {expense.conversionRate &&
-                      `(${split.currency} ${new Decimal(expense.amount, currencies[split.currency].fractions).mul(expense.conversionRate).toString()})`}
+                      `(${split.currency} ${D.toString(D.mul(D.create(expense.amount, fractions), expense.conversionRate))})`}
                   </div>
                   <div>
                     {yourShare === 0 ?
                       "You didn't participate"
-                    : `Your share: ${expense.currency} ${yourShare.toString()}`}
+                    : `Your share: ${expense.currency} ${D.toString(D.create(yourShare, currencies[expense.currency].fractions))}`
+                    }
                   </div>
                 </li>
               );
