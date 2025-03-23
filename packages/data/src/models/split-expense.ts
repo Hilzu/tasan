@@ -1,13 +1,12 @@
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as Decimal from "@tasan/common/decimal";
+import * as D from "@tasan/common/decimal";
 import {
   type ExpenseID,
   genExpenseID,
   type SplitID,
   type UserID,
 } from "@tasan/common/id";
-import { mapObjectValues } from "@tasan/common/object";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -17,13 +16,13 @@ export interface SplitExpense {
   id: ExpenseID;
   splitID: SplitID;
   name: string;
-  amount: Decimal.Decimal;
+  amount: D.Decimal;
   createdBy: UserID;
   createdAt: Date;
   currency: CurrencySymbol;
   conversionRate?: number;
   payer: UserID;
-  participants: Record<UserID, Decimal.Decimal>;
+  participants: Map<UserID, D.Decimal>;
 }
 
 interface SplitExpenseItem {
@@ -48,14 +47,17 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
     id: item.sk,
     splitID: item.pk,
     name: item.name,
-    amount: Decimal.create(item.amount, fractionDigits),
+    amount: D.create(item.amount, fractionDigits),
     createdBy: item.createdBy,
     createdAt: new Date(item.createdAt),
     currency: item.currency,
     conversionRate: item.conversionRate,
     payer: item.payer,
-    participants: mapObjectValues(item.participants, (v) =>
-      Decimal.create(v, fractionDigits),
+    participants: new Map(
+      Object.entries(item.participants).map(([k, v]) => [
+        k as UserID,
+        D.create(v, fractionDigits),
+      ]),
     ),
   };
 };
@@ -76,7 +78,9 @@ export const createSplitExpense = captureAsync(
       currency: expense.currency,
       conversionRate: expense.conversionRate,
       payer: expense.payer,
-      participants: mapObjectValues(expense.participants, (v) => v.value),
+      participants: Object.fromEntries(
+        [...expense.participants].map(([k, v]) => [k, v.value]),
+      ),
     };
     const cmd = new PutCommand({ TableName, Item });
 

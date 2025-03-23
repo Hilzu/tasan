@@ -1,6 +1,6 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
-import * as Decimal from "@tasan/common/decimal";
+import * as D from "@tasan/common/decimal";
 import { asSplitID, asUserID } from "@tasan/common/id";
 import {
   currencySymbolSchema,
@@ -54,9 +54,9 @@ const schema = zfd.formData(
         return;
       }
       const total = Object.values(data.participants).reduce((a, b) =>
-        Decimal.add(a, b),
+        D.add(a, b),
       );
-      if (!Decimal.equals(total, data.amount)) {
+      if (!D.equals(total, data.amount)) {
         ctx.addIssue({
           code,
           path,
@@ -80,8 +80,11 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (result.response) return result.response;
   const { data } = result;
 
-  const expenseUserIDs = Object.keys(data.participants).map((k) => asUserID(k));
-  if (expenseUserIDs.some((id) => !splitUsers.find((u) => u.userID === id)))
+  const participants = new Map(
+    Object.entries(data.participants).map(([k, v]) => [asUserID(k), v]),
+  );
+  const participantUserIDs = [...participants.keys()];
+  if (participantUserIDs.some((id) => !splitUsers.find((u) => u.userID === id)))
     throw new Response("Participants must be in the split", { status: 403 });
 
   let conversionRate: number | undefined;
@@ -99,7 +102,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     conversionRate,
     amount: data.amount,
     payer: data.payer,
-    participants: data.participants,
+    participants,
     createdBy: session.userID,
   });
 
@@ -114,24 +117,23 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
   const fractionDigits = currencies[currency].fractions;
-  const [amount, setAmount] = useState(Decimal.create(0, fractionDigits));
+  const [amount, setAmount] = useState(D.create(0, fractionDigits));
   const [participantCount, setParticipantCount] = useState(users.length);
   const [participants, setParticipants] = useState(
-    () =>
-      new Map(users.map(({ id }) => [id, Decimal.create(0, fractionDigits)])),
+    () => new Map(users.map(({ id }) => [id, D.create(0, fractionDigits)])),
   );
-  const [total, setTotal] = useState(Decimal.create(0, fractionDigits));
+  const [total, setTotal] = useState(D.create(0, fractionDigits));
   useLayoutEffect(() => {
     if (preferredCurrency) setCurrency(preferredCurrency);
   }, []);
   useEffect(() => {
     setParticipants((prev) => {
-      const newAmount = Decimal.div(amount, participantCount || 1);
+      const newAmount = D.div(amount, participantCount || 1);
       return new Map([...prev.keys()].map((userID) => [userID, newAmount]));
     });
   }, [participantCount, amount]);
   useEffect(() => {
-    setTotal([...participants.values()].reduce((a, b) => Decimal.add(a, b)));
+    setTotal([...participants.values()].reduce((a, b) => D.add(a, b)));
   }, [participants]);
 
   return (
@@ -201,7 +203,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
               setParticipants((prev) => {
                 const newMap = new Map(prev);
                 if (event.target.checked)
-                  newMap.set(u.id, Decimal.create(0, fractionDigits));
+                  newMap.set(u.id, D.create(0, fractionDigits));
                 else newMap.delete(u.id);
                 setParticipantCount(newMap.size);
                 return newMap;
@@ -226,10 +228,10 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
         {actionData?.errors.fieldErrors.participants && (
           <FieldError errors={actionData.errors.fieldErrors.participants} />
         )}
-        {!Decimal.equals(total, amount) && (
+        {!D.equals(total, amount) && (
           <FieldError
             errors={[
-              `Total amount must match the expense amount. Difference: ${Decimal.toString(Decimal.sub(total, amount))}`,
+              `Total amount must match the expense amount. Difference: ${D.toString(D.sub(total, amount))}`,
             ]}
           />
         )}

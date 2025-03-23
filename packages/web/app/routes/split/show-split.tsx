@@ -6,7 +6,7 @@ import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
-import { calculateGraph } from "~/domain/expense-graph";
+import { calculateExpenseGraph } from "~/domain/expense-graph";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/show-split";
@@ -26,7 +26,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
-  const expenseGraph = calculateGraph(split);
+  const expenseGraph = calculateExpenseGraph(split);
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>
@@ -62,7 +62,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
 
       <Card heading={<SubHeading>Settlements</SubHeading>}>
         <ul>
-          {Object.entries(expenseGraph).map(([from, edges]) => {
+          {[...expenseGraph].map(([from, edges]) => {
             const fromName = users.find((u) => u.id === from)?.name;
             return edges.map((edge) => {
               const toName = users.find((u) => u.id === edge.to)?.name;
@@ -93,7 +93,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
         : <ul className="space-y-2">
             {split.expenses.map((expense) => {
               const yourShare =
-                expense.participants[session.userID] ?? D.create(0);
+                expense.participants.get(session.userID) ?? D.create(0);
               return (
                 <li key={expense.id}>
                   <div>
@@ -111,7 +111,14 @@ export default function ShowSplit(_: Route.ComponentProps) {
                   <div>
                     {D.equals(yourShare, 0) ?
                       "You didn't participate"
-                    : `Your share: ${expense.currency} ${D.toString(yourShare)} ${showInCurrency(yourShare, split.currency, expense.conversionRate)}`
+                    : <>
+                        Your share: {expense.currency} {D.toString(yourShare)}{" "}
+                        {showInCurrency(
+                          yourShare,
+                          split.currency,
+                          expense.conversionRate,
+                        )}
+                      </>
                     }
                   </div>
                 </li>

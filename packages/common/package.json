@@ -9,7 +9,6 @@
     "./decimal": "./dist/decimal.js",
     "./graph": "./dist/graph.js",
     "./id": "./dist/id.js",
-    "./object": "./dist/object.js",
     "./tracing": "./dist/tracing.js",
     "./validation": "./dist/validation.js"
   },
