@@ -2,7 +2,7 @@ import { asSplitID } from "@tasan/common/id";
 import { getSplit, getSplitUser, getUsers } from "@tasan/data";
 import { data, Outlet } from "react-router";
 
-import { getSessionOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/.server/auth";
 
 import type { Route } from "./+types/split-parent";
 

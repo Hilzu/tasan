@@ -5,7 +5,7 @@ import { Form, href, redirect } from "react-router";
 import { z } from "zod";
 import { zfd } from "zod-form-data";
 
-import { getSessionOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/.server/auth";
 import { Button } from "~/components/button";
 import { FieldError, InputField, SelectField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";

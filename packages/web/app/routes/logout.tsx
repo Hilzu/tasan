@@ -1,7 +1,7 @@
 import { redirect } from "react-router";
 
-import { buildLogoutURL } from "~/openid.server";
-import { destroySession, getSession } from "~/sessions.server";
+import { buildLogoutURL } from "~/.server/openid";
+import { destroySession, getSession } from "~/.server/sessions";
 
 import type { Route } from "./+types/logout";
 

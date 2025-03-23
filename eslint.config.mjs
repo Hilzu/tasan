@@ -101,7 +101,7 @@ export default tsEslint.config(
     },
   },
   {
-    files: ["**/*.client.ts", "**/*.client.tsx"],
+    files: ["**/*.client.ts", "**/*.client.tsx", "**/.client/**"],
     rules: {
       "n/no-unsupported-features/node-builtins": "off",
     },

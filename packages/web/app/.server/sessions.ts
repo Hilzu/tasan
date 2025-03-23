@@ -7,8 +7,8 @@ import {
 } from "@tasan/data";
 import { type CookieOptions, createSessionStorage } from "react-router";
 
+import { cookieSignSecrets } from "~/.server/secrets";
 import { originURL } from "~/config";
-import { cookieSignSecrets } from "~/secrets.server";
 
 interface SessionData {
   userID: UserID;

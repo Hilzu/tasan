@@ -1,9 +1,9 @@
 import { getUser } from "@tasan/data";
 import { Outlet } from "react-router";
 
+import { getSession } from "~/.server/sessions";
 import { Footer } from "~/components/footer";
 import { Header } from "~/components/header";
-import { getSession } from "~/sessions.server";
 
 import type { Route } from "./+types/layout";
 

@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
 
-import { getSessionOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/.server/auth";
 
 import type { Route } from "./+types/splits-parent";
 

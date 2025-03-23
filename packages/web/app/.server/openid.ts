@@ -8,8 +8,8 @@ import {
   randomState,
 } from "openid-client";
 
+import { authClientSecret } from "~/.server/secrets";
 import { authClientID, authServerURL, originURL } from "~/config";
-import { authClientSecret } from "~/secrets.server";
 
 const config = await discovery(authServerURL, authClientID, authClientSecret);
 

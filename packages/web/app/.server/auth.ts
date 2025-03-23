@@ -1,7 +1,7 @@
 import { getUser } from "@tasan/data";
 import { href, redirect } from "react-router";
 
-import { getSession } from "~/sessions.server";
+import { getSession } from "~/.server/sessions";
 
 export const getSessionOrRedirect = async (request: Request) => {
   const session = await getSession(request.headers.get("cookie"));

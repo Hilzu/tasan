@@ -1,7 +1,7 @@
 import { findUsersSplits } from "@tasan/data";
 import { href } from "react-router";
 
-import { getSessionOrRedirect } from "~/auth.server";
+import { getSessionOrRedirect } from "~/.server/auth";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";

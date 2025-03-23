@@ -1,7 +1,7 @@
 import { redirect } from "react-router";
 
-import { buildAuthorizationURL } from "~/openid.server";
-import { commitSession, getSession } from "~/sessions.server";
+import { buildAuthorizationURL } from "~/.server/openid";
+import { commitSession, getSession } from "~/.server/sessions";
 
 import type { Route } from "./+types/login";
 

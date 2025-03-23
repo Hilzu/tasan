@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { createStorage } from "~/utils.client";
+import { createStorage } from "~/.client/client-utils";
 
 const isBrowser = typeof window !== "undefined";
 

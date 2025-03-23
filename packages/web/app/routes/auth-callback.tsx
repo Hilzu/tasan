@@ -3,9 +3,9 @@ import { ensureCognitoUser, putUser } from "@tasan/data";
 import { redirect } from "react-router";
 import { z } from "zod";
 
+import { getTokens } from "~/.server/openid";
+import { commitSession, getSession } from "~/.server/sessions";
 import { originURL } from "~/config";
-import { getTokens } from "~/openid.server";
-import { commitSession, getSession } from "~/sessions.server";
 import { toRelativePath } from "~/url";
 
 import type { Route } from "./+types/auth-callback";
