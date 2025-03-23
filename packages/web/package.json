@@ -12,10 +12,10 @@
     }
   },
   "scripts": {
-    "build": "NODE_ENV=production react-router build --sourcemapServer",
+    "build": "react-router typegen && NODE_ENV=production react-router build --sourcemapServer",
     "clean": "rm -rf .react-router build dist node_modules/.vite",
     "dev": "react-router dev --host 0.0.0.0",
-    "test": "react-router typegen"
+    "test": "tsx --test"
   },
   "engines": {
     "node": "^22.11.0"
@@ -44,6 +44,7 @@
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "tailwindcss": "^4.0.15",
+    "tsx": "^4.19.3",
     "typescript": "catalog:",
     "vite": "^6.2.2",
     "vite-tsconfig-paths": "^5.1.4"

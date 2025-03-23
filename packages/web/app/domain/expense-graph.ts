@@ -1,9 +1,9 @@
-import { currencies } from "@tasan/common/currency";
+import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import * as G from "@tasan/common/graph";
-import type { SplitWithData } from "@tasan/data";
+import type { SplitExpense, SplitWithData } from "@tasan/data";
 
-const cancelMutual = (graph: G.Graph): G.Graph => {
+export const cancelMutual = (graph: G.Graph): G.Graph => {
   let newGraph = G.create();
   const skipEdgeMap = new WeakMap<G.Edge, boolean>();
 
@@ -31,12 +31,14 @@ const cancelMutual = (graph: G.Graph): G.Graph => {
   return newGraph;
 };
 
-const createGraphWithSplitCurrency = (split: SplitWithData) => {
+export const createGraphWithCurrency = (
+  currency: CurrencySymbol,
+  expenses: SplitExpense[],
+) => {
   let graph = G.create();
-  const { currency } = split;
   const fractions = currencies[currency].fractions;
 
-  for (const expense of split.expenses) {
+  for (const expense of expenses) {
     const { payer, conversionRate } = expense;
     for (const [userID, amountValue] of expense.participants) {
       if (userID === payer) continue;
@@ -50,5 +52,5 @@ const createGraphWithSplitCurrency = (split: SplitWithData) => {
 };
 
 export const calculateExpenseGraph = (split: SplitWithData) => {
-  return cancelMutual(createGraphWithSplitCurrency(split));
+  return cancelMutual(createGraphWithCurrency(split.currency, split.expenses));
 };
