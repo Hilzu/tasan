@@ -1,4 +1,4 @@
-import { currencies } from "@tasan/common/currency";
+import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
@@ -10,6 +10,17 @@ import { calculateGraph } from "~/domain/expense-graph";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/show-split";
+
+const showInCurrency = (
+  amount: D.Decimal,
+  currency: CurrencySymbol,
+  exchangeRate?: number,
+) => {
+  if (!exchangeRate) return "";
+  const fractions = currencies[currency].fractions;
+  const str = D.toString(D.mul(D.create(amount, fractions), exchangeRate));
+  return `(${currency} ${str})`;
+};
 
 export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
@@ -91,13 +102,16 @@ export default function ShowSplit(_: Route.ComponentProps) {
                   <div>
                     {users.find((u) => u.id === expense.payer)?.name} paid{" "}
                     {expense.currency} {D.toString(expense.amount)}{" "}
-                    {expense.conversionRate &&
-                      `(${split.currency} ${D.toString(D.mul(D.create(expense.amount, currencies[split.currency].fractions), expense.conversionRate))})`}
+                    {showInCurrency(
+                      expense.amount,
+                      split.currency,
+                      expense.conversionRate,
+                    )}
                   </div>
                   <div>
                     {D.equals(yourShare, 0) ?
                       "You didn't participate"
-                    : `Your share: ${expense.currency} ${D.toString(yourShare)}`
+                    : `Your share: ${expense.currency} ${D.toString(yourShare)} ${showInCurrency(yourShare, split.currency, expense.conversionRate)}`
                     }
                   </div>
                 </li>
