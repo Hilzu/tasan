@@ -45,7 +45,7 @@ const schema = zfd.formData(
       const code = z.ZodIssueCode.custom;
 
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (!data.participants || Object.keys(data.participants).length === 0) {
+      if (Object.keys(data.participants ?? {}).length === 0) {
         ctx.addIssue({
           code,
           path,
@@ -73,7 +73,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const splitID = asSplitID(params.splitID);
   const splitUsers = await findSplitUsers(splitID);
   if (!splitUsers.find((u) => u.userID === session.userID))
-    return new Response(null, { status: 403 });
+    throw new Response(null, { status: 403 });
 
   const formData = await request.formData();
   const result = validateOrRespond(schema, formData);
@@ -81,10 +81,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   const { data } = result;
 
   const expenseUserIDs = Object.keys(data.participants).map((k) => asUserID(k));
-  if (!expenseUserIDs.includes(asUserID(data.payer)))
-    return new Response("Payer must be a participant", { status: 400 });
-  if (expenseUserIDs.every((id) => splitUsers.find((u) => u.userID === id)))
-    return new Response("Participants must be in the split", { status: 400 });
+  if (expenseUserIDs.some((id) => !splitUsers.find((u) => u.userID === id)))
+    throw new Response("Participants must be in the split", { status: 403 });
 
   let conversionRate: number | undefined;
   if (data.currency !== data.splitCurrency) {

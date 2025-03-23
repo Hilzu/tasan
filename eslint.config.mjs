@@ -72,6 +72,10 @@ export default tsEslint.config(
               package: "react-router",
               name: "DataWithResponseInit",
             },
+            {
+              from: "lib",
+              name: "Response",
+            },
           ],
         },
       ],
