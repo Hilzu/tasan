@@ -7,6 +7,7 @@
     "./currency": "./dist/currency.js",
     "./currency-convert": "./dist/currency-convert.js",
     "./decimal": "./dist/decimal.js",
+    "./graph": "./dist/graph.js",
     "./id": "./dist/id.js",
     "./object": "./dist/object.js",
     "./tracing": "./dist/tracing.js",

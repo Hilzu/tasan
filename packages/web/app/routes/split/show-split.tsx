@@ -1,3 +1,4 @@
+import { currencies } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
@@ -5,6 +6,7 @@ import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
+import { calculateGraph } from "~/domain/expense-graph";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/show-split";
@@ -13,6 +15,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
+  const expenseGraph = calculateGraph(split);
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>
@@ -46,6 +49,23 @@ export default function ShowSplit(_: Route.ComponentProps) {
         </ul>
       </Card>
 
+      <Card heading={<SubHeading>Settlements</SubHeading>}>
+        <ul>
+          {Object.entries(expenseGraph).map(([from, edges]) => {
+            const fromName = users.find((u) => u.id === from)?.name;
+            return edges.map((edge) => {
+              const toName = users.find((u) => u.id === edge.to)?.name;
+              return (
+                <li key={from + edge.to}>
+                  {fromName} owes {toName} {split.currency}{" "}
+                  {D.toString(edge.amount)}
+                </li>
+              );
+            });
+          })}
+        </ul>
+      </Card>
+
       <Card
         heading={<SubHeading>Expenses</SubHeading>}
         action={
@@ -72,7 +92,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
                     {users.find((u) => u.id === expense.payer)?.name} paid{" "}
                     {expense.currency} {D.toString(expense.amount)}{" "}
                     {expense.conversionRate &&
-                      `(${split.currency} ${D.toString(D.mul(expense.amount, expense.conversionRate))})`}
+                      `(${split.currency} ${D.toString(D.mul(D.create(expense.amount, currencies[split.currency].fractions), expense.conversionRate))})`}
                   </div>
                   <div>
                     {D.equals(yourShare, 0) ?
