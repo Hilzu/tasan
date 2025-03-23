@@ -7,6 +7,7 @@
     "./currency": "./dist/currency.js",
     "./currency-convert": "./dist/currency-convert.js",
     "./decimal": "./dist/decimal.js",
+    "./id": "./dist/id.js",
     "./object": "./dist/object.js",
     "./tracing": "./dist/tracing.js",
     "./validation": "./dist/validation.js"
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "aws-xray-sdk-core": "^3.10.3",
+    "ulid": "^2.4.0",
     "zod": "^3.24.2"
   }
 }

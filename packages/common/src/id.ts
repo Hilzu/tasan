@@ -29,38 +29,26 @@ const asValidUUID = (id: string): string => {
 // user
 export type UserID = ID<"usr">;
 export const genUserID = () => genID("usr");
-export const asValidUserID = (id: string) => asValidID("usr", id);
-export function assertValidUserID(id: string): asserts id is UserID {
-  asValidUserID(id);
-}
+export const asUserID = (id: string) => asValidID("usr", id);
 
 // session
 export type SessionID = ID<"ses">;
 export const genSessionID = () => genID("ses");
-export const asValidSessionID = (id: string) => asValidID("ses", id);
-export function assertValidSessionID(id: string): asserts id is SessionID {
-  asValidSessionID(id);
-}
+export const asSessionID = (id: string) => asValidID("ses", id);
 
 // split
 export type SplitID = ID<"spl">;
 export const genSplitID = () => genID("spl");
-export const asValidSplitID = (id: string) => asValidID("spl", id);
-export function assertValidSplitID(id: string): asserts id is SplitID {
-  asValidSplitID(id);
-}
+export const asSplitID = (id: string) => asValidID("spl", id);
 
 // invite
 export type InviteID = ID<"inv">;
 export const genInviteID = () => genID("inv");
-export const asValidInviteID = (id: string) => asValidID("inv", id);
-export function assertValidInviteID(id: string): asserts id is InviteID {
-  asValidInviteID(id);
-}
+export const asInviteID = (id: string) => asValidID("inv", id);
 
 // Cognito user
 export type CognitoUserID = ID<"cog">;
-export const asValidCognitoUserID = (id: string) => {
+export const asCognitoUserID = (id: string) => {
   const uuid = id.split("cog_").at(-1);
   if (!uuid) throw new Error(`Invalid Cognito user id: ${id}`);
   return `cog_${asValidUUID(uuid)}` as CognitoUserID;
@@ -69,7 +57,4 @@ export const asValidCognitoUserID = (id: string) => {
 // expense
 export type ExpenseID = ID<"exp">;
 export const genExpenseID = () => genID("exp");
-export const asValidExpenseID = (id: string) => asValidID("exp", id);
-export function assertValidExpenseID(id: string): asserts id is ExpenseID {
-  asValidExpenseID(id);
-}
+export const asExpenseID = (id: string) => asValidID("exp", id);

@@ -1,8 +1,13 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import * as Decimal from "@tasan/common/decimal";
-import { currencySchema, currencySymbolSchema } from "@tasan/common/validation";
-import { createSplitExpense, getSplitUser } from "@tasan/data";
+import { asSplitID, asUserID } from "@tasan/common/id";
+import {
+  currencySymbolSchema,
+  decimalSchema,
+  userIDSchema,
+} from "@tasan/common/validation";
+import { createSplitExpense, findSplitUsers } from "@tasan/data";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Form, href, redirect, useRouteLoaderData } from "react-router";
 import { z } from "zod";
@@ -31,10 +36,10 @@ const schema = zfd.formData(
       name: zfd.text(z.string().min(1).max(64)),
       currency: zfd.text(currencySymbolSchema),
       splitCurrency: zfd.text(currencySymbolSchema),
-      amount: zfd.numeric(currencySchema),
-      payer: zfd.text(z.string()),
+      amount: zfd.numeric(decimalSchema),
+      payer: zfd.text(userIDSchema),
     })
-    .catchall(z.record(zfd.numeric(currencySchema)))
+    .catchall(z.record(zfd.numeric(decimalSchema)))
     .superRefine((data, ctx) => {
       const path = ["participants"];
       const code = z.ZodIssueCode.custom;
@@ -65,16 +70,21 @@ export async function action({ request, params }: Route.ActionArgs) {
   const session = await getSessionOrRedirect(request);
   if (session instanceof Response) return session;
 
-  const splitUser = await getSplitUser({
-    splitID: params.splitID,
-    userID: session.userID,
-  });
-  if (!splitUser) return new Response(null, { status: 404 });
+  const splitID = asSplitID(params.splitID);
+  const splitUsers = await findSplitUsers(splitID);
+  if (!splitUsers.find((u) => u.userID === session.userID))
+    return new Response(null, { status: 403 });
 
   const formData = await request.formData();
   const result = validateOrRespond(schema, formData);
   if (result.response) return result.response;
   const { data } = result;
+
+  const expenseUserIDs = Object.keys(data.participants).map((k) => asUserID(k));
+  if (!expenseUserIDs.includes(asUserID(data.payer)))
+    return new Response("Payer must be a participant", { status: 400 });
+  if (expenseUserIDs.every((id) => splitUsers.find((u) => u.userID === id)))
+    return new Response("Participants must be in the split", { status: 400 });
 
   let conversionRate: number | undefined;
   if (data.currency !== data.splitCurrency) {
@@ -85,17 +95,17 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   await createSplitExpense({
-    splitID: splitUser.splitID,
+    splitID: splitID,
     name: data.name,
     currency: data.currency,
     conversionRate,
     amount: data.amount,
     payer: data.payer,
     participants: data.participants,
-    createdBy: splitUser.userID,
+    createdBy: session.userID,
   });
 
-  return redirect(href("/splits/:splitID", { splitID: splitUser.splitID }));
+  return redirect(href("/splits/:splitID", { splitID }));
 }
 
 export default function NewExpense({ actionData }: Route.ComponentProps) {

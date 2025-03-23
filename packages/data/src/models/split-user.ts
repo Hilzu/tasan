@@ -1,19 +1,14 @@
 import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import type { SplitID, UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { reversedKeyIndexName, TableName } from "../config.js";
-import {
-  assertValidSplitID,
-  assertValidUserID,
-  type SplitID,
-  type UserID,
-} from "../ids.js";
 
 export interface SplitUser {
-  userID: string;
-  splitID: string;
-  createdBy: string;
+  userID: UserID;
+  splitID: SplitID;
+  createdBy: UserID;
 }
 
 interface SplitUserItem {
@@ -25,13 +20,18 @@ interface SplitUserItem {
 
 type PrimaryKey = Pick<SplitUserItem, "pk" | "sk">;
 
+const fromItem = (Item: Record<string, unknown>): SplitUser => {
+  const item = Item as unknown as SplitUserItem;
+  return {
+    userID: item.sk,
+    splitID: item.pk,
+    createdBy: item.createdBy,
+  };
+};
+
 export const createSplitUser = captureAsync(
   "createSplitUser",
   async (splitUser: SplitUser): Promise<void> => {
-    assertValidUserID(splitUser.userID);
-    assertValidUserID(splitUser.createdBy);
-    assertValidSplitID(splitUser.splitID);
-
     const Item: SplitUserItem = {
       pk: splitUser.splitID,
       sk: splitUser.userID,
@@ -46,9 +46,7 @@ export const createSplitUser = captureAsync(
 
 export const findUserSplitIDs = captureAsync(
   "findUserSplitIDs",
-  async (userID: string): Promise<SplitID[]> => {
-    assertValidUserID(userID);
-
+  async (userID: UserID): Promise<SplitID[]> => {
     const cmd = new QueryCommand({
       TableName,
       IndexName: reversedKeyIndexName,
@@ -65,22 +63,27 @@ export const findUserSplitIDs = captureAsync(
 
 export const getSplitUser = captureAsync(
   "getSplitUser",
-  async ({
-    userID,
-    splitID,
-  }: Pick<SplitUser, "userID" | "splitID">): Promise<SplitUser | undefined> => {
-    assertValidUserID(userID);
-    assertValidSplitID(splitID);
-
+  async (userID: UserID, splitID: SplitID): Promise<SplitUser | undefined> => {
     const Key: PrimaryKey = { pk: splitID, sk: userID };
     const cmd = new GetCommand({ TableName, Key });
     const { Item } = await documentClient().send(cmd);
     if (!Item) return;
-    const item = Item as SplitUserItem;
-    return {
-      splitID: item.pk,
-      userID: item.sk,
-      createdBy: item.createdBy,
-    };
+    return fromItem(Item);
+  },
+);
+
+export const findSplitUsers = captureAsync(
+  "findSplitUsers",
+  async (splitID: SplitID): Promise<SplitUser[]> => {
+    const cmd = new QueryCommand({
+      TableName,
+      KeyConditionExpression: "pk = :pk and begins_with(sk, :prefix)",
+      ExpressionAttributeValues: { ":pk": splitID, ":prefix": "usr_" },
+    });
+
+    const { Items } = await documentClient().send(cmd);
+    if (!Items?.length) return [];
+
+    return Items.map((item) => fromItem(item));
   },
 );

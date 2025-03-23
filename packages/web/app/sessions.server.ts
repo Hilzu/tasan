@@ -1,3 +1,4 @@
+import { asSessionID, type UserID } from "@tasan/common/id";
 import {
   createSession,
   deleteSession,
@@ -10,7 +11,7 @@ import { originURL } from "~/config";
 import { cookieSignSecrets } from "~/secrets.server";
 
 interface SessionData {
-  userID: string;
+  userID: UserID;
   authState: string;
   authNonce: string;
   authRedirect: string;
@@ -30,17 +31,21 @@ const createDataSessionStorage = (
       return id;
     },
     async readData(id) {
-      const session = await getSessionData(id);
+      const session = await getSessionData(asSessionID(id));
       if (!session) return null;
       return session;
     },
     async updateData(id, data, expires) {
       if (!expires) throw new Error("Missing expires");
 
-      await putSession({ ...data, id, expiresAt: expires });
+      await putSession({
+        ...data,
+        id: asSessionID(id),
+        expiresAt: expires,
+      });
     },
     async deleteData(id) {
-      await deleteSession(id);
+      await deleteSession(asSessionID(id));
     },
   });
 };

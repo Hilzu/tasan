@@ -1,3 +1,4 @@
+import { asInviteID } from "@tasan/common/id";
 import {
   createSplitUser,
   deleteInviteForSplit,
@@ -17,7 +18,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
-  const inviteForSplit = await findInviteForSplit(inviteID);
+  const inviteForSplit = await findInviteForSplit(asInviteID(inviteID));
   if (!inviteForSplit) throw new Error("Invite not found");
 
   const split = await getSplit(inviteForSplit.splitID);
@@ -31,7 +32,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
-  const inviteForSplit = await findInviteForSplit(inviteID);
+  const inviteForSplit = await findInviteForSplit(asInviteID(inviteID));
   if (!inviteForSplit) throw new Error("Invite not found");
 
   await Promise.all([

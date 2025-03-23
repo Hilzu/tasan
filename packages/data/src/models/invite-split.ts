@@ -1,23 +1,20 @@
 import { DeleteCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  genInviteID,
+  type InviteID,
+  type SplitID,
+  type UserID,
+} from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { toUnixTime } from "../date.js";
-import {
-  assertValidInviteID,
-  assertValidSplitID,
-  assertValidUserID,
-  genInviteID,
-  type InviteID,
-  type SplitID,
-  type UserID,
-} from "../ids.js";
 
 export interface InviteForSplit {
-  id: string;
-  splitID: string;
-  createdBy: string;
+  id: InviteID;
+  splitID: SplitID;
+  createdBy: UserID;
 }
 
 export interface InviteSplitItem {
@@ -38,9 +35,6 @@ export const createInviteForSplit = captureAsync(
     splitID,
     createdBy,
   }: CreateInviteForSplit): Promise<{ id: string }> => {
-    assertValidSplitID(splitID);
-    assertValidUserID(createdBy);
-
     const id = genInviteID();
     const fiveDaysFromNow = new Date();
     fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
@@ -59,9 +53,7 @@ export const createInviteForSplit = captureAsync(
 
 export const findInviteForSplit = captureAsync(
   "findInviteForSplit",
-  async (inviteId: string): Promise<InviteForSplit | undefined> => {
-    assertValidInviteID(inviteId);
-
+  async (inviteId: InviteID): Promise<InviteForSplit | undefined> => {
     const cmd = new QueryCommand({
       TableName,
       KeyConditionExpression: "pk = :pk and begins_with(sk, :prefix)",
@@ -83,9 +75,7 @@ export const findInviteForSplit = captureAsync(
 
 export const deleteInviteForSplit = captureAsync(
   "deleteInviteForSplit",
-  async (inviteID: string, splitID: string): Promise<void> => {
-    assertValidInviteID(inviteID);
-    assertValidSplitID(splitID);
+  async (inviteID: InviteID, splitID: SplitID): Promise<void> => {
     const Key: PrimaryKey = { pk: inviteID, sk: splitID };
     const cmd = new DeleteCommand({ TableName, Key });
     await documentClient().send(cmd);

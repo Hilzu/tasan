@@ -1,3 +1,4 @@
+import { cognitoIDSchema } from "@tasan/common/validation";
 import { ensureCognitoUser, putUser } from "@tasan/data";
 import { redirect } from "react-router";
 import { z } from "zod";
@@ -10,7 +11,7 @@ import { toRelativePath } from "~/url";
 import type { Route } from "./+types/auth-callback";
 
 const claimsSchema = z.object({
-  sub: z.string().uuid(),
+  sub: cognitoIDSchema,
   email: z.string().email(),
   "cognito:username": z.string().min(1),
 });

@@ -4,18 +4,17 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { CurrencySymbol } from "@tasan/common/currency";
+import {
+  asUserID,
+  genSplitID,
+  type SplitID,
+  type UserID,
+} from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { compareById } from "../compare.js";
 import { TableName } from "../config.js";
-import {
-  assertValidSplitID,
-  assertValidUserID,
-  genSplitID,
-  type SplitID,
-  type UserID,
-} from "../ids.js";
 import {
   fromItem as fromExpenseItem,
   type SplitExpense,
@@ -23,9 +22,9 @@ import {
 import { createSplitUser, findUserSplitIDs } from "./split-user.js";
 
 export interface Split {
-  id: string;
+  id: SplitID;
   name: string;
-  createdBy: string;
+  createdBy: UserID;
   createdAt: Date;
   currency: CurrencySymbol;
 }
@@ -56,8 +55,7 @@ export type CreateSplit = Omit<Split, "id" | "users" | "createdAt">;
 
 export const createSplit = captureAsync(
   "createSplit",
-  async (split: CreateSplit): Promise<{ id: string }> => {
-    assertValidUserID(split.createdBy);
+  async (split: CreateSplit): Promise<{ id: SplitID }> => {
     const id = genSplitID();
     const Item: SplitItem = {
       pk: id,
@@ -83,9 +81,7 @@ export const createSplit = captureAsync(
 
 export const findUsersSplits = captureAsync(
   "findUsersSplits",
-  async (userID: string): Promise<Split[]> => {
-    assertValidUserID(userID);
-
+  async (userID: UserID): Promise<Split[]> => {
     const splitIDs = await findUserSplitIDs(userID);
     if (!splitIDs.length) return [];
 
@@ -106,15 +102,13 @@ export const findUsersSplits = captureAsync(
 );
 
 export type SplitWithData = Split & {
-  userIDs: Set<string>;
+  userIDs: Set<UserID>;
   expenses: SplitExpense[];
 };
 
 export const getSplit = captureAsync(
   "getSplit",
-  async (splitID: string): Promise<SplitWithData | undefined> => {
-    assertValidSplitID(splitID);
-
+  async (splitID: SplitID): Promise<SplitWithData | undefined> => {
     const paginator = paginateQuery(
       { client: documentClient() },
       {
@@ -131,12 +125,12 @@ export const getSplit = captureAsync(
     if (!Items.length) return;
 
     let split: Split | undefined;
-    const userIDs = new Set<string>();
+    const userIDs = new Set<UserID>();
     const expenses: SplitExpense[] = [];
     for (const Item of Items) {
       if (typeof Item.sk !== "string") continue;
       if (Item.sk === splitID) split = fromItem(Item);
-      else if (Item.sk.startsWith("usr_")) userIDs.add(Item.sk);
+      else if (Item.sk.startsWith("usr_")) userIDs.add(asUserID(Item.sk));
       else if (Item.sk.startsWith("exp_")) expenses.push(fromExpenseItem(Item));
     }
     expenses.reverse();

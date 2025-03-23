@@ -1,21 +1,15 @@
 import { DeleteCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { genSessionID, type SessionID, type UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { fromUnixTime, toUnixTime } from "../date.js";
-import {
-  assertValidSessionID,
-  asValidUserID,
-  genSessionID,
-  type SessionID,
-  type UserID,
-} from "../ids.js";
 import { memoizeSingleFlight } from "../promise.js";
 
 export interface Session {
-  id: string;
-  userID?: string;
+  id: SessionID;
+  userID?: UserID;
   expiresAt: Date;
   authState?: string;
   authNonce?: string;
@@ -42,13 +36,12 @@ type PrimaryKey = Pick<SessionItem, "pk" | "sk">;
 export const putSession = captureAsync(
   "putSession",
   async (session: Session): Promise<void> => {
-    assertValidSessionID(session.id);
     const Item: SessionItem = {
       pk: session.id,
       sk: session.id,
       createdAt: new Date().toISOString(),
       expiresAt: toUnixTime(session.expiresAt),
-      forUser: session.userID ? asValidUserID(session.userID) : undefined,
+      forUser: session.userID,
       authState: session.authState,
       authNonce: session.authNonce,
       authRedirect: session.authRedirect,
@@ -64,7 +57,7 @@ export type CreateSession = Omit<Session, "id">;
 
 export const createSession = captureAsync(
   "createSession",
-  async (session: CreateSession): Promise<{ id: string }> => {
+  async (session: CreateSession): Promise<{ id: SessionID }> => {
     const id = genSessionID();
     await putSession({ ...session, id });
     return { id };
@@ -73,8 +66,7 @@ export const createSession = captureAsync(
 
 export const getSession = captureAsync(
   "getSession",
-  memoizeSingleFlight(async (id: string): Promise<Session | undefined> => {
-    assertValidSessionID(id);
+  memoizeSingleFlight(async (id: SessionID): Promise<Session | undefined> => {
     const Key: PrimaryKey = { pk: id, sk: id };
     const cmd = new GetCommand({
       TableName,
@@ -98,8 +90,7 @@ export const getSession = captureAsync(
 
 export const deleteSession = captureAsync(
   "deleteSession",
-  async (id: string): Promise<void> => {
-    assertValidSessionID(id);
+  async (id: SessionID): Promise<void> => {
     const Key: PrimaryKey = { pk: id, sk: id };
     const deleteCmd = new DeleteCommand({
       TableName,

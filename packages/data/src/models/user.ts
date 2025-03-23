@@ -1,17 +1,12 @@
 import { BatchGetCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import type { UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import {
-  assertValidUserID,
-  asValidUserID,
-  genUserID,
-  type UserID,
-} from "../ids.js";
 
 export interface User {
-  id: string;
+  id: UserID;
   name: string;
   email: string;
 }
@@ -38,7 +33,6 @@ const fromItem = (Item: Record<string, unknown>): User => {
 export const putUser = captureAsync(
   "putUser",
   async (user: User): Promise<void> => {
-    assertValidUserID(user.id);
     const Item: UserItem = {
       pk: user.id,
       sk: user.id,
@@ -51,20 +45,9 @@ export const putUser = captureAsync(
   },
 );
 
-export type CreateUser = Omit<User, "id">;
-export const createUser = captureAsync(
-  "createUser",
-  async (user: CreateUser): Promise<{ id: string }> => {
-    const id = genUserID();
-    await putUser({ ...user, id });
-    return { id };
-  },
-);
-
 export const getUser = captureAsync(
   "getUser",
-  async (id: string): Promise<User | undefined> => {
-    assertValidUserID(id);
+  async (id: UserID): Promise<User | undefined> => {
     const Key: PrimaryKey = { pk: id, sk: id };
     const cmd = new GetCommand({ TableName, Key });
     const { Item } = await documentClient().send(cmd);
@@ -75,10 +58,9 @@ export const getUser = captureAsync(
 
 export const getUsers = captureAsync(
   "getUsers",
-  async (idSet: Set<string>): Promise<User[]> => {
+  async (idSet: Set<UserID>): Promise<User[]> => {
     const pks = Array.from(idSet, (id) => {
-      const userId = asValidUserID(id);
-      return { pk: userId, sk: userId } satisfies PrimaryKey;
+      return { pk: id, sk: id } satisfies PrimaryKey;
     });
     if (!pks.length) return [];
     const cmd = new BatchGetCommand({

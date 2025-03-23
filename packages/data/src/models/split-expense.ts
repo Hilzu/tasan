@@ -1,31 +1,29 @@
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as Decimal from "@tasan/common/decimal";
+import {
+  type ExpenseID,
+  genExpenseID,
+  type SplitID,
+  type UserID,
+} from "@tasan/common/id";
 import { mapObjectValues } from "@tasan/common/object";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import {
-  assertValidSplitID,
-  assertValidUserID,
-  type ExpenseID,
-  genExpenseID,
-  type SplitID,
-  type UserID,
-} from "../ids.js";
 
 export interface SplitExpense {
-  id: string;
-  splitID: string;
+  id: ExpenseID;
+  splitID: SplitID;
   name: string;
   amount: Decimal.Decimal;
-  createdBy: string;
+  createdBy: UserID;
   createdAt: Date;
   currency: CurrencySymbol;
   conversionRate?: number;
-  payer: string;
-  participants: Record<string, Decimal.Decimal>;
+  payer: UserID;
+  participants: Record<UserID, Decimal.Decimal>;
 }
 
 interface SplitExpenseItem {
@@ -67,12 +65,6 @@ export type CreateSplitExpense = Omit<SplitExpense, "id" | "createdAt">;
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
   async (expense: CreateSplitExpense): Promise<{ id: string }> => {
-    assertValidUserID(expense.createdBy);
-    assertValidUserID(expense.payer);
-    assertValidSplitID(expense.splitID);
-    for (const userID of Object.keys(expense.participants)) {
-      assertValidUserID(userID);
-    }
     const id = genExpenseID();
     const Item: SplitExpenseItem = {
       pk: expense.splitID,

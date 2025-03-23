@@ -1,7 +1,8 @@
-import { z } from "zod";
+import { type RefinementCtx, z } from "zod";
 
 import { currencies, type CurrencySymbol } from "./currency.js";
 import * as Decimal from "./decimal.js";
+import { asCognitoUserID, asUserID } from "./id.js";
 
 export const currencySymbolSchema = z
   .string()
@@ -10,8 +11,29 @@ export const currencySymbolSchema = z
     "Invalid currency symbol",
   );
 
-export const currencySchema = z
+export const decimalSchema = z
   .number()
   .positive()
   .finite()
   .transform((c) => Decimal.create(c));
+
+const validateID =
+  <T>(validateFN: (id: string) => T) =>
+  (id: string, ctx: RefinementCtx): T => {
+    try {
+      return validateFN(id);
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid ID",
+        params: { id },
+      });
+      return z.NEVER;
+    }
+  };
+
+export const cognitoIDSchema = z
+  .string()
+  .transform(validateID(asCognitoUserID));
+
+export const userIDSchema = z.string().transform(validateID(asUserID));

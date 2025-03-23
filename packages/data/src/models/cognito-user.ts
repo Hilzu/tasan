@@ -1,18 +1,13 @@
 import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { type CognitoUserID, genUserID, type UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import {
-  asValidCognitoUserID,
-  type CognitoUserID,
-  genUserID,
-  type UserID,
-} from "../ids.js";
 
 export interface CognitoUser {
-  cognitoID: string;
-  userID: string;
+  cognitoID: CognitoUserID;
+  userID: UserID;
   createdAt: Date;
 }
 
@@ -38,7 +33,7 @@ export const getCognitoUser = captureAsync(
       TableName,
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
       ExpressionAttributeValues: {
-        ":pk": asValidCognitoUserID(cognitoID),
+        ":pk": cognitoID,
         ":sk": "usr_",
       },
       Limit: 1,
@@ -53,7 +48,7 @@ type PutCognitoUser = Omit<CognitoUser, "createdAt" | "userID">;
 
 export const ensureCognitoUser = captureAsync(
   "ensureCognitoUser",
-  async ({ cognitoID }: PutCognitoUser): Promise<{ userID: string }> => {
+  async ({ cognitoID }: PutCognitoUser): Promise<{ userID: UserID }> => {
     const cognitoUser = await getCognitoUser(cognitoID);
     if (cognitoUser) return { userID: cognitoUser.userID };
 
@@ -61,7 +56,7 @@ export const ensureCognitoUser = captureAsync(
     const cmd = new PutCommand({
       TableName,
       Item: {
-        pk: asValidCognitoUserID(cognitoID),
+        pk: cognitoID,
         sk: userID,
         createdAt: new Date().toISOString(),
       },
