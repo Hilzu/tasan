@@ -5,7 +5,14 @@ import type {
   CloudFrontResultResponse,
 } from "aws-lambda";
 
-const probePrefixes = ["//", "/wp-admin", "/wordpress", "/.env", "/.git"];
+const probePrefixes = [
+  "//",
+  "/wp-admin",
+  "/wordpress",
+  "/.env",
+  "/.git",
+  "/wp-content",
+];
 
 // eslint-disable-next-line @typescript-eslint/require-await
 export const handler: CloudFrontRequestHandler = async (event) => {

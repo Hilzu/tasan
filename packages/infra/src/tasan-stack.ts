@@ -18,7 +18,7 @@ import {
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import type { Construct } from "constructs";
 
-const publicRootFiles = ["favicon.ico"];
+const publicRootFiles = ["favicon.ico", "robots.txt"];
 
 export class TasanStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps) {
