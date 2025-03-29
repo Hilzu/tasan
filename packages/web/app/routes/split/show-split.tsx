@@ -7,20 +7,11 @@ import { Card } from "~/components/card";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
 import { calculateExpenseGraph } from "~/domain/expense-graph";
+import { showInCurrency } from "~/domain/show-in-currency";
+import ExpenseListItem from "~/routes/split/components/expense-list.item";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/show-split";
-
-const showInCurrency = (
-  amount: D.Decimal,
-  currency: CurrencySymbol,
-  exchangeRate?: number,
-) => {
-  if (!exchangeRate) return "";
-  const fractions = currencies[currency].fractions;
-  const str = D.toString(D.mul(D.create(amount, fractions), exchangeRate));
-  return `(${currency} ${str})`;
-};
 
 export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
@@ -60,8 +51,10 @@ export default function ShowSplit(_: Route.ComponentProps) {
         </ul>
       </Card>
 
-      <Card heading={<SubHeading>Settlements</SubHeading>}>
+      <Card heading={<SubHeading>Debts</SubHeading>}>
         <ul>
+          {expenseGraph.size === 0 &&
+            "No debts between participants. You are all settled!"}
           {[...expenseGraph].map(([from, edges]) => {
             const fromName = users.find((u) => u.id === from)?.name;
             return edges.map((edge) => {
@@ -91,39 +84,15 @@ export default function ShowSplit(_: Route.ComponentProps) {
         {split.expenses.length === 0 ?
           "No expenses yet."
         : <ul className="space-y-2">
-            {split.expenses.map((expense) => {
-              const yourShare =
-                expense.participants.get(session.userID) ?? D.create(0);
-              return (
-                <li key={expense.id}>
-                  <div>
-                    {expense.name} - {expense.createdAt.toISOString()}
-                  </div>
-                  <div>
-                    {users.find((u) => u.id === expense.payer)?.name} paid{" "}
-                    {expense.currency} {D.toString(expense.amount)}{" "}
-                    {showInCurrency(
-                      expense.amount,
-                      split.currency,
-                      expense.conversionRate,
-                    )}
-                  </div>
-                  <div>
-                    {D.equals(yourShare, 0) ?
-                      "You didn't participate"
-                    : <>
-                        Your share: {expense.currency} {D.toString(yourShare)}{" "}
-                        {showInCurrency(
-                          yourShare,
-                          split.currency,
-                          expense.conversionRate,
-                        )}
-                      </>
-                    }
-                  </div>
-                </li>
-              );
-            })}
+            {split.expenses.map((expense) => (
+              <ExpenseListItem
+                key={expense.id}
+                expense={expense}
+                currency={split.currency}
+                users={users}
+                currentUserID={session.userID}
+              />
+            ))}
           </ul>
         }
       </Card>
