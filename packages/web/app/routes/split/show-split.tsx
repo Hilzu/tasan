@@ -3,8 +3,10 @@ import { href, useRouteLoaderData } from "react-router";
 
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
+import { DescriptionList } from "~/components/description-list";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
+import { useLanguage } from "~/context";
 import { calculateExpenseGraph } from "~/domain/expense-graph";
 import ExpenseListItem from "~/routes/split/components/expense-list-item";
 import type { SplitLoader } from "~/routes/split/split-parent";
@@ -12,6 +14,7 @@ import type { SplitLoader } from "~/routes/split/split-parent";
 import type { Route } from "./+types/show-split";
 
 export default function ShowSplit(_: Route.ComponentProps) {
+  const language = useLanguage();
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
@@ -19,12 +22,14 @@ export default function ShowSplit(_: Route.ComponentProps) {
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>
-      <dl className="mb-2 grid grid-cols-[max-content_auto] gap-x-4">
-        <dt>Home currency:</dt>
-        <dd>{split.currency}</dd>
-        <dt>Created by:</dt>
-        <dd>{users.find((u) => u.id === split.createdBy)?.name}</dd>
-      </dl>
+      <DescriptionList
+        className="mb-2"
+        items={[
+          ["Created at", split.createdAt.toLocaleString(language)],
+          ["Home currency", split.currency],
+          ["Created by", users.find((u) => u.id === split.createdBy)?.name],
+        ]}
+      />
 
       <Card
         heading={<SubHeading>Participants</SubHeading>}
@@ -89,6 +94,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
                 currency={split.currency}
                 users={users}
                 currentUserID={session.userID}
+                splitID={split.id}
               />
             ))}
           </ul>

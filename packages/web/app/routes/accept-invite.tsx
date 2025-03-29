@@ -3,7 +3,7 @@ import {
   createSplitUser,
   deleteInviteForSplit,
   findInviteForSplit,
-  getSplit,
+  getSplitWithData,
 } from "@tasan/data";
 import { Form, href, redirect } from "react-router";
 
@@ -21,7 +21,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const inviteForSplit = await findInviteForSplit(asInviteID(inviteID));
   if (!inviteForSplit) throw new Error("Invite not found");
 
-  const split = await getSplit(inviteForSplit.splitID);
+  const split = await getSplitWithData(inviteForSplit.splitID);
   if (!split) throw new Error("Split not found");
 
   return { split };

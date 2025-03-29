@@ -1,5 +1,5 @@
 import { asSplitID } from "@tasan/common/id";
-import { getSplit, getSplitUser, getUsers } from "@tasan/data";
+import { getSplitUser, getSplitWithData, getUsers } from "@tasan/data";
 import { data, Outlet } from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
@@ -18,7 +18,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const splitUser = await getSplitUser(session.userID, splitID);
   if (!splitUser) throw data(null, { status: 404 });
 
-  const split = await getSplit(splitID);
+  const split = await getSplitWithData(splitID);
   if (!split) throw new Error("Split not found");
   const users = await getUsers(split.userIDs);
   return { split, users, session };

@@ -1,4 +1,5 @@
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
+import { compareByKey } from "@tasan/common/compare";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import {
@@ -43,6 +44,11 @@ interface SplitExpenseItem {
 export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   const item = Item as unknown as SplitExpenseItem;
   const fractionDigits = currencies[item.currency].fractions;
+  const participants = new Map(
+    Object.entries(item.participants)
+      .sort(compareByKey)
+      .map(([k, v]) => [k as UserID, D.create(v, fractionDigits)]),
+  );
   return {
     id: item.sk,
     splitID: item.pk,
@@ -53,12 +59,7 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
     currency: item.currency,
     conversionRate: item.conversionRate,
     payer: item.payer,
-    participants: new Map(
-      Object.entries(item.participants).map(([k, v]) => [
-        k as UserID,
-        D.create(v, fractionDigits),
-      ]),
-    ),
+    participants,
   };
 };
 

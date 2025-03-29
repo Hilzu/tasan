@@ -4,6 +4,7 @@
   "type": "module",
   "main": "./dist/main.mjs",
   "exports": {
+    "./compare": "./dist/compare.js",
     "./currency": "./dist/currency.js",
     "./currency-convert": "./dist/currency-convert.js",
     "./decimal": "./dist/decimal.js",

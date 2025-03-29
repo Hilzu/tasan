@@ -1,10 +1,11 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import type { UserID } from "@tasan/common/id";
+import type { SplitID, UserID } from "@tasan/common/id";
 import type { SplitExpense, User } from "@tasan/data";
-import { useContext } from "react";
+import { href } from "react-router";
 
-import { LanguageContext } from "~/context";
+import { Link } from "~/components/link";
+import { useLanguage } from "~/context";
 import { showInCurrency } from "~/domain/show-in-currency";
 
 export interface ExpenseListItemProps {
@@ -12,6 +13,7 @@ export interface ExpenseListItemProps {
   currency: CurrencySymbol;
   users: User[];
   currentUserID: UserID;
+  splitID: SplitID;
 }
 
 export default function ExpenseListItem({
@@ -19,12 +21,22 @@ export default function ExpenseListItem({
   currency,
   users,
   currentUserID,
+  splitID,
 }: ExpenseListItemProps) {
-  const language = useContext(LanguageContext);
+  const language = useLanguage();
   const yourShare = expense.participants.get(currentUserID) ?? D.create(0);
   return (
     <li>
-      <div className="font-semibold">{expense.name}</div>
+      <div className="font-semibold">
+        <Link
+          to={href("/splits/:splitID/:expenseID", {
+            splitID,
+            expenseID: expense.id,
+          })}
+        >
+          {expense.name}
+        </Link>
+      </div>
       <div>
         {expense.currency} {D.toString(expense.amount)}{" "}
         {showInCurrency(expense.amount, currency, expense.conversionRate)} paid

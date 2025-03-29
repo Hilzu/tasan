@@ -3,6 +3,7 @@ import {
   paginateQuery,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { compareById } from "@tasan/common/compare";
 import type { CurrencySymbol } from "@tasan/common/currency";
 import {
   asUserID,
@@ -13,7 +14,6 @@ import {
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
-import { compareById } from "../compare.js";
 import { TableName } from "../config.js";
 import {
   fromItem as fromExpenseItem,
@@ -106,8 +106,8 @@ export type SplitWithData = Split & {
   expenses: SplitExpense[];
 };
 
-export const getSplit = captureAsync(
-  "getSplit",
+export const getSplitWithData = captureAsync(
+  "getSplitWithData",
   async (splitID: SplitID): Promise<SplitWithData | undefined> => {
     const paginator = paginateQuery(
       { client: documentClient() },
