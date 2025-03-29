@@ -1,6 +1,7 @@
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import {
+  CurrencyInputField,
   InputField,
   RadioGroupField,
   SelectField,
@@ -32,6 +33,7 @@ export default function Components(_: Route.ComponentProps) {
       <section className="space-x-4">
         <Button>Primary</Button>
         <Button variant="secondary">Secondary</Button>
+        <Button variant="danger">Danger</Button>
       </section>
 
       <SubHeading className="mt-4">Input Field</SubHeading>
@@ -94,6 +96,15 @@ export default function Components(_: Route.ComponentProps) {
           },
           { value: "3", label: "Option 3", name: "radio2" },
         ]}
+      />
+
+      <SubHeading className="mt-4">Currency input</SubHeading>
+      <CurrencyInputField
+        label="Currency"
+        currencySymbol="HKD"
+        onDecimalChange={(...args) => {
+          console.log("onDecimalChange", ...args);
+        }}
       />
 
       <SubHeading className="mt-4">Card</SubHeading>

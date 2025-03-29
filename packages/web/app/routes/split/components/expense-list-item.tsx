@@ -46,7 +46,7 @@ export default function ExpenseListItem({
         {D.equals(yourShare, 0) ?
           "You didn't participate"
         : <>
-            Your share: {expense.currency} {D.toString(yourShare)}{" "}
+            Your share is {expense.currency} {D.toString(yourShare)}{" "}
             {showInCurrency(yourShare, currency, expense.conversionRate)}
           </>
         }

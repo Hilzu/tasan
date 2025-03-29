@@ -2,7 +2,7 @@ import classNames from "classnames";
 import type { ComponentProps } from "react";
 
 type ButtonProps = ComponentProps<"button"> & {
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "danger";
 };
 
 export function Button({
@@ -21,6 +21,8 @@ export function Button({
         variant === "primary" && "bg-brand-500 hover:bg-brand-600 text-white",
         variant === "secondary" &&
           "border-brand-500 border bg-white hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-700",
+        variant === "danger" &&
+          "border-red-500 bg-red-100 text-red-500 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-700",
       )}
     >
       {children}

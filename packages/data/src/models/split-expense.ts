@@ -1,4 +1,4 @@
-import { PutCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
@@ -37,9 +37,11 @@ interface SplitExpenseItem {
   conversionRate?: number;
   payer: UserID;
   participants: Record<UserID, number>;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
-// type PrimaryKey = Pick<SplitExpenseItem, "pk" | "sk">;
+type PrimaryKey = Pick<SplitExpenseItem, "pk" | "sk">;
 
 export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   const item = Item as unknown as SplitExpenseItem;
@@ -87,5 +89,34 @@ export const createSplitExpense = captureAsync(
 
     await documentClient().send(cmd);
     return { id };
+  },
+);
+
+const getSplitExpenseItem = captureAsync(
+  "getSplitExpenseItem",
+  async (
+    splitID: SplitID,
+    expenseID: ExpenseID,
+  ): Promise<SplitExpenseItem | undefined> => {
+    const Key: PrimaryKey = { pk: splitID, sk: expenseID };
+    const cmd = new GetCommand({ TableName, Key });
+    const { Item } = await documentClient().send(cmd);
+    return Item as SplitExpenseItem | undefined;
+  },
+);
+
+export const deleteSplitExpense = captureAsync(
+  "deleteSplitExpense",
+  async (
+    splitID: SplitID,
+    expenseID: ExpenseID,
+    userID: UserID,
+  ): Promise<void> => {
+    const Item = await getSplitExpenseItem(splitID, expenseID);
+    if (!Item) throw new Error("Split expense not found");
+    Item.deletedAt = new Date().toISOString();
+    Item.deletedBy = userID;
+    const cmd = new PutCommand({ TableName, Item });
+    await documentClient().send(cmd);
   },
 );

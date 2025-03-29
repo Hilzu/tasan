@@ -26,7 +26,8 @@ export default function handleRequest(
 
     const acceptLanguage = request.headers.get("accept-language");
     let language: string | undefined;
-    if (acceptLanguage) language = acceptLanguage.split(",")[0].split(";")[0];
+    if (acceptLanguage)
+      language = acceptLanguage.split(",")[0].split(";")[0].trim() || undefined;
 
     responseHeaders.set(
       "Content-Security-Policy",

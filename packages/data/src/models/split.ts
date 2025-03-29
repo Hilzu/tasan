@@ -115,6 +115,7 @@ export const getSplitWithData = captureAsync(
         TableName,
         KeyConditionExpression: "pk = :pk",
         ExpressionAttributeValues: { ":pk": splitID },
+        FilterExpression: "attribute_not_exists(deletedAt)",
       },
     );
     const Items: Record<string, unknown>[] = [];
