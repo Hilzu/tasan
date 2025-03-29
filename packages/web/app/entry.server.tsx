@@ -8,7 +8,7 @@ import { renderToPipeableStream } from "react-dom/server";
 import type { AppLoadContext, EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 
-import { NonceContext } from "~/context";
+import { LanguageContext, NonceContext } from "~/context";
 
 export const streamTimeout = 5_000;
 
@@ -23,6 +23,10 @@ export default function handleRequest(
     let shellRendered = false;
     const userAgent = request.headers.get("user-agent");
     const scriptNonce = crypto.randomBytes(16).toString("base64url");
+
+    const acceptLanguage = request.headers.get("accept-language");
+    let language: string | undefined;
+    if (acceptLanguage) language = acceptLanguage.split(",")[0].split(";")[0];
 
     responseHeaders.set(
       "Content-Security-Policy",
@@ -47,11 +51,13 @@ export default function handleRequest(
 
     const { pipe, abort } = renderToPipeableStream(
       <NonceContext.Provider value={scriptNonce}>
-        <ServerRouter
-          context={routerContext}
-          url={request.url}
-          nonce={scriptNonce}
-        />
+        <LanguageContext.Provider value={language}>
+          <ServerRouter
+            context={routerContext}
+            url={request.url}
+            nonce={scriptNonce}
+          />
+        </LanguageContext.Provider>
       </NonceContext.Provider>,
       {
         nonce: scriptNonce,

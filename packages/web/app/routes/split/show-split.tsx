@@ -1,4 +1,3 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
@@ -7,8 +6,7 @@ import { Card } from "~/components/card";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
 import { calculateExpenseGraph } from "~/domain/expense-graph";
-import { showInCurrency } from "~/domain/show-in-currency";
-import ExpenseListItem from "~/routes/split/components/expense-list.item";
+import ExpenseListItem from "~/routes/split/components/expense-list-item";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/show-split";
