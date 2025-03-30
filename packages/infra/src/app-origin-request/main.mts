@@ -14,12 +14,28 @@ const probePrefixes = [
   "/wp-content",
 ];
 
+// These correspond to CloudFront regional edge cache locations that this function executes in.
+const regionsServedFromSingapore = [
+  "ap-southeast-1", // Singapore
+  "ap-southeast-2", // Sydney
+  "ap-northeast-1", // Tokyo
+  "ap-northeast-2", // Seoul
+  "ap-south-1", // Mumbai
+];
+const singaporeLambdaFunctionDomain =
+  "cxh43kp2vsbbrb4vgwpratjkpi0ekjjk.lambda-url.ap-southeast-1.on.aws";
+
 // eslint-disable-next-line @typescript-eslint/require-await
 export const handler: CloudFrontRequestHandler = async (event) => {
   const request = event.Records[0].cf.request;
+  console.log("Handling request", {
+    method: request.method,
+    uri: request.uri,
+    querystring: request.querystring,
+  });
 
-  // Immediately return for probes
   if (probePrefixes.some((p) => request.uri.startsWith(p))) {
+    console.log("Blocking probe request");
     return {
       status: "404",
       headers: {
@@ -28,10 +44,30 @@ export const handler: CloudFrontRequestHandler = async (event) => {
     } satisfies CloudFrontResultResponse;
   }
 
+  const region = process.env.AWS_REGION;
+  const forceSingapore = Boolean(request.headers["x-force-singapore"]);
+  if (regionsServedFromSingapore.includes(region ?? "") || forceSingapore) {
+    console.log("Writing origin to Singapore");
+    request.origin = {
+      custom: {
+        protocol: "https",
+        domainName: singaporeLambdaFunctionDomain,
+        port: 443,
+        path: "",
+        sslProtocols: ["TLSv1.2"],
+        readTimeout: 30,
+        keepaliveTimeout: 5,
+        customHeaders: {},
+      },
+    };
+    request.headers.host = [{ value: singaporeLambdaFunctionDomain }];
+  }
+
   // Calculate body hash for lambda auth
   // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html#create-oac-overview-lambda
   if (!request.body?.data) return request;
   if (request.body.inputTruncated) {
+    console.log("Request body too large");
     return {
       body: "Request body too large",
       bodyEncoding: "text",

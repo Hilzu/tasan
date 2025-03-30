@@ -11,16 +11,24 @@ import {
   aws_route53 as route53,
   aws_route53_targets as r53targets,
   aws_s3 as s3,
+  CfnOutput,
   Duration,
   Stack,
   type StackProps,
 } from "aws-cdk-lib";
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
+import type { Asset } from "aws-cdk-lib/aws-s3-assets";
 import type { Construct } from "constructs";
 
 const publicRootFiles = ["favicon.ico", "robots.txt"];
 
 export class TasanStack extends Stack {
+  tableName: string;
+  userPoolServerURL: string;
+  appClientID: string;
+  appFunctionAssetPath: string;
+  distributionID: string;
+
   constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, props);
 
@@ -111,6 +119,7 @@ export class TasanStack extends Stack {
           projectionType: dynamodb.ProjectionType.KEYS_ONLY,
         },
       ],
+      replicas: [{ region: "ap-southeast-1" }],
     });
 
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {
@@ -323,5 +332,14 @@ export class TasanStack extends Stack {
       recordName: "auth",
       target: route53.RecordTarget.fromAlias(userPoolDomainTarget),
     });
+
+    this.tableName = appTable.tableName;
+    this.userPoolServerURL = userPool.userPoolProviderUrl;
+    this.appClientID = userPoolWebClient.userPoolClientId;
+    const appFunctionAsset = appFunction.node.findChild("Code") as Asset;
+    this.appFunctionAssetPath = appFunctionAsset.assetPath;
+    this.distributionID = distribution.distributionId;
+
+    new CfnOutput(this, "LambdaFunctionUrl", { value: appFunctionUrl.url });
   }
 }

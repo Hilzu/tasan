@@ -2,7 +2,7 @@
   "name": "@tasan/infra",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/app.js",
+  "main": "dist/cdk-app.js",
   "scripts": {
     "build": "tsc",
     "cdk:diff": "cdk diff",
