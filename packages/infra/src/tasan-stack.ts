@@ -36,6 +36,7 @@ export class TasanStack extends Stack {
       featurePlan: cognito.FeaturePlan.ESSENTIALS,
       signInCaseSensitive: false,
       selfSignUpEnabled: true,
+      deletionProtection: true,
       userVerification: {
         emailStyle: cognito.VerificationEmailStyle.CODE,
         emailSubject: "Verify your email for Tasan.app",
@@ -101,6 +102,7 @@ export class TasanStack extends Stack {
         readCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
         writeCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
       }),
+      deletionProtection: true,
       globalSecondaryIndexes: [
         {
           indexName: "GSI-SK-PK",
