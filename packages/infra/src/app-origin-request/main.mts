@@ -25,6 +25,9 @@ const regionsServedFromSingapore = [
 const singaporeLambdaFunctionDomain =
   "cxh43kp2vsbbrb4vgwpratjkpi0ekjjk.lambda-url.ap-southeast-1.on.aws";
 
+// In the future we should also host in us-east-2
+// Edge caches to serve from: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
+
 // eslint-disable-next-line @typescript-eslint/require-await
 export const handler: CloudFrontRequestHandler = async (event) => {
   const request = event.Records[0].cf.request;
