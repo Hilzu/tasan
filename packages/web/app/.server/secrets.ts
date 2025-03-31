@@ -3,7 +3,7 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { appEnv } from "~/config";
 
-const client = new SSMClient({ region: "eu-central-1" });
+const client = new SSMClient();
 
 const toSSMSecretName = (name: string): string =>
   `/tasan-app/${name.toLowerCase().replaceAll("_", "-")}`;

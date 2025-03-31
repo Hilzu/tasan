@@ -59,7 +59,7 @@ export class RegionalStack extends Stack {
       new iam.PolicyStatement({
         actions: ["ssm:GetParameter*"],
         resources: [
-          `arn:aws:ssm:eu-central-1:${this.account}:parameter/tasan-app*`,
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app*`,
         ],
       }),
     );
