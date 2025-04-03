@@ -3,10 +3,10 @@ import { href, useRouteLoaderData } from "react-router";
 
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
+import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
-import { useLanguage } from "~/context";
 import { calculateExpenseGraph } from "~/domain/expense-graph";
 import ExpenseListItem from "~/routes/split/components/expense-list-item";
 import type { SplitLoader } from "~/routes/split/split-parent";
@@ -14,7 +14,6 @@ import type { SplitLoader } from "~/routes/split/split-parent";
 import type { Route } from "./+types/show-split";
 
 export default function ShowSplit(_: Route.ComponentProps) {
-  const language = useLanguage();
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
@@ -25,7 +24,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
       <DescriptionList
         className="mb-2"
         items={[
-          ["Created at", split.createdAt.toLocaleString(language)],
+          ["Created at", <DateRender date={split.createdAt} />],
           ["Home currency", split.currency],
           ["Created by", users.find((u) => u.id === split.createdBy)?.name],
         ]}

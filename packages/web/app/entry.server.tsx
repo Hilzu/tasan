@@ -8,7 +8,7 @@ import { renderToPipeableStream } from "react-dom/server";
 import type { AppLoadContext, EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 
-import { LanguageContext, NonceContext } from "~/context";
+import { LanguageContext, NonceContext, TimeZoneContext } from "~/context";
 
 export const streamTimeout = 5_000;
 
@@ -28,6 +28,9 @@ export default function handleRequest(
     let language: string | undefined;
     if (acceptLanguage)
       language = acceptLanguage.split(",")[0].split(";")[0].trim() || undefined;
+
+    const timeZone =
+      request.headers.get("cloudfront-viewer-time-zone") ?? undefined;
 
     responseHeaders.set(
       "Content-Security-Policy",
@@ -53,11 +56,13 @@ export default function handleRequest(
     const { pipe, abort } = renderToPipeableStream(
       <NonceContext.Provider value={scriptNonce}>
         <LanguageContext.Provider value={language}>
-          <ServerRouter
-            context={routerContext}
-            url={request.url}
-            nonce={scriptNonce}
-          />
+          <TimeZoneContext.Provider value={timeZone}>
+            <ServerRouter
+              context={routerContext}
+              url={request.url}
+              nonce={scriptNonce}
+            />
+          </TimeZoneContext.Provider>
         </LanguageContext.Provider>
       </NonceContext.Provider>,
       {

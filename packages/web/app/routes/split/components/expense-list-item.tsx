@@ -4,8 +4,8 @@ import type { SplitID, UserID } from "@tasan/common/id";
 import type { SplitExpense, User } from "@tasan/data";
 import { href } from "react-router";
 
+import { DateRender } from "~/components/date";
 import { Link } from "~/components/link";
-import { useLanguage } from "~/context";
 import { showInCurrency } from "~/domain/show-in-currency";
 
 export interface ExpenseListItemProps {
@@ -23,7 +23,6 @@ export default function ExpenseListItem({
   currentUserID,
   splitID,
 }: ExpenseListItemProps) {
-  const language = useLanguage();
   const yourShare = expense.participants.get(currentUserID) ?? D.create(0);
   return (
     <li className="space-y-1 leading-tight">
@@ -52,7 +51,7 @@ export default function ExpenseListItem({
         }
       </div>
       <div className="text-xs">
-        {expense.createdAt.toLocaleString(language)}
+        <DateRender date={expense.createdAt} />
       </div>
     </li>
   );

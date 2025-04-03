@@ -8,9 +8,9 @@ import { href, redirect, useRouteLoaderData, useSubmit } from "react-router";
 import { getSessionOrRedirect } from "~/.server/auth";
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
+import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
 import { MainHeading } from "~/components/heading";
-import { useLanguage } from "~/context";
 import { showInCurrency } from "~/domain/show-in-currency";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
 import type { SplitLoader } from "~/routes/split/split-parent";
@@ -33,7 +33,6 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function ShowExpense({ params }: Route.ComponentProps) {
   const { expenseID } = params;
-  const language = useLanguage();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const submitDelete = useSubmit();
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
@@ -66,7 +65,7 @@ export default function ShowExpense({ params }: Route.ComponentProps) {
           ],
           ["Created by", users.find((u) => u.id === expense.createdBy)?.name],
           ["Paid by", users.find((u) => u.id === expense.payer)?.name],
-          ["Created at", expense.createdAt.toLocaleString(language)],
+          ["Created at", <DateRender date={expense.createdAt} />],
           ["Exchange rate", exchangeRate],
           [
             "Participants",
