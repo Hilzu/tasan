@@ -9,11 +9,15 @@ import {
 } from "openid-client";
 
 import { authClientSecret } from "~/.server/secrets";
-import { authClientID, authServerURL, originURL } from "~/config";
+import { authClientID, authDisable, authServerURL, originURL } from "~/config";
 
-const config = await discovery(authServerURL, authClientID, authClientSecret);
+const config =
+  authDisable ? null : (
+    await discovery(authServerURL, authClientID, authClientSecret)
+  );
 
 export const buildAuthorizationURL = () => {
+  if (!config) throw new Error("Auth is disabled");
   const state = randomState();
   const nonce = randomNonce();
   // Parameters documented here: https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html#get-authorize
@@ -32,6 +36,7 @@ export const buildAuthorizationURL = () => {
 export const getTokens = captureAsync(
   "getTokens",
   async (opts: { currentURL: URL; state?: string; nonce?: string }) => {
+    if (!config) throw new Error("Auth is disabled");
     const { currentURL, state, nonce } = opts;
     return await authorizationCodeGrant(config, currentURL, {
       expectedState: state,
@@ -41,7 +46,8 @@ export const getTokens = captureAsync(
   },
 );
 
-export const buildLogoutURL = () => {
+export const buildLogoutURL = (): URL => {
+  if (!config) throw new Error("Auth is disabled");
   return buildEndSessionUrl(config, {
     client_id: authClientID,
     logout_uri: new URL("/", originURL).toString(),

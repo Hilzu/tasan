@@ -9,6 +9,8 @@ export const originURL = new URL(getEnv("ORIGIN_URL"));
 
 export const authServerURL = new URL(getEnv("AUTH_SERVER_URL"));
 
+export const authDisable = Boolean(getEnv("AUTH_DISABLE", ""));
+
 export const authClientID = getEnv("AUTH_CLIENT_ID");
 
 // The deployment environment, e.g. "staging" or "production"
