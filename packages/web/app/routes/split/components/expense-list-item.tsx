@@ -26,7 +26,7 @@ export default function ExpenseListItem({
   const language = useLanguage();
   const yourShare = expense.participants.get(currentUserID) ?? D.create(0);
   return (
-    <li>
+    <li className="space-y-1 leading-tight">
       <div className="font-semibold">
         <Link
           to={href("/splits/:splitID/:expenseID", {
@@ -51,7 +51,7 @@ export default function ExpenseListItem({
           </>
         }
       </div>
-      <div className="text-sm">
+      <div className="text-xs">
         {expense.createdAt.toLocaleString(language)}
       </div>
     </li>

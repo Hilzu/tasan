@@ -9,5 +9,5 @@ export const showInCurrency = (
   if (!exchangeRate) return "";
   const fractions = currencies[currency].fractions;
   const str = D.toString(D.mul(D.create(amount, fractions), exchangeRate));
-  return `(${currency} ${str})`;
+  return `(${currency} ${str})`;
 };
