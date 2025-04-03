@@ -1,3 +1,4 @@
+import { compareById } from "@tasan/common/compare";
 import * as D from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
@@ -42,7 +43,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
         }
       >
         <ul>
-          {users.map((u) => {
+          {users.sort(compareById).map((u) => {
             const isYou = session.userID === u.id;
             return (
               <li key={u.id}>
