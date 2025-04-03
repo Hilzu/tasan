@@ -33,7 +33,7 @@ import type { Route } from "./+types/new-expense";
 const schema = zfd.formData(
   z
     .object({
-      name: zfd.text(z.string().min(1).max(64)),
+      expenseName: zfd.text(z.string().min(1).max(64)),
       currency: zfd.text(currencySymbolSchema),
       splitCurrency: zfd.text(currencySymbolSchema),
       amount: zfd.numeric(decimalSchema),
@@ -97,7 +97,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   await createSplitExpense({
     splitID: splitID,
-    name: data.name,
+    name: data.expenseName,
     currency: data.currency,
     conversionRate,
     amount: data.amount,
@@ -142,7 +142,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
       <Form method="post" className="max-w-md space-y-2">
         <InputField
           label="Name"
-          name="name"
+          name="expenseName"
           autoComplete="off"
           required
           minLength={1}
