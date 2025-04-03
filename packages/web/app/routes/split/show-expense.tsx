@@ -41,6 +41,8 @@ export default function ShowExpense({ params }: Route.ComponentProps) {
   const { split, users } = parentData;
   const expense = split.expenses.find((e) => e.id === expenseID);
   if (!expense) return <div>No such expense.</div>;
+  const exchangeRate =
+    expense.conversionRate ? 1 / expense.conversionRate : "-";
   return (
     <Card
       heading={<MainHeading>Expense - {expense.name}</MainHeading>}
@@ -65,10 +67,10 @@ export default function ShowExpense({ params }: Route.ComponentProps) {
           ["Created by", users.find((u) => u.id === expense.createdBy)?.name],
           ["Paid by", users.find((u) => u.id === expense.payer)?.name],
           ["Created at", expense.createdAt.toLocaleString(language)],
-          ["Conversion rate", expense.conversionRate],
+          ["Exchange rate", exchangeRate],
           [
             "Participants",
-            <div>
+            <div className="space-y-1 leading-tight">
               {[...expense.participants]
                 .sort(compareByKey)
                 .map(([userID, amount]) => (
