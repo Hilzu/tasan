@@ -11,9 +11,9 @@ interface CardProps {
 export function Card({ className, heading, action, children }: CardProps) {
   return (
     <section className={classNames(className, "mb-2")}>
-      <div className="flex justify-between">
-        {heading}
-        {action}
+      <div>
+        <div className="float-right pl-2">{action}</div>
+        <div>{heading}</div>
       </div>
       <div>{children}</div>
     </section>
