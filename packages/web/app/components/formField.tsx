@@ -210,7 +210,7 @@ export function RadioGroupField({
 }: RadioGroupFieldProps) {
   return (
     <FieldSet label={label} description={description} errors={errors}>
-      <div className={classNames("space-x-4", inline && "flex")}>
+      <div className={classNames("space-x-4", inline && "flex flex-wrap")}>
         {items.map(({ value, label, ...inputProps }) => {
           const id = useId();
           return (
@@ -234,7 +234,7 @@ export function CheckboxGroupField({
 }: RadioGroupFieldProps) {
   return (
     <FieldSet label={label} description={description} errors={errors}>
-      <div className={classNames("space-x-4", inline && "flex")}>
+      <div className={classNames("space-x-4", inline && "flex flex-wrap")}>
         {items.map(({ value, label, ...inputProps }) => {
           const id = useId();
           return (
