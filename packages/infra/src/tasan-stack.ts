@@ -107,7 +107,7 @@ export class TasanStack extends Stack {
       sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
       timeToLiveAttribute: "expiresAt",
       billing: dynamodb.Billing.provisioned({
-        readCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
+        readCapacity: dynamodb.Capacity.fixed(20),
         writeCapacity: dynamodb.Capacity.autoscaled({ maxCapacity: 25 }),
       }),
       deletionProtection: true,
@@ -117,6 +117,7 @@ export class TasanStack extends Stack {
           partitionKey: { name: "sk", type: dynamodb.AttributeType.STRING },
           sortKey: { name: "pk", type: dynamodb.AttributeType.STRING },
           projectionType: dynamodb.ProjectionType.KEYS_ONLY,
+          readCapacity: dynamodb.Capacity.fixed(5),
         },
       ],
       replicas: [{ region: "ap-southeast-1" }],
