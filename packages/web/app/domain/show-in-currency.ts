@@ -5,9 +5,9 @@ export const showInCurrency = (
   amount: D.Decimal,
   currency: CurrencySymbol,
   exchangeRate?: number,
-) => {
+): string => {
   if (!exchangeRate) return "";
   const fractions = currencies[currency].fractions;
   const str = D.toString(D.mul(D.create(amount, fractions), exchangeRate));
-  return `(${currency} ${str})`;
+  return `(${currency}\u00A0${str})`;
 };
