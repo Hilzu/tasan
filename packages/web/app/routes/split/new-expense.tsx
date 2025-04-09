@@ -122,19 +122,26 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
   const [participants, setParticipants] = useState(
     () => new Map(users.map(({ id }) => [id, D.create(0, fractionDigits)])),
   );
-  const [total, setTotal] = useState(D.create(0, fractionDigits));
   useLayoutEffect(() => {
     if (preferredCurrency) setCurrency(preferredCurrency);
   }, []);
   useEffect(() => {
     setParticipants((prev) => {
-      const newAmount = D.div(amount, participantCount || 1);
-      return new Map([...prev.keys()].map((userID) => [userID, newAmount]));
+      const participantAmount = D.div(amount, participantCount || 1);
+      const total = D.mul(participantAmount, participantCount);
+      const diff = D.sub(amount, total);
+      const payerAmount = D.add(participantAmount, diff);
+      return new Map(
+        [...prev.keys()].map((userID) => [
+          userID,
+          userID === session.userID ? payerAmount : participantAmount,
+        ]),
+      );
     });
   }, [participantCount, amount]);
-  useEffect(() => {
-    setTotal([...participants.values()].reduce((a, b) => D.add(a, b)));
-  }, [participants]);
+  const participantTotal = [...participants.values()].reduce((a, b) =>
+    D.add(a, b),
+  );
 
   return (
     <div>
@@ -177,6 +184,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
             setAmount(decimal);
           }}
           currencySymbol={currency}
+          description="This will be divided equally among the participants when set."
           errors={actionData?.errors.fieldErrors.amount}
         />
 
@@ -228,10 +236,10 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
         {actionData?.errors.fieldErrors.participants && (
           <FieldError errors={actionData.errors.fieldErrors.participants} />
         )}
-        {!D.equals(total, amount) && (
+        {!D.equals(participantTotal, amount) && (
           <FieldError
             errors={[
-              `Total amount must match the expense amount. Difference: ${D.toString(D.sub(total, amount))}`,
+              `Total amount must match the expense amount. Difference: ${D.toString(D.sub(participantTotal, amount))}`,
             ]}
           />
         )}
