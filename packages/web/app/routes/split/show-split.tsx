@@ -1,4 +1,4 @@
-import { compareById } from "@tasan/common/compare";
+import { compareById, compareByKey } from "@tasan/common/compare";
 import * as D from "@tasan/common/decimal";
 import { href, useRouteLoaderData } from "react-router";
 
@@ -58,7 +58,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
         <ul>
           {expenseGraph.size === 0 &&
             "No debts between participants. You are all settled!"}
-          {[...expenseGraph].map(([from, edges]) => {
+          {[...expenseGraph].sort(compareByKey).map(([from, edges]) => {
             const fromName = users.find((u) => u.id === from)?.name;
             return edges.map((edge) => {
               const toName = users.find((u) => u.id === edge.to)?.name;
