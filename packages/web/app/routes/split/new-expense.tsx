@@ -9,7 +9,7 @@ import {
 } from "@tasan/common/validation";
 import { createSplitExpense, findSplitUsers } from "@tasan/data";
 import { useEffect, useLayoutEffect, useState } from "react";
-import { Form, href, redirect, useRouteLoaderData } from "react-router";
+import { href, redirect, useFetcher, useRouteLoaderData } from "react-router";
 import { z } from "zod";
 import { zfd } from "zod-form-data";
 
@@ -113,6 +113,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
+  const fetcher = useFetcher();
   const [preferredCurrency, setPreferredCurrency] =
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
@@ -146,7 +147,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
   return (
     <div>
       <MainHeading>New expense for {split.name}</MainHeading>
-      <Form method="post" className="max-w-md space-y-2">
+      <fetcher.Form method="post" className="max-w-md space-y-2">
         <InputField
           label="Name"
           name="expenseName"
@@ -246,13 +247,17 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
 
         <input type="hidden" name="splitCurrency" value={split.currency} />
 
-        <Button type="submit" className="mt-2">
-          Create
+        <Button
+          type="submit"
+          className="mt-2"
+          disabled={fetcher.state !== "idle"}
+        >
+          {fetcher.state === "submitting" ? "Creating..." : "Create"}
         </Button>
         {actionData?.errors.formErrors && (
           <FieldError errors={actionData.errors.formErrors} />
         )}
-      </Form>
+      </fetcher.Form>
     </div>
   );
 }

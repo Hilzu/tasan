@@ -8,6 +8,7 @@ type ButtonProps = ComponentProps<"button"> & {
 export function Button({
   children,
   variant = "primary",
+  disabled,
   ...rest
 }: ButtonProps) {
   const type = rest.type ?? "button";
@@ -15,14 +16,16 @@ export function Button({
     <button
       {...rest}
       type={type}
+      disabled={disabled}
       className={classNames(
         rest.className,
-        "outline-brand-700 min-w-20 cursor-pointer rounded px-3 py-1 text-center focus:outline-2",
+        "outline-brand-700 min-w-20 rounded px-3 py-1 text-center focus:outline-2",
         variant === "primary" && "bg-brand-500 hover:bg-brand-600 text-white",
         variant === "secondary" &&
           "border-brand-500 border bg-white hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-700",
         variant === "danger" &&
           "border-red-500 bg-red-100 text-red-500 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-700",
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
       )}
     >
       {children}

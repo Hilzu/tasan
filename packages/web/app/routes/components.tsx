@@ -34,6 +34,7 @@ export default function Components(_: Route.ComponentProps) {
         <Button>Primary</Button>
         <Button variant="secondary">Secondary</Button>
         <Button variant="danger">Danger</Button>
+        <Button disabled>Disabled</Button>
       </section>
 
       <SubHeading className="mt-4">Input Field</SubHeading>
