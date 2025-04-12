@@ -1,4 +1,5 @@
-import { useContext } from "react";
+import classNames from "classnames";
+import { useContext, useEffect, useState } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -6,6 +7,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from "react-router";
 
 import { NonceContext } from "~/context";
@@ -36,8 +38,50 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function GlobalLoadingIndicator() {
+  const [opacity, setOpacity] = useState("opacity-0");
+  useEffect(() => {
+    setOpacity("opacity-50");
+  }, []);
+  return (
+    <div
+      className={classNames(
+        "fixed inset-0 z-50 flex items-center justify-center bg-white transition-opacity delay-300 duration-150 dark:bg-gray-950",
+        opacity,
+      )}
+    >
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-8 w-8 text-gray-500 motion-safe:animate-spin dark:text-gray-400"
+        fill="none"
+        stroke="currentColor"
+      >
+        <path
+          d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"
+          opacity=".25"
+          fill="currentColor"
+        />
+        <path
+          d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z"
+          fill="currentColor"
+        />
+      </svg>
+    </div>
+  );
+}
+
 export default function App() {
-  return <Outlet />;
+  const navigation = useNavigation();
+  const isNavigating = Boolean(navigation.location);
+  return (
+    <>
+      {isNavigating && <GlobalLoadingIndicator />}
+      <Outlet />
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
