@@ -41,7 +41,7 @@ export default function ShowExpense({ params }: Route.ComponentProps) {
   const expense = split.expenses.find((e) => e.id === expenseID);
   if (!expense) return <div>No such expense.</div>;
   const exchangeRate =
-    expense.conversionRate ? 1 / expense.conversionRate : "-";
+    expense.conversionRate ? (1 / expense.conversionRate).toFixed(5) : "-";
   return (
     <Card
       heading={<MainHeading>Expense - {expense.name}</MainHeading>}
