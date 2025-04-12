@@ -17,7 +17,6 @@ export const Link = (props: LinkProps) => {
   return (
     <ReactRouterLink
       {...rest}
-      viewTransition
       className={classNames(className, variant === "link" && linkClasses)}
     />
   );
@@ -34,7 +33,6 @@ export const NavLink = (props: NavLinkProps) => {
   return (
     <ReactRouterNavLink
       {...rest}
-      viewTransition
       className={({ isActive }) =>
         classNames(className, isActive && "font-bold")
       }
