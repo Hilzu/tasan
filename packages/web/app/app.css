@@ -50,3 +50,5 @@
   padding-inline: 2rem;
   max-width: var(--container-6xl);
 }
+
+@custom-variant hover (&:hover);
