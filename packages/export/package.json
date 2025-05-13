@@ -1,0 +1,23 @@
+{
+  "name": "@tasan/export",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/export-split.mjs",
+  "exports": "./dist/export-split.mjs",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node --enable-source-maps ."
+  },
+  "engines": {
+    "node": "^22.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.782.0",
+    "@tasan/common": "workspace:*"
+  }
+}
