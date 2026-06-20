@@ -9,7 +9,7 @@
     "clean": "rm -rf dist"
   },
   "engines": {
-    "node": "^22.11.0"
+    "node": "^24.16.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

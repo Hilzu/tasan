@@ -12,8 +12,8 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "^22.11.0",
-    "pnpm": "^10.2.0"
+    "node": "^24.16.0",
+    "pnpm": "^11.8.0"
   },
   "scripts": {
     "build": "pnpm -r build",
@@ -39,13 +39,5 @@
     "prettier-plugin-tailwindcss": "^0.6.11",
     "typescript": "catalog:",
     "typescript-eslint": "^8.29.1"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ],
-    "overrides": {
-      "@types/node": "catalog:"
-    }
   }
 }
