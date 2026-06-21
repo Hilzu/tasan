@@ -12,7 +12,7 @@ import type { Route } from "./+types/auth-callback";
 
 const claimsSchema = z.object({
   sub: cognitoIDSchema,
-  email: z.string().email(),
+  email: z.email(),
   "cognito:username": z.string().min(1),
 });
 

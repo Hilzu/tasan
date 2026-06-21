@@ -4,12 +4,10 @@ import type { CurrencySymbol } from "./currency.js";
 import { captureAsync } from "./tracing.js";
 import { currencySymbolSchema } from "./validation.js";
 
-const convertResponseSchema = z
-  .object({
-    base: currencySymbolSchema,
-    rates: z.record(currencySymbolSchema, z.number().finite().positive()),
-  })
-  .passthrough();
+const convertResponseSchema = z.looseObject({
+  base: currencySymbolSchema,
+  rates: z.record(currencySymbolSchema, z.number().positive()),
+});
 
 export const fetchCurrencyConversionRate = captureAsync(
   "fetchCurrencyConversionRate",

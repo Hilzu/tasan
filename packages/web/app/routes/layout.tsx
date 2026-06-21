@@ -29,7 +29,7 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <Header user={user} />
-      <main className="container mb-16 mt-4">
+      <main className="container mt-4 mb-16">
         <Outlet />
       </main>
       <Footer className="mt-auto" />

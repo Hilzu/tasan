@@ -10,6 +10,7 @@ declare module "@tasan/web" {
     ssr,
     isSpaMode,
     prerender,
+    routeDiscovery,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }: Record<string, any>;
 }

@@ -6,8 +6,8 @@ import { getSessionOrRedirect } from "~/.server/auth";
 
 import type { Route } from "./+types/split-parent";
 
-export function meta({ data }: Route.MetaArgs) {
-  return [{ title: `${data.split.name} split - Tasan.app` }];
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [{ title: `${loaderData.split.name} split - Tasan.app` }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

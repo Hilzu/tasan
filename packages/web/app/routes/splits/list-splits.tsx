@@ -38,7 +38,7 @@ export default function SplitsList({ loaderData }: Route.ComponentProps) {
         </p>
       }
 
-      <ul className="ml-4 mt-2 list-disc">
+      <ul className="mt-2 ml-4 list-disc">
         {splits.map((split) => (
           <li key={split.id}>
             <Link to={href("/splits/:splitID", { splitID: split.id })}>

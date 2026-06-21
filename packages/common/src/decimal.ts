@@ -7,7 +7,7 @@ export const create = (value: Decimal | number, fractions = 2): Decimal => {
   return {
     value: Number(toNumber(value).toFixed(fractions)),
     fractions,
-  } as Decimal;
+  };
 };
 
 export const toString = (decimal: Decimal): string =>

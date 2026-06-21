@@ -14,7 +14,6 @@ export const currencySymbolSchema = z
 export const decimalSchema = z
   .number()
   .positive()
-  .finite()
   .transform((c) => Decimal.create(c));
 
 const validateID =
@@ -24,7 +23,7 @@ const validateID =
       return validateFN(id);
     } catch {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Invalid ID",
         params: { id },
       });

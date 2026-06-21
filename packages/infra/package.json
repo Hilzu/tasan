@@ -16,17 +16,17 @@
     "node": "^24.16.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.148",
+    "@types/aws-lambda": "^8.10.162",
     "@types/node": "catalog:",
-    "aws-cdk": "^2.1007.0",
-    "esbuild": "^0.25.2",
+    "aws-cdk": "^2.1128.0",
+    "esbuild": "^0.28.1",
     "typescript": "catalog:"
   },
   "dependencies": {
     "@tasan/web": "workspace:*",
-    "aws-cdk-lib": "^2.188.0",
-    "aws-xray-sdk-core": "^3.10.3",
-    "constructs": "^10.4.2",
+    "aws-cdk-lib": "^2.260.0",
+    "aws-xray-sdk-core": "^3.12.0",
+    "constructs": "^10.6.0",
     "react-router": "catalog:"
   }
 }

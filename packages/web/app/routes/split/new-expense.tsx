@@ -39,15 +39,14 @@ const schema = zfd.formData(
       amount: zfd.numeric(decimalSchema),
       payer: zfd.text(userIDSchema),
     })
-    .catchall(z.record(zfd.numeric(decimalSchema)))
+    .catchall(z.record(z.string(), zfd.numeric(decimalSchema)))
     .superRefine((data, ctx) => {
       const path = ["participants"];
-      const code = z.ZodIssueCode.custom;
 
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (Object.keys(data.participants ?? {}).length === 0) {
         ctx.addIssue({
-          code,
+          code: "custom",
           path,
           message: "Participants are required.",
         });
@@ -58,7 +57,7 @@ const schema = zfd.formData(
       );
       if (!D.equals(total, data.amount)) {
         ctx.addIssue({
-          code,
+          code: "custom",
           path,
           message: "Total amount must match the expense amount.",
         });

@@ -16,9 +16,9 @@
     "typescript": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.782.0",
-    "@aws-sdk/lib-dynamodb": "^3.782.0",
+    "@aws-sdk/client-dynamodb": "^3.1073.0",
+    "@aws-sdk/lib-dynamodb": "^3.1073.0",
     "@tasan/common": "workspace:*",
-    "aws-xray-sdk-core": "^3.10.3"
+    "aws-xray-sdk-core": "^3.12.0"
   }
 }

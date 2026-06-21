@@ -1,13 +1,12 @@
 import { data } from "react-router";
-import type { z } from "zod";
-import type { inferFlattenedErrors } from "zod";
+import { flattenError, type z } from "zod";
 
-export function validateOrRespond<T extends z.ZodTypeAny>(
+export function validateOrRespond<T extends z.ZodType>(
   schema: T,
   formData: FormData,
 ) {
   const result = schema.safeParse(formData);
-  if (result.success) return { data: result.data as z.infer<T> };
-  const errors = result.error.flatten() as inferFlattenedErrors<typeof schema>;
+  if (result.success) return { data: result.data };
+  const errors = flattenError<z.output<typeof schema>>(result.error);
   return { response: data({ errors }, { status: 400 }) };
 }
