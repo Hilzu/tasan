@@ -6,10 +6,7 @@ import type {
   LambdaFunctionURLEvent,
   LambdaFunctionURLHandler,
 } from "aws-lambda";
-import AWSXRay from "aws-xray-sdk-core";
 import { createRequestHandler } from "react-router";
-
-AWSXRay.enableAutomaticMode();
 
 const requestHandler = createRequestHandler(build, process.env.NODE_ENV);
 
@@ -82,12 +79,6 @@ const responseToResult = async (
 };
 
 export const handler: LambdaFunctionURLHandler = async (event) => {
-  const segment = AWSXRay.getSegment()?.addNewSubsegment("handler");
-  segment?.addAnnotation("url", event.rawPath);
-  segment?.addAnnotation("method", event.requestContext.http.method);
-  segment?.addAnnotation("user_agent", event.headers["user-agent"] ?? "");
-  segment?.addAnnotation("client_ip", event.requestContext.http.sourceIp);
-
   const request = eventToRequest(event);
   console.log("Received request", {
     method: request.method,
@@ -117,12 +108,5 @@ export const handler: LambdaFunctionURLHandler = async (event) => {
     headers: result.headers,
   });
 
-  segment?.addAnnotation("status", response.status);
-  segment?.addAnnotation(
-    "content_type",
-    response.headers.get("content-type") ?? "",
-  );
-  segment?.addAnnotation("content_length", result.body?.length ?? 0);
-  segment?.close();
   return result;
 };

@@ -12,7 +12,7 @@ export default defineConfig(({ command, isSsrBuild }) => ({
   },
   build: {
     target:
-      isSsrBuild ? "node22.14" : (
+      isSsrBuild ? "node24.16" : (
         ["chrome109", "edge131", "firefox128", "safari15"]
       ),
   },

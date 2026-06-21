@@ -134,22 +134,10 @@ export class TasanStack extends Stack {
         charset: nodejs.Charset.UTF8,
         minify: true,
         sourceMap: true,
-        target: "es2022",
+        target: "node24.16",
         format: OutputFormat.ESM,
         banner:
           'import {createRequire} from "module"; const require = createRequire(import.meta.url);',
-        commandHooks: {
-          beforeBundling: (_inputDir, _outputDir) => [],
-          beforeInstall: (_inputDir, _outputDir) => [],
-          afterBundling: (_inputDir, outputDir) => {
-            // For XRay SDK
-            return [
-              `cd ${outputDir}`,
-              "echo {} > package.json",
-              `npm install @smithy/service-error-classification@^2.0.4`,
-            ];
-          },
-        },
       },
       environment: {
         APP_ENV: "production",

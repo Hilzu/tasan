@@ -1,10 +1,9 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import AWSXRay from "aws-xray-sdk-core";
 
 let _dynamoClient: DynamoDBClient | undefined;
 export const dynamoClient = () => {
-  _dynamoClient ??= AWSXRay.captureAWSv3Client(new DynamoDBClient());
+  _dynamoClient ??= new DynamoDBClient();
   return _dynamoClient;
 };
 

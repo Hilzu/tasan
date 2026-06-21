@@ -72,9 +72,6 @@ importers:
 
   packages/common:
     dependencies:
-      aws-xray-sdk-core:
-        specifier: ^3.12.0
-        version: 3.12.0
       ulid:
         specifier: ^3.0.2
         version: 3.0.2
@@ -100,9 +97,6 @@ importers:
       '@tasan/common':
         specifier: workspace:*
         version: link:../common
-      aws-xray-sdk-core:
-        specifier: ^3.12.0
-        version: 3.12.0
     devDependencies:
       '@types/node':
         specifier: ^24.13.2
@@ -135,9 +129,6 @@ importers:
       aws-cdk-lib:
         specifier: ^2.260.0
         version: 2.260.0(constructs@10.6.0)
-      aws-xray-sdk-core:
-        specifier: ^3.12.0
-        version: 3.12.0
       constructs:
         specifier: ^10.6.0
         version: 10.6.0
@@ -899,17 +890,9 @@ packages:
     resolution: {integrity: sha512-emtXvoky671puri18ETf64AFIQUGIEA093F2drXpBgB0OGnBLjcwNR3CA2mYu62IAqNsS56xa5lnTxAgPq7cjw==}
     engines: {node: '>=18.0.0'}
 
-  '@smithy/service-error-classification@2.1.5':
-    resolution: {integrity: sha512-uBDTIBBEdAQryvHdc5W8sS5YX7RQzF683XrHePVdFmAgKiMofU15FLSM0/HU03hKTnazdNRFa0YHS7+ArwoUSQ==}
-    engines: {node: '>=14.0.0'}
-
   '@smithy/signature-v4@5.5.1':
     resolution: {integrity: sha512-X9rVls3En0z3NtrmguTmpRM0/NqtWUxBjal6fcAkwtsub+gOdLZ6kD+V7xhUgFMGdG14bHbZ7M5QjaRI1+DatQ==}
     engines: {node: '>=18.0.0'}
-
-  '@smithy/types@2.12.0':
-    resolution: {integrity: sha512-QwYgloJ0sVNBeBuBs65cIkTbfzV/Q6ZNPCJ99EICFEdJYG50nGIY/uYXp+TbsdJReIuPr0a0kXmCvren3MbRRw==}
-    engines: {node: '>=14.0.0'}
 
   '@smithy/types@4.15.0':
     resolution: {integrity: sha512-Z5TAOxygoFvybJV3igo5SloFflSokHx2hu1eFA+DxDTcn+FtKxUSui+rbTRG1pAafMA888Z3MVvCWUuvCrTXjg==}
@@ -1023,9 +1006,6 @@ packages:
   '@types/aws-lambda@8.10.162':
     resolution: {integrity: sha512-Fn658grtLOci1oxi1391vvDWJRKNGWRSqfxRkmN/Iy3c0tQH1USMKEXcPYHLvope+ZgTFocx9FRQJx1muBL6qw==}
 
-  '@types/cls-hooked@4.3.9':
-    resolution: {integrity: sha512-CMtHMz6Q/dkfcHarq9nioXH8BDPP+v5xvd+N90lBQ2bdmu06UvnLDqxTKoOJzz4SzIwb/x9i4UXGAAcnUDuIvg==}
-
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
 
@@ -1132,13 +1112,6 @@ packages:
   arg@5.0.2:
     resolution: {integrity: sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==}
 
-  async-hook-jl@1.7.6:
-    resolution: {integrity: sha512-gFaHkFfSxTjvoxDMYqDuGHlcRyUuamF8s+ZTtJdDzqjws4mCt7v0vuV79/E2Wr2/riMQgtG4/yUtXWs1gZ7JMg==}
-    engines: {node: ^4.7 || >=6.9 || >=7.3}
-
-  atomic-batcher@1.0.2:
-    resolution: {integrity: sha512-EFGCRj4kLX1dHv1cDzTk+xbjBFj1GnJDpui52YmEcxxHHEWjYyT6l51U7n6WQ28osZH4S9gSybxe56Vm7vB61Q==}
-
   aws-cdk-lib@2.260.0:
     resolution: {integrity: sha512-2PPG+hbPDot8+ibkb5Jl9y3OY5rBE6TFwjzOi+yEyU4ZG6u8bM4DDKhhBi/S20NqqSFDso9rH1txVJAdwXNiuQ==}
     engines: {node: '>= 20.0.0'}
@@ -1162,10 +1135,6 @@ packages:
     resolution: {integrity: sha512-CXPl6Yu0gDqrS2GYDPoMCQbdJFS0tupzN8nuaTku3fewTdQJhHGK/2QpwMV/mVgsTTHB9riXT3Zt/k4trh8tCw==}
     engines: {node: '>= 18.0.0'}
     hasBin: true
-
-  aws-xray-sdk-core@3.12.0:
-    resolution: {integrity: sha512-lwalRdxXRy+Sn49/vN7W507qqmBRk5Fy2o0a9U6XTjL9IV+oR5PUiiptoBrOcaYCiVuGld8OEbNqhm6wvV3m6A==}
-    engines: {node: '>= 14.x'}
 
   babel-dead-code-elimination@1.0.12:
     resolution: {integrity: sha512-GERT7L2TiYcYDtYk1IpD+ASAYXjKbLTDPhBtYj7X1NuRMDTMtAx9kyBenub1Ev41lo91OHCKdmP+egTDmfQ7Ig==}
@@ -1208,10 +1177,6 @@ packages:
   cliui@9.0.1:
     resolution: {integrity: sha512-k7ndgKhwoQveBL+/1tqGJYNz097I7WOvwbmmU2AR5+magtbjPWQTS1C5vzGkBC8Ym8UWRzfKUzUUqFLypY4Q+w==}
     engines: {node: '>=20'}
-
-  cls-hooked@4.2.2:
-    resolution: {integrity: sha512-J4Xj5f5wq/4jAvcdgoGsL3G103BtWpZrMo8NEinRltN+xpTZdI+M38pyQqhuFU/P792xkMFvnKSf+Lm81U1bxw==}
-    engines: {node: ^4.7 || >=6.9 || >=7.3 || >=8.2.1}
 
   concurrently@10.0.3:
     resolution: {integrity: sha512-hc3LH4UaKWd/bbyDK/IGVa4RB6PtQ3CUYwtrkzqHn+wIG3Hr5fhpRlk0L/gCa8ZE1L/Ufj50Zho69cI5w8SQBA==}
@@ -1264,18 +1229,11 @@ packages:
   electron-to-chromium@1.5.376:
     resolution: {integrity: sha512-cUVA7/RvbFTEuw/i3obUwDTRIXojaxkResf+ibByPFxjc6XK3VNtcQXV0NSbAlJ0FMjcJGgftVVB4Qo184EXvA==}
 
-  emitter-listener@1.1.2:
-    resolution: {integrity: sha512-Bt1sBAGFHY9DKY+4/2cV6izcKJUf5T7/gkdmkxzX/qv9CcGH8xSwVRW5mtX03SWJtRTWSOpzCuWN9rBFYZepZQ==}
-
   emoji-regex@10.6.0:
     resolution: {integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==}
 
   enhanced-resolve@5.21.6:
     resolution: {integrity: sha512-aNnGCvbJ/RIyWo1IuhNdVjnNF+EjH9wpzpNHt+ci/m9He9LJvUN8wrCcXjp9cWsGNAuvSpVFTx/vraAFQ8qGjQ==}
-    engines: {node: '>=10.13.0'}
-
-  enhanced-resolve@5.24.0:
-    resolution: {integrity: sha512-SkE2t82KlkkxQRVMVLAGKxLfORGQfrkx5dkj+vlgXRVNEdPc4eZcR+J/Fvj8C+yKSFH5L0q3NFlyufOVQnCcYQ==}
     engines: {node: '>=10.13.0'}
 
   es-module-lexer@2.1.0:
@@ -1792,10 +1750,6 @@ packages:
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
 
-  semver@5.7.2:
-    resolution: {integrity: sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==}
-    hasBin: true
-
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
@@ -1817,15 +1771,9 @@ packages:
     resolution: {integrity: sha512-VsC6n6vz1ihYYyZZwX7YZSF5l5x36ca17OC+a69h94YqB7X6XLwf+5MOgynYir2SLFUbl8gIYvBo8K8RoNQ6bQ==}
     engines: {node: '>= 0.4'}
 
-  shimmer@1.2.1:
-    resolution: {integrity: sha512-sQTKC1Re/rM6XyFM6fIAGHRPVGvyXfgzIDvzoq608vM+jeyVD0Tu1E6Np0Kc2zAIFWIj963V2800iF/9LPieQw==}
-
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
-
-  stack-chain@1.3.7:
-    resolution: {integrity: sha512-D8cWtWVdIe/jBA7v5p5Hwl5yOSOrmZPWDPe2KxQ5UAGD+nxbxU0lKXA4h85Ta6+qgdKVL3vUxsbIZjc1kBG7ug==}
 
   string-width@7.2.0:
     resolution: {integrity: sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ==}
@@ -2741,18 +2689,10 @@ snapshots:
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
-  '@smithy/service-error-classification@2.1.5':
-    dependencies:
-      '@smithy/types': 2.12.0
-
   '@smithy/signature-v4@5.5.1':
     dependencies:
       '@smithy/core': 3.25.1
       '@smithy/types': 4.15.0
-      tslib: 2.8.1
-
-  '@smithy/types@2.12.0':
-    dependencies:
       tslib: 2.8.1
 
   '@smithy/types@4.15.0':
@@ -2843,10 +2783,6 @@ snapshots:
     optional: true
 
   '@types/aws-lambda@8.10.162': {}
-
-  '@types/cls-hooked@4.3.9':
-    dependencies:
-      '@types/node': 24.13.2
 
   '@types/esrecurse@4.3.1': {}
 
@@ -2978,12 +2914,6 @@ snapshots:
 
   arg@5.0.2: {}
 
-  async-hook-jl@1.7.6:
-    dependencies:
-      stack-chain: 1.3.7
-
-  atomic-batcher@1.0.2: {}
-
   aws-cdk-lib@2.260.0(constructs@10.6.0):
     dependencies:
       '@aws-cdk/asset-awscli-v1': 2.2.282
@@ -2992,15 +2922,6 @@ snapshots:
       constructs: 10.6.0
 
   aws-cdk@2.1128.0: {}
-
-  aws-xray-sdk-core@3.12.0:
-    dependencies:
-      '@aws-sdk/types': 3.973.13
-      '@smithy/service-error-classification': 2.1.5
-      '@types/cls-hooked': 4.3.9
-      atomic-batcher: 1.0.2
-      cls-hooked: 4.2.2
-      semver: 7.8.5
 
   babel-dead-code-elimination@1.0.12:
     dependencies:
@@ -3045,12 +2966,6 @@ snapshots:
       strip-ansi: 7.2.0
       wrap-ansi: 9.0.2
 
-  cls-hooked@4.2.2:
-    dependencies:
-      async-hook-jl: 1.7.6
-      emitter-listener: 1.1.2
-      semver: 5.7.2
-
   concurrently@10.0.3:
     dependencies:
       chalk: 5.6.2
@@ -3088,18 +3003,9 @@ snapshots:
 
   electron-to-chromium@1.5.376: {}
 
-  emitter-listener@1.1.2:
-    dependencies:
-      shimmer: 1.2.1
-
   emoji-regex@10.6.0: {}
 
   enhanced-resolve@5.21.6:
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.3.3
-
-  enhanced-resolve@5.24.0:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.3.3
@@ -3158,7 +3064,7 @@ snapshots:
   eslint-plugin-n@18.1.0(eslint@10.5.0(jiti@2.7.0))(typescript@6.0.3):
     dependencies:
       '@eslint-community/eslint-utils': 4.9.1(eslint@10.5.0(jiti@2.7.0))
-      enhanced-resolve: 5.24.0
+      enhanced-resolve: 5.21.6
       eslint: 10.5.0(jiti@2.7.0)
       eslint-plugin-es-x: 7.8.0(eslint@10.5.0(jiti@2.7.0))
       get-tsconfig: 4.14.0
@@ -3535,8 +3441,6 @@ snapshots:
 
   scheduler@0.27.0: {}
 
-  semver@5.7.2: {}
-
   semver@6.3.1: {}
 
   semver@7.8.5: {}
@@ -3549,11 +3453,7 @@ snapshots:
 
   shell-quote@1.8.4: {}
 
-  shimmer@1.2.1: {}
-
   source-map-js@1.2.1: {}
-
-  stack-chain@1.3.7: {}
 
   string-width@7.2.0:
     dependencies:
