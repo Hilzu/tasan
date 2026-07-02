@@ -92,6 +92,7 @@ export const handler: LambdaFunctionURLHandler = async (event) => {
       ),
       "content-length": request.headers.get("content-length"),
       "content-type": request.headers.get("content-type"),
+      host: request.headers.get("host"),
       origin: request.headers.get("origin"),
       referer: request.headers.get("referer"),
       "user-agent": request.headers.get("user-agent"),
