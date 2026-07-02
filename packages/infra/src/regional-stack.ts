@@ -36,7 +36,7 @@ export class RegionalStack extends Stack {
 
     const appFunction = new lambda.Function(this, "TasanFn", {
       functionName: "TasanAppFn",
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       code: lambda.Code.fromAsset(`cdk.out/${appFunctionAssetPath}`),
       handler: "index.handler",
       memorySize: 512,

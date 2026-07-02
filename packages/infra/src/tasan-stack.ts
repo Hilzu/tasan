@@ -125,7 +125,7 @@ export class TasanStack extends Stack {
 
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {
       functionName: "TasanAppFn",
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       memorySize: 512,
       entry: "./src/app-function/main.mts",
       architecture: lambda.Architecture.X86_64,
@@ -207,7 +207,7 @@ export class TasanStack extends Stack {
       "AppOriginRequestFunc",
       {
         functionName: "AppOriginRequestFn",
-        runtime: lambda.Runtime.NODEJS_22_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         memorySize: 256,
         handler: "main.handler",
         code: lambda.Code.fromAsset("./dist/app-origin-request/", {
