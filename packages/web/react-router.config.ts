@@ -4,5 +4,5 @@ export default {
   // Config options...
   // Server-side render by default, to enable SPA mode set this to `false`
   ssr: true,
-  allowedActionOrigins: ["https://tasan.app"],
+  allowedActionOrigins: ["tasan.app", "*.tasan.app"],
 } satisfies Config;
