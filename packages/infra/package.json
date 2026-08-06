@@ -1,6 +1,7 @@
 {
   "name": "@tasan/infra",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "main": "dist/cdk-app.js",
   "scripts": {

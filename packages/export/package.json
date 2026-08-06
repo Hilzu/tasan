@@ -1,6 +1,7 @@
 {
   "name": "@tasan/export",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "main": "./dist/export-split.mjs",
   "exports": "./dist/export-split.mjs",

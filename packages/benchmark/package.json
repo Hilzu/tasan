@@ -1,6 +1,7 @@
 {
   "name": "@tasan/benchmark",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "main": "./dist/main.mjs",
   "exports": "./dist/main.mjs",

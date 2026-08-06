@@ -6,6 +6,10 @@ Tasan is a full-stack web application for splitting bills and tracking shared ex
 
 The repository is a TypeScript monorepo built with pnpm workspaces. The web application uses React Router, React, and Tailwind CSS; data is stored in DynamoDB; and the production infrastructure is defined with AWS CDK.
 
+## Project status
+
+Tasan is under active development. Interfaces, deployment configuration, and data models may change without notice before a stable release.
+
 ## Prerequisites
 
 - Node.js and pnpm versions specified in [`.tool-versions`](./.tool-versions)
@@ -80,3 +84,15 @@ pnpm --filter @tasan/web test
 ## Infrastructure
 
 Infrastructure is managed from `packages/infra`. See the [infrastructure README](./packages/infra/README.md) for AWS authentication and CDK commands. Deployments modify live AWS resources and should only be run intentionally.
+
+## Contributing and security
+
+Contributions are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request and follow the [Code of Conduct](./CODE_OF_CONDUCT.md) when participating.
+
+Please do not report security vulnerabilities in a public issue. Follow the private reporting process in [SECURITY.md](./SECURITY.md).
+
+## License
+
+Copyright © 2026 Santeri Hiltunen.
+
+Tasan is licensed under the [GNU Affero General Public License, version 3 or later](./LICENSE). If you modify Tasan and make it available to users over a network, the AGPL requires you to offer those users the corresponding source code.

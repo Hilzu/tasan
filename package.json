@@ -8,8 +8,9 @@
     "type": "git",
     "url": "git+https://github.com/Hilzu/tasan.git"
   },
-  "license": "UNLICENSED",
+  "license": "AGPL-3.0-or-later",
   "private": true,
+  "packageManager": "pnpm@11.8.0",
   "type": "module",
   "engines": {
     "node": "^24.16.0",
