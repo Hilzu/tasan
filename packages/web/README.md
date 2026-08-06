@@ -1,35 +1,38 @@
-# Welcome to React Router!
+# `@tasan/web`
 
-A modern, production-ready template for building full-stack React applications using React Router.
+The Tasan full-stack web application, built with React, React Router, and Tailwind CSS. It renders on the server and uses `@tasan/common` for shared domain logic and `@tasan/data` for persistence.
 
-## Getting Started
+## Local development
 
-### Installation
+Follow the [root setup guide](../../README.md) to install dependencies, configure the environment, and start DynamoDB Local.
 
-Install the dependencies:
+Start the web development server:
 
-```bash
-pnpm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
+```sh
 pnpm dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+The application is available at [http://localhost:5173](http://localhost:5173).
 
-## Building for Production
+Routes are registered in `app/routes.ts`. Route modules live in `app/routes/`, reusable UI in `app/components/`, and framework-independent application logic in `app/domain/`.
 
-Create a production build:
+## Environment
 
-```bash
-pnpm build
-```
+Copy `example.env` to `.env` for local development. The main application settings are:
 
----
+- `ORIGIN_URL` — public origin of the application.
+- `AUTH_SERVER_URL` and `AUTH_CLIENT_ID` — OpenID Connect provider configuration.
+- `AUTH_DISABLE` — optionally disable authentication when set to a non-empty value.
+- `APP_ENV` — application environment; defaults to `local`.
+- `TABLE_NAME` — DynamoDB table used by `@tasan/data`.
 
-Built with ❤️ using React Router.
+The AWS SDK also reads its credential, region, and endpoint configuration from the environment. Do not commit `.env` or real credentials.
+
+## Commands
+
+- `pnpm dev` — start the development server with hot module replacement.
+- `pnpm build` — generate route types and create a production build.
+- `pnpm test` — run the package's tests.
+- `pnpm clean` — remove generated output and caches.
+
+Generated output is written to `.react-router/`, `build/`, and `dist/`; edit files in `app/` instead.

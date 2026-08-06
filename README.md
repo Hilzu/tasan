@@ -1,17 +1,82 @@
-# tasan
+# Tasan
 
 This project was bootstrapped with [create-ts-node](https://www.npmjs.com/package/create-ts-node).
 
-Split bills easily with this web app.
+Tasan is a full-stack web application for splitting bills and tracking shared expenses.
 
-## Packages
+The repository is a TypeScript monorepo built with pnpm workspaces. The web application uses React Router, React, and Tailwind CSS; data is stored in DynamoDB; and the production infrastructure is defined with AWS CDK.
 
-- [data](./packages/data/README.md): The data layer of the app.
-- [infra](./packages/infra/README.md): The CDK app that deploys the infrastructure to AWS.
-- [web](./packages/web/README.md): The main web app made with React router.
+## Prerequisites
 
-## Workspace scripts
+- Node.js and pnpm versions specified in [`.tool-versions`](./.tool-versions)
+- Docker, for running DynamoDB locally
+- AWS CLI, for creating the local DynamoDB table and working with AWS infrastructure
 
-- `pnpm build` compile typescript to js
-- `pnpm dev` watch for changes and compile typescript to js. web needs to be run separately.
-- `pnpm test` run test for all packages with workspace level checks
+## Getting started
+
+Install the workspace dependencies:
+
+```sh
+pnpm install
+```
+
+Create the web application's local environment file:
+
+```sh
+cp packages/web/example.env packages/web/.env
+```
+
+Start DynamoDB Local and create the application table:
+
+```sh
+docker compose up -d dynamodb-local
+./scripts/create-local-table.sh
+```
+
+Start the TypeScript workspace watcher in one terminal:
+
+```sh
+pnpm dev
+```
+
+Start the web development server in another terminal:
+
+```sh
+pnpm --filter @tasan/web dev
+```
+
+The application is available at [http://localhost:5173](http://localhost:5173).
+
+The example environment uses the deployed Cognito user pool for authentication. Update the authentication variables in `packages/web/.env` if you need to use a different provider or client.
+
+## Workspace packages
+
+- [`@tasan/common`](./packages/common): shared domain utilities, validation, currency handling, graph operations, IDs, and tracing.
+- [`@tasan/data`](./packages/data): DynamoDB access and persistence models.
+- [`@tasan/web`](./packages/web): the full-stack React Router web application.
+- [`@tasan/infra`](./packages/infra): AWS CDK stacks and runtime entry points.
+- [`@tasan/export`](./packages/export): utility for exporting split data.
+- [`@tasan/benchmark`](./packages/benchmark): Lambda benchmark utility.
+
+## Common commands
+
+Run these commands from the repository root:
+
+- `pnpm build` — build all workspace packages.
+- `pnpm dev` — watch and compile the TypeScript project references. Run the web development server separately.
+- `pnpm test` — run package tests plus formatting, linting, and type checks.
+- `pnpm test:format` — check formatting.
+- `pnpm test:lint` — run ESLint.
+- `pnpm test:types` — type-check all project references.
+- `pnpm fix` — apply ESLint and Prettier fixes across the repository.
+- `pnpm clean` — remove generated workspace output.
+
+To run a command for one package, use a pnpm filter. For example:
+
+```sh
+pnpm --filter @tasan/web test
+```
+
+## Infrastructure
+
+Infrastructure is managed from `packages/infra`. See the [infrastructure README](./packages/infra/README.md) for AWS authentication and CDK commands. Deployments modify live AWS resources and should only be run intentionally.

@@ -1,20 +1,26 @@
-# Welcome to your CDK TypeScript project
+# `@tasan/infra`
 
-This is a blank project for CDK development with TypeScript.
+AWS CDK infrastructure for Tasan. It defines the DynamoDB global table, Cognito authentication, Lambda runtimes, CloudFront distribution, S3 assets, DNS, and regional application resources.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+The CDK app currently targets the AWS account and regions configured in `src/cdk-app.ts`. Review synthesized changes carefully before applying them.
 
-## Authorizing the CDK CLI
+## AWS authentication
 
-```
+The project deployment workflow uses the `SCOy-TasanApp` AWS profile:
+
+```sh
 export AWS_PROFILE=SCOy-TasanApp
 aws sso login
 ```
 
-## Useful commands
+## Commands
 
-- `pnpm build` compile typescript to js
-- `pnpm dev` watch for changes and compile
-- `pnpm cdk:deploy` deploy this stack to your default AWS account/region
-- `pnpm cdk:diff` compare deployed stack with current state
-- `pnpm cdk:synth` emits the synthesized CloudFormation template
+- `pnpm build` — compile the CDK and runtime sources.
+- `pnpm cdk:synth` — synthesize the CloudFormation templates.
+- `pnpm cdk:diff` — compare the local definition with deployed stacks.
+- `pnpm clean` — remove `dist/` and `cdk.out/`.
+- `pnpm deploy` — build, synchronize web assets, and deploy all stacks.
+
+`deploy` changes live AWS resources and uploads production assets. Run it only when an intentional deployment has been requested and the diff has been reviewed.
+
+Generated output is written to `dist/` and `cdk.out/`; edit files in `src/` and `assets/` instead.
