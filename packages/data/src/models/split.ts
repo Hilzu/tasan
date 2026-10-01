@@ -54,6 +54,7 @@ const fromItem = (Item: Record<string, unknown>): Split => {
 
 export type CreateSplit = Omit<Split, "id" | "createdAt">;
 
+/** Creates the split and its owner membership in a single transaction. */
 export const createSplit = captureAsync(
   "createSplit",
   async (split: CreateSplit): Promise<{ id: SplitID }> => {
@@ -88,6 +89,7 @@ export const createSplit = captureAsync(
   },
 );
 
+/** Reads only split metadata, without loading expenses or memberships. */
 export const getSplit = captureAsync(
   "getSplit",
   async (splitID: SplitID): Promise<Split | undefined> => {
@@ -126,6 +128,7 @@ export type SplitWithData = Split & {
   expenses: SplitExpense[];
 };
 
+/** Loads the split with its member IDs and non-deleted expenses. */
 export const getSplitWithData = captureAsync(
   "getSplitWithData",
   async (splitID: SplitID): Promise<SplitWithData | undefined> => {

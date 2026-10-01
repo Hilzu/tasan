@@ -21,6 +21,7 @@ export interface InviteForSplit {
   id: InviteID;
   splitID: SplitID;
   createdBy: UserID;
+  /** Check expiry before use; DynamoDB TTL cleanup is asynchronous. */
   expiresAt: Date;
 }
 
@@ -81,8 +82,11 @@ export const findInviteForSplit = captureAsync(
   },
 );
 
-// Consuming a single-use invitation and adding its member is one operation.
-// The condition is checked at write time, including when two callers race.
+/**
+ * Atomically consumes an unexpired invitation and adds its member, preserving
+ * existing membership creation metadata. Expiry is checked at write time.
+ * Returns false if already consumed or expired; other persistence errors propagate.
+ */
 export const consumeInviteForSplit = captureAsync(
   "consumeInviteForSplit",
   async (invite: InviteForSplit, userID: UserID): Promise<boolean> => {
