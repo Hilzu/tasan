@@ -19,7 +19,7 @@ The table uses `pk` and `sk` as its primary key and `GSI-SK-PK` as a reversed-ke
 ## Commands
 
 - `pnpm build` — compile the package.
-- `pnpm test` — compile and run persistence adapter tests without AWS credentials or network access.
+- `pnpm test` — run TypeScript persistence adapter tests without AWS credentials or network access.
 - `pnpm clean` — remove generated output.
 
 Generated files are written to `dist/`; edit files in `src/` instead.
