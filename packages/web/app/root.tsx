@@ -27,7 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
-        <Links />
+        <Links nonce={nonce} />
       </head>
       <body className="min-h-full bg-white text-gray-800 antialiased dark:bg-gray-950 dark:text-gray-100">
         {children}
