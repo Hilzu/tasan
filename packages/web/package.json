@@ -15,7 +15,7 @@
     "build": "react-router typegen && NODE_ENV=production react-router build --sourcemapServer",
     "clean": "rm -rf .react-router build dist node_modules/.vite",
     "dev": "react-router dev --host 0.0.0.0",
-    "test": "tsx --test"
+    "test": "tsx --experimental-test-module-mocks --test"
   },
   "engines": {
     "node": "^24.16.0"

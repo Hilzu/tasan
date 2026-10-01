@@ -8,8 +8,8 @@ import {
   createShareHandler,
 } from "~/.client/client-utils";
 import { getSessionOrRedirect } from "~/.server/auth";
-import { application } from "~/.server/services";
-import { runApplication } from "~/.server/services/http";
+import { errorResponse } from "~/.server/services/http";
+import { createInvite } from "~/.server/services/invites";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
@@ -23,15 +23,19 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (session instanceof Response) return session;
 
   const { splitID } = params;
-  const inviteForSplit = await runApplication(() =>
-    application.createInvite(session.userID, asSplitID(splitID)),
-  );
-
-  const inviteURL = new URL(
-    `/accept-invite/${encodeURIComponent(inviteForSplit.id)}`,
-    originURL,
-  );
-  return { inviteURL };
+  try {
+    const inviteForSplit = await createInvite(
+      session.userID,
+      asSplitID(splitID),
+    );
+    const inviteURL = new URL(
+      `/accept-invite/${encodeURIComponent(inviteForSplit.id)}`,
+      originURL,
+    );
+    return { inviteURL };
+  } catch (error) {
+    throw errorResponse(error);
+  }
 }
 
 const ShareButton = ({ share }: { share: ShareData }) => {

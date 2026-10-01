@@ -5,8 +5,8 @@ import { useState } from "react";
 import { href, redirect, useRouteLoaderData, useSubmit } from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
-import { application } from "~/.server/services";
-import { runApplication } from "~/.server/services/http";
+import { deleteExpense } from "~/.server/services/expenses";
+import { errorResponse } from "~/.server/services/http";
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
@@ -25,10 +25,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   const splitID = asSplitID(params.splitID);
   const expenseID = asExpenseID(params.expenseID);
 
-  await runApplication(() =>
-    application.deleteExpense(session.userID, splitID, expenseID),
-  );
-  return redirect(href("/splits/:splitID", { splitID }));
+  try {
+    await deleteExpense(session.userID, splitID, expenseID);
+    return redirect(href("/splits/:splitID", { splitID }));
+  } catch (error) {
+    throw errorResponse(error);
+  }
 }
 
 export default function ShowExpense({ params }: Route.ComponentProps) {

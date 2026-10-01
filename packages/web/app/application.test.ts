@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 
+import type { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import {
   asCognitoUserID,
   genExpenseID,
@@ -8,15 +9,32 @@ import {
   genSplitID,
   genUserID,
 } from "@tasan/common/id";
+import type * as persistence from "@tasan/data";
 import type { CreateSplitExpense, Split } from "@tasan/data";
 
-import {
-  type ApplicationDependencies,
-  createApplication,
-  type NewExpense,
-} from "~/.server/services/application";
 import { ApplicationError } from "~/.server/services/errors";
-import { runApplication, runFormApplication } from "~/.server/services/http";
+import type { NewExpense } from "~/.server/services/expenses";
+import { errorResponse, formErrorResponse } from "~/.server/services/http";
+
+type TestAdapters = Pick<
+  typeof persistence,
+  | "createSplit"
+  | "findUsersSplits"
+  | "getSplit"
+  | "getSplitUser"
+  | "getSplitWithData"
+  | "findSplitUsers"
+  | "getUsers"
+  | "createSplitExpense"
+  | "deleteSplitExpense"
+  | "createInviteForSplit"
+  | "findInviteForSplit"
+  | "consumeInviteForSplit"
+  | "ensureCognitoUser"
+  | "putUser"
+> & { fetchCurrencyConversionRate: typeof fetchCurrencyConversionRate };
+
+let adapters!: TestAdapters;
 
 const actorID = genUserID();
 const payerID = genUserID();
@@ -45,9 +63,9 @@ const expense: NewExpense = {
   participants: new Map([[actorID, 10]]),
 };
 
-const fixture = (overrides: Partial<ApplicationDependencies> = {}) => {
+const fixture = (overrides: Partial<TestAdapters> = {}) => {
   const writes: CreateSplitExpense[] = [];
-  const deps: ApplicationDependencies = {
+  adapters = {
     createSplit: () => Promise.resolve({ id: splitID }),
     findUsersSplits: () => Promise.resolve([split]),
     getSplit: () => Promise.resolve(split),
@@ -79,21 +97,60 @@ const fixture = (overrides: Partial<ApplicationDependencies> = {}) => {
     ensureCognitoUser: () => Promise.resolve({ userID: actorID }),
     putUser: () => Promise.resolve(),
     fetchCurrencyConversionRate: () => Promise.resolve(2),
-    now: () => now,
     ...overrides,
   };
-  return { app: createApplication(deps), writes };
+  return { writes };
 };
+
+fixture();
+const dataMock = {
+  cache: true,
+  exports: Object.fromEntries(
+    Object.keys(adapters)
+      .filter((name) => name !== "fetchCurrencyConversionRate")
+      .map((name) => [
+        name,
+        (...args: unknown[]) =>
+          Reflect.apply(
+            adapters[name as keyof TestAdapters],
+            undefined,
+            args,
+          ) as Promise<unknown>,
+      ]),
+  ),
+};
+const currencyMock = {
+  cache: true,
+  exports: {
+    fetchCurrencyConversionRate: (
+      ...args: Parameters<typeof fetchCurrencyConversionRate>
+    ) => adapters.fetchCurrencyConversionRate(...args),
+  },
+};
+// Module mocks are enabled explicitly by the web test command. Mocks stay local
+// to this test file's process, and each fixture replaces the adapter behavior.
+// eslint-disable-next-line n/no-unsupported-features/node-builtins
+mock.module("@tasan/data", dataMock);
+// eslint-disable-next-line n/no-unsupported-features/node-builtins
+mock.module("@tasan/common/currency-convert", currencyMock);
+mock.method(Date, "now", () => now.getTime());
+
+const { createExpense, deleteExpense } =
+  await import("~/.server/services/expenses");
+const { createSplit, getSplit } = await import("~/.server/services/splits");
+const { acceptInvite, createInvite, previewInvite } =
+  await import("~/.server/services/invites");
+const { provisionAuthenticatedUser } = await import("~/.server/services/users");
 
 await test("expense creation uses the stored split currency and stamps the actor", async () => {
   const rates: string[][] = [];
-  const { app, writes } = fixture({
+  const { writes } = fixture({
     fetchCurrencyConversionRate: (from, to) => {
       rates.push([from, to]);
       return Promise.resolve(0.8);
     },
   });
-  await app.createExpense(actorID, splitID, { ...expense, currency: "USD" });
+  await createExpense(actorID, splitID, { ...expense, currency: "USD" });
   assert.deepEqual(rates, [["USD", "EUR"]]);
   assert.equal(writes[0].createdBy, actorID);
   assert.equal(writes[0].splitID, splitID);
@@ -102,17 +159,17 @@ await test("expense creation uses the stored split currency and stamps the actor
 });
 
 await test("same-currency expenses do not call the rate provider", async () => {
-  const { app, writes } = fixture({
+  const { writes } = fixture({
     fetchCurrencyConversionRate: () => {
       assert.fail("Unexpected currency lookup");
     },
   });
-  await app.createExpense(actorID, splitID, expense);
+  await createExpense(actorID, splitID, expense);
   assert.equal(writes[0].conversionRate, undefined);
 });
 
 await test("split operations reject non-members before reading or writing split data", async () => {
-  const { app, writes } = fixture({
+  const { writes } = fixture({
     getSplitUser: () => Promise.resolve(undefined),
     getSplit: () => {
       assert.fail("Unexpected split read");
@@ -128,10 +185,10 @@ await test("split operations reject non-members before reading or writing split 
     },
   });
   for (const operation of [
-    () => app.createExpense(outsiderID, splitID, expense),
-    () => app.getSplit(outsiderID, splitID),
-    () => app.createInvite(outsiderID, splitID),
-    () => app.deleteExpense(outsiderID, splitID, genExpenseID()),
+    () => createExpense(outsiderID, splitID, expense),
+    () => getSplit(outsiderID, splitID),
+    () => createInvite(outsiderID, splitID),
+    () => deleteExpense(outsiderID, splitID, genExpenseID()),
   ]) {
     await assert.rejects(operation, { code: "not_found" });
   }
@@ -170,9 +227,9 @@ await test("expense validation rejects invalid members, totals, and precision wi
   ];
   for (const [name, input, field] of cases)
     await t.test(name, async () => {
-      const { app, writes } = fixture();
+      const { writes } = fixture();
       await assert.rejects(
-        () => app.createExpense(actorID, splitID, { ...expense, ...input }),
+        () => createExpense(actorID, splitID, { ...expense, ...input }),
         (error: unknown) => {
           assert.ok(error instanceof ApplicationError);
           assert.equal(error.code, "invalid_input");
@@ -190,35 +247,35 @@ await test("provider failures and invalid rates cannot persist an expense", asyn
     () => Promise.resolve(NaN),
     () => Promise.resolve(0),
   ]) {
-    const { app, writes } = fixture({ fetchCurrencyConversionRate: provider });
+    const { writes } = fixture({ fetchCurrencyConversionRate: provider });
     await assert.rejects(() =>
-      app.createExpense(actorID, splitID, { ...expense, currency: "USD" }),
+      createExpense(actorID, splitID, { ...expense, currency: "USD" }),
     );
     assert.equal(writes.length, 0);
   }
 });
 
 await test("invite preview exposes metadata without loading expenses", async () => {
-  const { app } = fixture({
+  fixture({
     getSplitWithData: () => {
       assert.fail("Unexpected aggregate read");
     },
   });
-  assert.deepEqual(await app.previewInvite(inviteID), { split });
+  assert.deepEqual(await previewInvite(inviteID), { split });
 });
 
 await test("expired and missing invites are rejected before consumption", async () => {
   for (const value of [undefined, { ...invite, expiresAt: now }]) {
-    const { app } = fixture({
+    fixture({
       findInviteForSplit: () => Promise.resolve(value),
       consumeInviteForSplit: () => {
         assert.fail("Unexpected invite consumption");
       },
     });
-    await assert.rejects(() => app.previewInvite(inviteID), {
+    await assert.rejects(() => previewInvite(inviteID), {
       code: "not_found",
     });
-    await assert.rejects(() => app.acceptInvite(actorID, inviteID), {
+    await assert.rejects(() => acceptInvite(actorID, inviteID), {
       code: "not_found",
     });
   }
@@ -226,7 +283,7 @@ await test("expired and missing invites are rejected before consumption", async 
 
 await test("invite acceptance delegates consumption and membership to one atomic operation", async () => {
   let consumed = false;
-  const { app } = fixture({
+  fixture({
     consumeInviteForSplit: (value, userID) => {
       assert.deepEqual(value, invite);
       assert.equal(userID, outsiderID);
@@ -235,14 +292,14 @@ await test("invite acceptance delegates consumption and membership to one atomic
       return Promise.resolve(accepted);
     },
   });
-  assert.deepEqual(await app.acceptInvite(outsiderID, inviteID), { splitID });
-  await assert.rejects(() => app.acceptInvite(outsiderID, inviteID), {
+  assert.deepEqual(await acceptInvite(outsiderID, inviteID), { splitID });
+  await assert.rejects(() => acceptInvite(outsiderID, inviteID), {
     code: "not_found",
   });
 });
 
 await test("split creation stamps the actor and rejects invalid names", async () => {
-  const { app } = fixture({
+  fixture({
     createSplit: (input) => {
       assert.deepEqual(input, {
         name: "Trip",
@@ -253,11 +310,11 @@ await test("split creation stamps the actor and rejects invalid names", async ()
     },
   });
   assert.deepEqual(
-    await app.createSplit(actorID, { name: "Trip", currency: "EUR" }),
+    await createSplit(actorID, { name: "Trip", currency: "EUR" }),
     { id: splitID },
   );
   await assert.rejects(
-    () => app.createSplit(actorID, { name: "x".repeat(65), currency: "EUR" }),
+    () => createSplit(actorID, { name: "x".repeat(65), currency: "EUR" }),
     { code: "invalid_input" },
   );
 });
@@ -265,7 +322,7 @@ await test("split creation stamps the actor and rejects invalid names", async ()
 await test("provisioning saves the profile under the resolved application identity", async () => {
   const cognitoID = asCognitoUserID("12345678-1234-4123-8123-123456789abc");
   let saved = false;
-  const { app } = fixture({
+  fixture({
     ensureCognitoUser: (input) => {
       assert.deepEqual(input, { cognitoID });
       return Promise.resolve({ userID: actorID });
@@ -281,7 +338,7 @@ await test("provisioning saves the profile under the resolved application identi
     },
   });
   assert.deepEqual(
-    await app.provisionAuthenticatedUser({
+    await provisionAuthenticatedUser({
       cognitoID,
       email: "user@example.com",
       name: "User",
@@ -291,30 +348,32 @@ await test("provisioning saves the profile under the resolved application identi
   assert.equal(saved, true);
 });
 
-await test("HTTP adapter maps expected errors and preserves unexpected failures", async () => {
-  await assert.rejects(
-    () =>
-      runApplication(() =>
-        Promise.reject(new ApplicationError("not_found", "Missing")),
-      ),
-    (error: unknown) => error instanceof Response && error.status === 404,
+await test("HTTP response helpers map expected errors and preserve unexpected failures", () => {
+  assert.equal(
+    errorResponse(new ApplicationError("not_found", "Missing")).status,
+    404,
   );
   const failure = new Error("Storage unavailable");
-  await assert.rejects(
-    () => runApplication(() => Promise.reject(failure)),
+  assert.throws(
+    () => errorResponse(failure),
     (error: unknown) => error === failure,
   );
-  const result = await runFormApplication(() =>
-    Promise.reject(
-      new ApplicationError("invalid_input", "Invalid payer", {
-        payer: ["Invalid payer"],
-      }),
-    ),
+  assert.throws(
+    () => formErrorResponse(failure),
+    (error: unknown) => error === failure,
   );
-  assert.ok(result.response);
-  assert.ok(result.response.init);
-  assert.equal(result.response.init.status, 400);
-  assert.deepEqual(result.response.data.errors.fieldErrors, {
+  assert.throws(
+    () => formErrorResponse(new ApplicationError("not_found", "Missing")),
+    (error: unknown) => error instanceof Response && error.status === 404,
+  );
+  const response = formErrorResponse(
+    new ApplicationError("invalid_input", "Invalid payer", {
+      payer: ["Invalid payer"],
+    }),
+  );
+  assert.ok(response.init);
+  assert.equal(response.init.status, 400);
+  assert.deepEqual(response.data.errors.fieldErrors, {
     payer: ["Invalid payer"],
   });
 });

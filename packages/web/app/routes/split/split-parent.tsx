@@ -2,8 +2,8 @@ import { asSplitID } from "@tasan/common/id";
 import { Outlet } from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
-import { application } from "~/.server/services";
-import { runApplication } from "~/.server/services/http";
+import { errorResponse } from "~/.server/services/http";
+import { getSplit } from "~/.server/services/splits";
 
 import type { Route } from "./+types/split-parent";
 
@@ -16,10 +16,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (session instanceof Response) return session;
 
   const splitID = asSplitID(params.splitID);
-  const { split, users } = await runApplication(() =>
-    application.getSplit(session.userID, splitID),
-  );
-  return { split, users, session };
+  try {
+    const { split, users } = await getSplit(session.userID, splitID);
+    return { split, users, session };
+  } catch (error) {
+    throw errorResponse(error);
+  }
 }
 
 export type SplitLoader = typeof loader;

@@ -2,8 +2,8 @@ import { asInviteID } from "@tasan/common/id";
 import { Form, href, redirect } from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
-import { application } from "~/.server/services";
-import { runApplication } from "~/.server/services/http";
+import { errorResponse } from "~/.server/services/http";
+import { acceptInvite, previewInvite } from "~/.server/services/invites";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 
@@ -14,7 +14,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
-  return runApplication(() => application.previewInvite(asInviteID(inviteID)));
+  try {
+    return await previewInvite(asInviteID(inviteID));
+  } catch (error) {
+    throw errorResponse(error);
+  }
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -22,11 +26,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
-  const { splitID } = await runApplication(() =>
-    application.acceptInvite(session.userID, asInviteID(inviteID)),
-  );
-
-  return redirect(href("/splits/:splitID", { splitID }));
+  try {
+    const { splitID } = await acceptInvite(
+      session.userID,
+      asInviteID(inviteID),
+    );
+    return redirect(href("/splits/:splitID", { splitID }));
+  } catch (error) {
+    throw errorResponse(error);
+  }
 }
 
 export default function AcceptInvite({ loaderData }: Route.ComponentProps) {

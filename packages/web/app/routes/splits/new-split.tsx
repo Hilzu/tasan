@@ -4,8 +4,8 @@ import { Form, href, redirect } from "react-router";
 import { zfd } from "zod-form-data";
 
 import { getSessionOrRedirect } from "~/.server/auth";
-import { application } from "~/.server/services";
-import { runFormApplication } from "~/.server/services/http";
+import { formErrorResponse } from "~/.server/services/http";
+import { createSplit } from "~/.server/services/splits";
 import { Button } from "~/components/button";
 import { FieldError, InputField, SelectField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
@@ -30,12 +30,12 @@ export async function action({ request }: Route.ActionArgs) {
   const result = validateOrRespond(schema, formData);
   if (result.response) return result.response;
 
-  const created = await runFormApplication(() =>
-    application.createSplit(session.userID, result.data),
-  );
-  if (created.response) return created.response;
-  const { id } = created.value;
-  return redirect(href("/splits/:splitID", { splitID: id }));
+  try {
+    const { id } = await createSplit(session.userID, result.data);
+    return redirect(href("/splits/:splitID", { splitID: id }));
+  } catch (error) {
+    return formErrorResponse(error);
+  }
 }
 
 export default function NewSplit({ actionData }: Route.ComponentProps) {

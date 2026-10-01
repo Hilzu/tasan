@@ -6,8 +6,8 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { href, redirect, useFetcher, useRouteLoaderData } from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
-import { application } from "~/.server/services";
-import { runFormApplication } from "~/.server/services/http";
+import { createExpense } from "~/.server/services/expenses";
+import { formErrorResponse } from "~/.server/services/http";
 import { Button } from "~/components/button";
 import {
   CheckboxGroupField,
@@ -38,15 +38,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   const participants = new Map(
     Object.entries(data.participants).map(([k, v]) => [asUserID(k), v]),
   );
-  const created = await runFormApplication(() =>
-    application.createExpense(session.userID, splitID, {
+  try {
+    await createExpense(session.userID, splitID, {
       ...data,
       participants,
-    }),
-  );
-  if (created.response) return created.response;
-
-  return redirect(href("/splits/:splitID", { splitID }));
+    });
+    return redirect(href("/splits/:splitID", { splitID }));
+  } catch (error) {
+    return formErrorResponse(error);
+  }
 }
 
 export default function NewExpense(_: Route.ComponentProps) {

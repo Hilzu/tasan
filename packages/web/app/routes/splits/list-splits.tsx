@@ -1,7 +1,7 @@
 import { href } from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
-import { application } from "~/.server/services";
+import { listSplits } from "~/.server/services/splits";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
@@ -16,7 +16,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSessionOrRedirect(request);
   if (session instanceof Response) return session;
 
-  const splits = await application.listSplits(session.userID);
+  const splits = await listSplits(session.userID);
   return { splits };
 }
 

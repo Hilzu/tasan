@@ -3,7 +3,7 @@ import { redirect } from "react-router";
 import { z } from "zod";
 
 import { getTokens } from "~/.server/openid";
-import { application } from "~/.server/services";
+import { provisionAuthenticatedUser } from "~/.server/services/users";
 import { commitSession, getSession } from "~/.server/sessions";
 import { originURL } from "~/config";
 import { toRelativePath } from "~/url";
@@ -26,7 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!tokens.refresh_token) throw new Error("No refresh token");
 
   const claims = claimsSchema.parse(tokens.claims());
-  const { userID } = await application.provisionAuthenticatedUser({
+  const { userID } = await provisionAuthenticatedUser({
     cognitoID: claims.sub,
     email: claims.email,
     name: claims["cognito:username"],
