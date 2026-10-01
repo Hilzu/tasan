@@ -20,7 +20,7 @@ Application use cases are named functions grouped in `app/.server/services/split
 
 Forms retain the explicit `splitName` and `expenseName` field names to discourage unrelated browser autocomplete suggestions. Routes map these fields to the application's `name` property and map validation errors back to the matching form fields.
 
-Use cases own split membership checks, expense validation, exchange-rate selection, invitation expiry, and profile provisioning. Application tests mock imported persistence and exchange-rate modules with Node's built-in module mocks, and mock `Date.now` for expiry checks. The web test command enables `--experimental-test-module-mocks`; include that flag when running an individual application test through `tsx --test`. Authentication tokens and session cookies remain the responsibility of the request adapters.
+Use cases own split membership checks, expense validation, exchange-rate selection, invitation expiry, and profile provisioning. Application tests live in `tests/services/`, grouped by module with explicit mocks for their dependencies. They use Node's built-in module mocks and a test-scoped clock for expiry checks. The web test command enables `--experimental-test-module-mocks`; include that flag when running an individual application test through `tsx --test`. Authentication tokens and session cookies remain the responsibility of the request adapters.
 
 Split creation and invitation consumption are atomic persistence operations in `@tasan/data`. Invitation confirmation reads only split metadata. Expense creation derives the home currency from the stored split, requires the payer and participants to be members, and rejects amounts with precision unsupported by the expense currency.
 
