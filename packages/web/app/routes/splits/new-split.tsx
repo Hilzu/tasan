@@ -1,11 +1,11 @@
 import { currencies } from "@tasan/common/currency";
 import { currencySymbolSchema } from "@tasan/common/validation";
-import { createSplit } from "@tasan/data";
 import { Form, href, redirect } from "react-router";
-import { z } from "zod";
 import { zfd } from "zod-form-data";
 
 import { getSessionOrRedirect } from "~/.server/auth";
+import { formErrorResponse } from "~/.server/services/http";
+import { createSplit } from "~/.server/services/splits";
 import { Button } from "~/components/button";
 import { FieldError, InputField, SelectField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
@@ -18,7 +18,7 @@ export function meta(_: Route.MetaArgs) {
 }
 
 const schema = zfd.formData({
-  splitName: zfd.text(z.string().min(1).max(64)),
+  splitName: zfd.text(),
   currency: zfd.text(currencySymbolSchema),
 });
 
@@ -30,12 +30,15 @@ export async function action({ request }: Route.ActionArgs) {
   const result = validateOrRespond(schema, formData);
   if (result.response) return result.response;
 
-  const { id } = await createSplit({
-    name: result.data.splitName,
-    createdBy: session.userID,
-    currency: result.data.currency,
-  });
-  return redirect(href("/splits/:splitID", { splitID: id }));
+  try {
+    const { id } = await createSplit(session.userID, {
+      name: result.data.splitName,
+      currency: result.data.currency,
+    });
+    return redirect(href("/splits/:splitID", { splitID: id }));
+  } catch (error) {
+    return formErrorResponse(error, { name: "splitName" });
+  }
 }
 
 export default function NewSplit({ actionData }: Route.ComponentProps) {

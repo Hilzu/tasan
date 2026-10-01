@@ -1,19 +1,13 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import * as D from "@tasan/common/decimal";
 import { asSplitID, asUserID } from "@tasan/common/id";
-import {
-  currencySymbolSchema,
-  decimalSchema,
-  userIDSchema,
-} from "@tasan/common/validation";
-import { createSplitExpense, findSplitUsers } from "@tasan/data";
+import { currencySymbolSchema } from "@tasan/common/validation";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { href, redirect, useFetcher, useRouteLoaderData } from "react-router";
-import { z } from "zod";
-import { zfd } from "zod-form-data";
 
 import { getSessionOrRedirect } from "~/.server/auth";
+import { createExpense } from "~/.server/services/expenses";
+import { formErrorResponse } from "~/.server/services/http";
 import { Button } from "~/components/button";
 import {
   CheckboxGroupField,
@@ -25,94 +19,45 @@ import {
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { useStorage } from "~/hooks";
+import { newExpenseFormSchema } from "~/routes/split/new-expense-form";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
 
 import type { Route } from "./+types/new-expense";
-
-const schema = zfd.formData(
-  z
-    .object({
-      expenseName: zfd.text(z.string().min(1).max(64)),
-      currency: zfd.text(currencySymbolSchema),
-      splitCurrency: zfd.text(currencySymbolSchema),
-      amount: zfd.numeric(decimalSchema),
-      payer: zfd.text(userIDSchema),
-    })
-    .catchall(z.record(z.string(), zfd.numeric(decimalSchema)))
-    .superRefine((data, ctx) => {
-      const path = ["participants"];
-
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (Object.keys(data.participants ?? {}).length === 0) {
-        ctx.addIssue({
-          code: "custom",
-          path,
-          message: "Participants are required.",
-        });
-        return;
-      }
-      const total = Object.values(data.participants).reduce((a, b) =>
-        D.add(a, b),
-      );
-      if (!D.equals(total, data.amount)) {
-        ctx.addIssue({
-          code: "custom",
-          path,
-          message: "Total amount must match the expense amount.",
-        });
-      }
-    }),
-);
 
 export async function action({ request, params }: Route.ActionArgs) {
   const session = await getSessionOrRedirect(request);
   if (session instanceof Response) return session;
 
   const splitID = asSplitID(params.splitID);
-  const splitUsers = await findSplitUsers(splitID);
-  if (!splitUsers.find((u) => u.userID === session.userID))
-    throw new Response(null, { status: 403 });
-
   const formData = await request.formData();
-  const result = validateOrRespond(schema, formData);
+  const result = validateOrRespond(newExpenseFormSchema, formData);
   if (result.response) return result.response;
   const { data } = result;
 
   const participants = new Map(
     Object.entries(data.participants).map(([k, v]) => [asUserID(k), v]),
   );
-  const participantUserIDs = [...participants.keys()];
-  if (participantUserIDs.some((id) => !splitUsers.find((u) => u.userID === id)))
-    throw new Response("Participants must be in the split", { status: 403 });
-
-  let conversionRate: number | undefined;
-  if (data.currency !== data.splitCurrency) {
-    conversionRate = await fetchCurrencyConversionRate(
-      data.currency,
-      data.splitCurrency,
-    );
+  try {
+    await createExpense(session.userID, splitID, {
+      name: data.expenseName,
+      currency: data.currency,
+      amount: data.amount,
+      payer: data.payer,
+      participants,
+    });
+    return redirect(href("/splits/:splitID", { splitID }));
+  } catch (error) {
+    return formErrorResponse(error, { name: "expenseName" });
   }
-
-  await createSplitExpense({
-    splitID: splitID,
-    name: data.expenseName,
-    currency: data.currency,
-    conversionRate,
-    amount: data.amount,
-    payer: data.payer,
-    participants,
-    createdBy: session.userID,
-  });
-
-  return redirect(href("/splits/:splitID", { splitID }));
 }
 
-export default function NewExpense({ actionData }: Route.ComponentProps) {
+export default function NewExpense(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<typeof action>();
+  const actionData = fetcher.data;
   const [preferredCurrency, setPreferredCurrency] =
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
@@ -154,7 +99,7 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
           required
           minLength={1}
           maxLength={64}
-          errors={actionData?.errors.fieldErrors.name}
+          errors={actionData?.errors.fieldErrors.expenseName}
         />
 
         <SelectField
@@ -243,8 +188,6 @@ export default function NewExpense({ actionData }: Route.ComponentProps) {
             ]}
           />
         )}
-
-        <input type="hidden" name="splitCurrency" value={split.currency} />
 
         <Button
           type="submit"

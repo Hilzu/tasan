@@ -1,4 +1,10 @@
-import { DeleteCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
+import {
+  DeleteCommand,
+  PutCommand,
+  QueryCommand,
+  TransactWriteCommand,
+} from "@aws-sdk/lib-dynamodb";
 import {
   genInviteID,
   type InviteID,
@@ -9,12 +15,14 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import { toUnixTime } from "../date.js";
+import { fromUnixTime, toUnixTime } from "../date.js";
 
 export interface InviteForSplit {
   id: InviteID;
   splitID: SplitID;
   createdBy: UserID;
+  /** Check expiry before use; DynamoDB TTL cleanup is asynchronous. */
+  expiresAt: Date;
 }
 
 export interface InviteSplitItem {
@@ -27,14 +35,14 @@ export interface InviteSplitItem {
 
 type PrimaryKey = Pick<InviteSplitItem, "pk" | "sk">;
 
-export type CreateInviteForSplit = Omit<InviteForSplit, "id">;
+export type CreateInviteForSplit = Omit<InviteForSplit, "id" | "expiresAt">;
 
 export const createInviteForSplit = captureAsync(
   "createInviteForSplit",
   async ({
     splitID,
     createdBy,
-  }: CreateInviteForSplit): Promise<{ id: string }> => {
+  }: CreateInviteForSplit): Promise<{ id: InviteID }> => {
     const id = genInviteID();
     const fiveDaysFromNow = new Date();
     fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
@@ -69,7 +77,55 @@ export const findInviteForSplit = captureAsync(
       id: item.pk,
       splitID: item.sk,
       createdBy: item.createdBy,
+      expiresAt: fromUnixTime(item.expiresAt),
     };
+  },
+);
+
+/**
+ * Atomically consumes an unexpired invitation and adds its member, preserving
+ * existing membership creation metadata. Expiry is checked at write time.
+ * Returns false if already consumed or expired; other persistence errors propagate.
+ */
+export const consumeInviteForSplit = captureAsync(
+  "consumeInviteForSplit",
+  async (invite: InviteForSplit, userID: UserID): Promise<boolean> => {
+    const now = new Date();
+    const cmd = new TransactWriteCommand({
+      TransactItems: [
+        {
+          Delete: {
+            TableName,
+            Key: { pk: invite.id, sk: invite.splitID } satisfies PrimaryKey,
+            ConditionExpression: "attribute_exists(pk) AND expiresAt > :now",
+            ExpressionAttributeValues: { ":now": toUnixTime(now) },
+          },
+        },
+        {
+          Update: {
+            TableName,
+            Key: { pk: invite.splitID, sk: userID },
+            UpdateExpression:
+              "SET createdAt = if_not_exists(createdAt, :createdAt), createdBy = if_not_exists(createdBy, :createdBy)",
+            ExpressionAttributeValues: {
+              ":createdAt": now.toISOString(),
+              ":createdBy": invite.createdBy,
+            },
+          },
+        },
+      ],
+    });
+    try {
+      await documentClient().send(cmd);
+      return true;
+    } catch (error) {
+      if (
+        error instanceof TransactionCanceledException &&
+        error.CancellationReasons?.at(0)?.Code === "ConditionalCheckFailed"
+      )
+        return false;
+      throw error;
+    }
   },
 );
 

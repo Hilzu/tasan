@@ -1,9 +1,9 @@
 import { cognitoIDSchema } from "@tasan/common/validation";
-import { ensureCognitoUser, putUser } from "@tasan/data";
 import { redirect } from "react-router";
 import { z } from "zod";
 
 import { getTokens } from "~/.server/openid";
+import { provisionAuthenticatedUser } from "~/.server/services/users";
 import { commitSession, getSession } from "~/.server/sessions";
 import { originURL } from "~/config";
 import { toRelativePath } from "~/url";
@@ -25,11 +25,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const tokens = await getTokens({ currentURL, state, nonce });
   if (!tokens.refresh_token) throw new Error("No refresh token");
 
-  console.log("claims", tokens.claims());
   const claims = claimsSchema.parse(tokens.claims());
-  const { userID } = await ensureCognitoUser({ cognitoID: claims.sub });
-  await putUser({
-    id: userID,
+  const { userID } = await provisionAuthenticatedUser({
+    cognitoID: claims.sub,
     email: claims.email,
     name: claims["cognito:username"],
   });

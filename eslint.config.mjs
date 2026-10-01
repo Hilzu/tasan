@@ -105,6 +105,15 @@ export default tsEslint.config(
     },
   },
   {
+    files: ["**/*.test.ts"],
+    rules: {
+      "n/no-unsupported-features/node-builtins": [
+        "error",
+        { ignores: ["test.mock.module"] },
+      ],
+    },
+  },
+  {
     files: ["**/*.client.ts", "**/*.client.tsx", "**/.client/**"],
     rules: {
       "n/no-unsupported-features/node-builtins": "off",

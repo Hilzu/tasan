@@ -1,5 +1,4 @@
 import { asSplitID } from "@tasan/common/id";
-import { createInviteForSplit, getSplitUser } from "@tasan/data";
 import { useState } from "react";
 import { useFetcher, useRouteLoaderData } from "react-router";
 
@@ -9,6 +8,8 @@ import {
   createShareHandler,
 } from "~/.client/client-utils";
 import { getSessionOrRedirect } from "~/.server/auth";
+import { errorResponse } from "~/.server/services/http";
+import { createInvite } from "~/.server/services/invites";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 import { Link } from "~/components/link";
@@ -22,19 +23,19 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (session instanceof Response) return session;
 
   const { splitID } = params;
-  const userSplit = await getSplitUser(session.userID, asSplitID(splitID));
-  if (!userSplit) throw new Error("Split not found");
-
-  const inviteForSplit = await createInviteForSplit({
-    createdBy: session.userID,
-    splitID: userSplit.splitID,
-  });
-
-  const inviteURL = new URL(
-    `/accept-invite/${encodeURIComponent(inviteForSplit.id)}`,
-    originURL,
-  );
-  return { inviteURL };
+  try {
+    const inviteForSplit = await createInvite(
+      session.userID,
+      asSplitID(splitID),
+    );
+    const inviteURL = new URL(
+      `/accept-invite/${encodeURIComponent(inviteForSplit.id)}`,
+      originURL,
+    );
+    return { inviteURL };
+  } catch (error) {
+    throw errorResponse(error);
+  }
 }
 
 const ShareButton = ({ share }: { share: ShareData }) => {
@@ -67,7 +68,7 @@ export default function SplitInvite(_: Route.ComponentProps) {
       <MainHeading>Invite participants to {split.name} split</MainHeading>
       <p className="mb-2">
         Do you want to invite someone to this split? The invite is single-use
-        and will expire after about a week.
+        and will expire after five days.
       </p>
       <fetcher.Form method="post" className="mb-8">
         <Button type="submit">Invite</Button>

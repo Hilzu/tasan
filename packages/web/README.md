@@ -14,8 +14,6 @@ pnpm dev
 
 The application is available at [http://localhost:5173](http://localhost:5173).
 
-Routes are registered in `app/routes.ts`. Route modules live in `app/routes/`, reusable UI in `app/components/`, and framework-independent application logic in `app/domain/`.
-
 ## Environment
 
 Copy `example.env` to `.env` for local development. The main application settings are:
