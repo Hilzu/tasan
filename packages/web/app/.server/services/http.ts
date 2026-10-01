@@ -11,7 +11,10 @@ export const errorResponse = (error: unknown) => {
   return new Response(error.message, { status });
 };
 
-export const formErrorResponse = (error: unknown) => {
+export const formErrorResponse = (
+  error: unknown,
+  fieldNames: Record<string, string> = {},
+) => {
   if (!(error instanceof ApplicationError) || error.code !== "invalid_input")
     throw errorResponse(error);
   return data(
@@ -19,7 +22,12 @@ export const formErrorResponse = (error: unknown) => {
       errors: {
         formErrors:
           Object.keys(error.fieldErrors).length ? [] : [error.message],
-        fieldErrors: error.fieldErrors,
+        fieldErrors: Object.fromEntries(
+          Object.entries(error.fieldErrors).map(([field, messages]) => [
+            fieldNames[field] ?? field,
+            messages,
+          ]),
+        ),
       },
     },
     { status: 400 },

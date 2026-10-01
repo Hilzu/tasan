@@ -18,6 +18,8 @@ Routes are registered in `app/routes.ts`. Route modules live in `app/routes/`, r
 
 Application use cases are named functions grouped in `app/.server/services/splits.ts`, `expenses.ts`, `invites.ts`, and `users.ts`. They import persistence and exchange-rate functions directly. Routes authenticate the request, decode form data and IDs, call a use case, and handle expected errors with ordinary `try`/`catch`. Small response helpers map application errors to status responses or form errors; unexpected failures remain server errors.
 
+Forms retain the explicit `splitName` and `expenseName` field names to discourage unrelated browser autocomplete suggestions. Routes map these fields to the application's `name` property and map validation errors back to the matching form fields.
+
 Use cases own split membership checks, expense validation, exchange-rate selection, invitation expiry, and profile provisioning. Application tests mock imported persistence and exchange-rate modules with Node's built-in module mocks, and mock `Date.now` for expiry checks. The web test command enables `--experimental-test-module-mocks`; include that flag when running an individual application test through `tsx --test`. Authentication tokens and session cookies remain the responsibility of the request adapters.
 
 Split creation and invitation consumption are atomic persistence operations in `@tasan/data`. Invitation confirmation reads only split metadata. Expense creation derives the home currency from the stored split, requires the payer and participants to be members, and rejects amounts with precision unsupported by the expense currency.

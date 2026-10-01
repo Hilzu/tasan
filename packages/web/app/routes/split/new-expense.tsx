@@ -40,12 +40,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   );
   try {
     await createExpense(session.userID, splitID, {
-      ...data,
+      name: data.expenseName,
+      currency: data.currency,
+      amount: data.amount,
+      payer: data.payer,
       participants,
     });
     return redirect(href("/splits/:splitID", { splitID }));
   } catch (error) {
-    return formErrorResponse(error);
+    return formErrorResponse(error, { name: "expenseName" });
   }
 }
 
@@ -91,12 +94,12 @@ export default function NewExpense(_: Route.ComponentProps) {
       <fetcher.Form method="post" className="max-w-md space-y-2">
         <InputField
           label="Name"
-          name="name"
+          name="expenseName"
           autoComplete="off"
           required
           minLength={1}
           maxLength={64}
-          errors={actionData?.errors.fieldErrors.name}
+          errors={actionData?.errors.fieldErrors.expenseName}
         />
 
         <SelectField

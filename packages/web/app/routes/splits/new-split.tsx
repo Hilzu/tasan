@@ -18,7 +18,7 @@ export function meta(_: Route.MetaArgs) {
 }
 
 const schema = zfd.formData({
-  name: zfd.text(),
+  splitName: zfd.text(),
   currency: zfd.text(currencySymbolSchema),
 });
 
@@ -31,10 +31,13 @@ export async function action({ request }: Route.ActionArgs) {
   if (result.response) return result.response;
 
   try {
-    const { id } = await createSplit(session.userID, result.data);
+    const { id } = await createSplit(session.userID, {
+      name: result.data.splitName,
+      currency: result.data.currency,
+    });
     return redirect(href("/splits/:splitID", { splitID: id }));
   } catch (error) {
-    return formErrorResponse(error);
+    return formErrorResponse(error, { name: "splitName" });
   }
 }
 
@@ -45,11 +48,11 @@ export default function NewSplit({ actionData }: Route.ComponentProps) {
       <Form method="post" className="max-w-md space-y-2">
         <InputField
           label="Name"
-          name="name"
+          name="splitName"
           autoComplete="off"
           minLength={1}
           maxLength={64}
-          errors={actionData?.errors.fieldErrors.name}
+          errors={actionData?.errors.fieldErrors.splitName}
         />
         <SelectField
           label="Home currency"

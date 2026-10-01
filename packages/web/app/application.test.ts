@@ -377,3 +377,21 @@ await test("HTTP response helpers map expected errors and preserve unexpected fa
     payer: ["Invalid payer"],
   });
 });
+
+await test("form errors map application names to explicit browser field names", () => {
+  const error = new ApplicationError("invalid_input", "Invalid input", {
+    name: ["Name is too long"],
+    currency: ["Invalid currency"],
+  });
+  for (const field of ["splitName", "expenseName"]) {
+    const response = formErrorResponse(error, { name: field });
+    assert.deepEqual(response.data.errors.fieldErrors, {
+      [field]: ["Name is too long"],
+      currency: ["Invalid currency"],
+    });
+  }
+  assert.deepEqual(error.fieldErrors, {
+    name: ["Name is too long"],
+    currency: ["Invalid currency"],
+  });
+});
