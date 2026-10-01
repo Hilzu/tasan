@@ -69,7 +69,7 @@ export type CreateSplitExpense = Omit<SplitExpense, "id" | "createdAt">;
 
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
-  async (expense: CreateSplitExpense): Promise<{ id: string }> => {
+  async (expense: CreateSplitExpense): Promise<{ id: ExpenseID }> => {
     const id = genExpenseID();
     const Item: SplitExpenseItem = {
       pk: expense.splitID,

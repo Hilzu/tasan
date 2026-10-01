@@ -1,11 +1,11 @@
 import { currencies } from "@tasan/common/currency";
 import { currencySymbolSchema } from "@tasan/common/validation";
-import { createSplit } from "@tasan/data";
 import { Form, href, redirect } from "react-router";
-import { z } from "zod";
 import { zfd } from "zod-form-data";
 
 import { getSessionOrRedirect } from "~/.server/auth";
+import { application } from "~/.server/services";
+import { runFormApplication } from "~/.server/services/http";
 import { Button } from "~/components/button";
 import { FieldError, InputField, SelectField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
@@ -18,7 +18,7 @@ export function meta(_: Route.MetaArgs) {
 }
 
 const schema = zfd.formData({
-  splitName: zfd.text(z.string().min(1).max(64)),
+  name: zfd.text(),
   currency: zfd.text(currencySymbolSchema),
 });
 
@@ -30,11 +30,11 @@ export async function action({ request }: Route.ActionArgs) {
   const result = validateOrRespond(schema, formData);
   if (result.response) return result.response;
 
-  const { id } = await createSplit({
-    name: result.data.splitName,
-    createdBy: session.userID,
-    currency: result.data.currency,
-  });
+  const created = await runFormApplication(() =>
+    application.createSplit(session.userID, result.data),
+  );
+  if (created.response) return created.response;
+  const { id } = created.value;
   return redirect(href("/splits/:splitID", { splitID: id }));
 }
 
@@ -45,11 +45,11 @@ export default function NewSplit({ actionData }: Route.ComponentProps) {
       <Form method="post" className="max-w-md space-y-2">
         <InputField
           label="Name"
-          name="splitName"
+          name="name"
           autoComplete="off"
           minLength={1}
           maxLength={64}
-          errors={actionData?.errors.fieldErrors.splitName}
+          errors={actionData?.errors.fieldErrors.name}
         />
         <SelectField
           label="Home currency"

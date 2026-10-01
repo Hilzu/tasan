@@ -1,7 +1,8 @@
 import {
   BatchGetCommand,
+  GetCommand,
   paginateQuery,
-  PutCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { compareById } from "@tasan/common/compare";
 import type { CurrencySymbol } from "@tasan/common/currency";
@@ -19,7 +20,7 @@ import {
   fromItem as fromExpenseItem,
   type SplitExpense,
 } from "./split-expense.js";
-import { createSplitUser, findUserSplitIDs } from "./split-user.js";
+import { findUserSplitIDs } from "./split-user.js";
 
 export interface Split {
   id: SplitID;
@@ -51,7 +52,7 @@ const fromItem = (Item: Record<string, unknown>): Split => {
   };
 };
 
-export type CreateSplit = Omit<Split, "id" | "users" | "createdAt">;
+export type CreateSplit = Omit<Split, "id" | "createdAt">;
 
 export const createSplit = captureAsync(
   "createSplit",
@@ -65,17 +66,36 @@ export const createSplit = captureAsync(
       name: split.name,
       currency: split.currency,
     };
-    const cmd = new PutCommand({ TableName, Item });
-
-    const splitUserPromise = createSplitUser({
-      userID: split.createdBy,
-      splitID: id,
-      createdBy: split.createdBy,
+    const cmd = new TransactWriteCommand({
+      TransactItems: [
+        { Put: { TableName, Item } },
+        {
+          Put: {
+            TableName,
+            Item: {
+              pk: id,
+              sk: split.createdBy,
+              createdAt: Item.createdAt,
+              createdBy: split.createdBy,
+            },
+          },
+        },
+      ],
     });
-
-    await Promise.all([documentClient().send(cmd), splitUserPromise]);
+    await documentClient().send(cmd);
 
     return { id };
+  },
+);
+
+export const getSplit = captureAsync(
+  "getSplit",
+  async (splitID: SplitID): Promise<Split | undefined> => {
+    const Key: PrimaryKey = { pk: splitID, sk: splitID };
+    const { Item } = await documentClient().send(
+      new GetCommand({ TableName, Key, ConsistentRead: true }),
+    );
+    return Item ? fromItem(Item) : undefined;
   },
 );
 

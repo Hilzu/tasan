@@ -1,13 +1,9 @@
 import { asInviteID } from "@tasan/common/id";
-import {
-  createSplitUser,
-  deleteInviteForSplit,
-  findInviteForSplit,
-  getSplitWithData,
-} from "@tasan/data";
 import { Form, href, redirect } from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
+import { application } from "~/.server/services";
+import { runApplication } from "~/.server/services/http";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
 
@@ -18,13 +14,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
-  const inviteForSplit = await findInviteForSplit(asInviteID(inviteID));
-  if (!inviteForSplit) throw new Error("Invite not found");
-
-  const split = await getSplitWithData(inviteForSplit.splitID);
-  if (!split) throw new Error("Split not found");
-
-  return { split };
+  return runApplication(() => application.previewInvite(asInviteID(inviteID)));
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -32,21 +22,11 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
-  const inviteForSplit = await findInviteForSplit(asInviteID(inviteID));
-  if (!inviteForSplit) throw new Error("Invite not found");
-
-  await Promise.all([
-    createSplitUser({
-      userID: session.userID,
-      splitID: inviteForSplit.splitID,
-      createdBy: inviteForSplit.createdBy,
-    }),
-    deleteInviteForSplit(inviteForSplit.id, inviteForSplit.splitID),
-  ]);
-
-  return redirect(
-    href("/splits/:splitID", { splitID: inviteForSplit.splitID }),
+  const { splitID } = await runApplication(() =>
+    application.acceptInvite(session.userID, asInviteID(inviteID)),
   );
+
+  return redirect(href("/splits/:splitID", { splitID }));
 }
 
 export default function AcceptInvite({ loaderData }: Route.ComponentProps) {

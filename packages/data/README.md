@@ -14,9 +14,12 @@ The package requires `TABLE_NAME` to contain the DynamoDB table name. AWS creden
 
 The table uses `pk` and `sk` as its primary key and `GSI-SK-PK` as a reversed-key global secondary index. Local setup is documented in the [root README](../../README.md).
 
+`getSplit` reads split metadata without loading expenses or memberships; `getSplitWithData` reads the aggregate. `createSplit` writes the split and its owner membership in one transaction. `consumeInviteForSplit` conditionally consumes an unexpired invitation and adds membership in one transaction, returning `false` if the invitation has already been consumed or expired. An existing member's creation metadata is preserved. Invitations expose `expiresAt` so the application layer can also reject expired previews before DynamoDB TTL cleanup.
+
 ## Commands
 
 - `pnpm build` — compile the package.
+- `pnpm test` — compile and run persistence adapter tests without AWS credentials or network access.
 - `pnpm clean` — remove generated output.
 
 Generated files are written to `dist/`; edit files in `src/` instead.
