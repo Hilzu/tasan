@@ -28,7 +28,6 @@ const persistenceMock = {
     getUsers: mock.fn<typeof getUsers>(),
   },
 };
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 mock.module("@tasan/data", persistenceMock);
 const {
   createSplit: create,

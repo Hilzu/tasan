@@ -72,11 +72,8 @@ const currencyMock = {
   exports: { fetchCurrencyConversionRate: rate },
 };
 // Install module mocks before importing the functions under test.
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 mock.module("@tasan/data", persistenceMock);
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 mock.module("../../app/.server/services/splits.ts", splitMock);
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 mock.module("@tasan/common/currency-convert", currencyMock);
 const { createExpense, deleteExpense } =
   await import("~/.server/services/expenses");

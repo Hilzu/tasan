@@ -14,7 +14,6 @@ const persistenceMock = {
     putUser: mock.fn<typeof putUser>(() => Promise.resolve()),
   },
 };
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 mock.module("@tasan/data", persistenceMock);
 const { provisionAuthenticatedUser } = await import("~/.server/services/users");
 

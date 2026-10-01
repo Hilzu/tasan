@@ -54,9 +54,7 @@ const splitMock = {
     requireSplit: mock.fn<typeof requireSplit>(() => Promise.resolve(split)),
   },
 };
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 mock.module("@tasan/data", persistenceMock);
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 mock.module("../../app/.server/services/splits.ts", splitMock);
 const { acceptInvite, createInvite, previewInvite } =
   await import("~/.server/services/invites");
