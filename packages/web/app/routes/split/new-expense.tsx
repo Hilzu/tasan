@@ -25,8 +25,8 @@ import { validateOrRespond } from "~/validation";
 
 import type { Route } from "./+types/new-expense";
 
-export async function action({ request, params }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request);
+export async function action({ request, params, url }: Route.ActionArgs) {
+  const session = await getSessionOrRedirect(request, url);
   if (session instanceof Response) return session;
 
   const splitID = asSplitID(params.splitID);

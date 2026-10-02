@@ -18,8 +18,8 @@ import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/invite";
 
-export async function action({ request, params }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request);
+export async function action({ request, params, url }: Route.ActionArgs) {
+  const session = await getSessionOrRedirect(request, url);
   if (session instanceof Response) return session;
 
   const { splitID } = params;

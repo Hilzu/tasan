@@ -8,8 +8,8 @@ export function meta(_: Route.MetaArgs) {
   return [{ title: "Splits - Tasan.app" }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await getSessionOrRedirect(request);
+export async function loader({ request, url }: Route.LoaderArgs) {
+  const session = await getSessionOrRedirect(request, url);
   if (session instanceof Response) return session;
   return { session };
 }

@@ -9,8 +9,8 @@ import { MainHeading } from "~/components/heading";
 
 import type { Route } from "./+types/accept-invite";
 
-export async function loader({ params, request }: Route.LoaderArgs) {
-  const session = await getSessionOrRedirect(request);
+export async function loader({ params, request, url }: Route.LoaderArgs) {
+  const session = await getSessionOrRedirect(request, url);
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
@@ -21,8 +21,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request);
+export async function action({ request, params, url }: Route.ActionArgs) {
+  const session = await getSessionOrRedirect(request, url);
   if (session instanceof Response) return session;
 
   const { inviteID } = params;
