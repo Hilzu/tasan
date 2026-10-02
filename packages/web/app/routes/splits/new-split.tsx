@@ -22,8 +22,8 @@ const schema = zfd.formData({
   currency: zfd.text(currencySymbolSchema),
 });
 
-export async function action({ request }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request);
+export async function action({ request, url }: Route.ActionArgs) {
+  const session = await getSessionOrRedirect(request, url);
   if (session instanceof Response) return session;
 
   const formData = await request.formData();

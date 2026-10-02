@@ -11,8 +11,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `${loaderData.split.name} split - Tasan.app` }];
 }
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await getSessionOrRedirect(request);
+export async function loader({ request, params, url }: Route.LoaderArgs) {
+  const session = await getSessionOrRedirect(request, url);
   if (session instanceof Response) return session;
 
   const splitID = asSplitID(params.splitID);
