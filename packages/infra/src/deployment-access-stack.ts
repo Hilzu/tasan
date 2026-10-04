@@ -107,6 +107,20 @@ export class DeploymentAccessStack extends Stack {
       }),
     );
 
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["cloudformation:ListStackResources"],
+        resources: [
+          this.formatArn({
+            service: "cloudformation",
+            region: "eu-central-1",
+            resource: "stack",
+            resourceName: "TasanStack/*",
+          }),
+        ],
+      }),
+    );
+
     const bucketArn = this.formatArn({
       service: "s3",
       region: "",
@@ -140,11 +154,5 @@ export class DeploymentAccessStack extends Stack {
     );
 
     new CfnOutput(this, "AWSRoleArn", { value: role.roleArn });
-    new CfnOutput(this, "AssetsBucketNameOutput", {
-      value: assetsBucketName.valueAsString,
-    });
-    new CfnOutput(this, "CloudFrontDistributionIdOutput", {
-      value: distributionID.valueAsString,
-    });
   }
 }

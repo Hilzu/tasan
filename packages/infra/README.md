@@ -15,19 +15,15 @@ aws sso login
 
 ## GitHub Actions deployment
 
-The [Deploy workflow](../../.github/workflows/deploy.yml) is started manually from **Actions → Deploy → Run workflow**, with `main` selected. It builds and tests the selected commit, authenticates with AWS through OIDC, synthesizes infrastructure, uploads web assets, deploys all CDK stacks, and requests a CloudFront invalidation for `favicon.ico` and `robots.txt`. Only one production deployment runs at a time; an active deployment is never cancelled by a newer run.
+The [Deploy workflow](../../.github/workflows/deploy.yml) is started manually from **Actions → Deploy → Run workflow**, with `main` selected. It builds and tests the selected commit, authenticates with AWS through OIDC, synthesizes infrastructure, discovers the existing assets bucket and CloudFront distribution from `TasanStack`, uploads web assets, deploys all CDK stacks, and requests a CloudFront invalidation for `favicon.ico` and `robots.txt`. Only one production deployment runs at a time; an active deployment is never cancelled by a newer run.
 
 Complete this one-time setup before running it:
 
 1. In GitHub repository settings, create the `production` environment and restrict its deployment branches to `main`. Add required reviewers if deployment approval is desired.
 2. Deploy the separate access stack using SSO as described below. It manages the GitHub deployment role and its resource permissions.
-3. Add these **environment variables** to GitHub's `production` environment using the access stack outputs:
+3. Add the **environment variable** `AWS_ROLE_ARN` to GitHub's `production` environment using the access stack's `AWSRoleArn` output: the ARN of `TasanGitHubDeploy` in account `412381763181`.
 
-   | Variable                     | Value                                                                          |
-   | ---------------------------- | ------------------------------------------------------------------------------ |
-   | `AWS_ROLE_ARN`               | `AWSRoleArn` output: ARN of `TasanGitHubDeploy` in account `412381763181`.     |
-   | `ASSETS_BUCKET_NAME`         | `AssetsBucketNameOutput`: the existing `TasanStack` application assets bucket. |
-   | `CLOUDFRONT_DISTRIBUTION_ID` | `CloudFrontDistributionIdOutput`: the existing application distribution ID.    |
+No GitHub variables are required for the bucket or distribution. [`scripts/resolve-deployment-resources.sh`](../../scripts/resolve-deployment-resources.sh) uses CloudFormation's paginated resource list in `eu-central-1` and selects the application resources by type and CDK logical ID prefix. It works with the existing stack without adding outputs first, ignores deleted resources, and fails before uploading if a resource is missing, ambiguous, or has an invalid ID. See the [AWS CLI reference](https://docs.aws.amazon.com/cli/latest/reference/cloudformation/list-stack-resources.html).
 
 The workflow targets the existing production installation. Provisioning a new installation also requires updating the account, domain, certificate, and runtime configuration in the CDK sources. No local AWS profile, interactive SSO login, or long-lived AWS keys are used by the workflow.
 
@@ -49,11 +45,17 @@ pnpm --filter @tasan/infra access:synth
 pnpm --filter @tasan/infra access:diff
 ```
 
-Then intentionally deploy it with the existing production resources. Replace `YOUR_DISTRIBUTION_ID` with the CloudFront distribution ID from `TasanStack`:
+You can read the current production resource IDs using the same discovery script as the workflow:
+
+```sh
+bash scripts/resolve-deployment-resources.sh
+```
+
+Then intentionally deploy the access stack with those resource IDs. Replace `YOUR_BUCKET_NAME` and `YOUR_DISTRIBUTION_ID` with the discovered values:
 
 ```sh
 pnpm --filter @tasan/infra access:deploy \
-  --parameters AssetsBucketName=tasanstack-appassetsbucket64b3098e-jilfxtz5osd3 \
+  --parameters AssetsBucketName=YOUR_BUCKET_NAME \
   --parameters CloudFrontDistributionId=YOUR_DISTRIBUTION_ID
 ```
 
@@ -61,7 +63,7 @@ The stack creates GitHub's account-wide OIDC provider by default. If `token.acti
 
 The role requires audience `sts.amazonaws.com` and an exact subject matching `repo:Hilzu/tasan:environment:production`. If the repository uses GitHub's immutable subject format, also supply `--parameters GitHubOidcSubject=repo:Hilzu@OWNER_ID/tasan@REPOSITORY_ID:environment:production`, replacing both IDs. The parameter accepts the legacy and immutable formats for this repository's `production` environment. See [GitHub's AWS OIDC guide](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
 
-The role can assume only the default bootstrap deployment, file-publishing, and lookup roles in the three application regions, and read their bootstrap version parameters. Direct S3 permissions allow listing the configured assets bucket and reading/writing its objects; CloudFront permission allows invalidation on the configured distribution. The bootstrap deployment roles pass their existing CloudFormation execution roles during deployment; the GitHub role does not receive direct IAM administration permissions. Effective deployment privileges still depend on those execution roles.
+The role can assume only the default bootstrap deployment, file-publishing, and lookup roles in the three application regions, and read their bootstrap version parameters. CloudFormation read access is limited to listing resources in `TasanStack`. Direct S3 permissions allow listing the configured assets bucket and reading/writing its objects; CloudFront permission allows invalidation on the configured distribution. `AssetsBucketName` and `CloudFrontDistributionId` remain access-stack parameters to scope these permissions; they are not GitHub variables. Update these parameters through SSO if the application resources are replaced. The bootstrap deployment roles pass their existing CloudFormation execution roles during deployment; the GitHub role does not receive direct IAM administration permissions. Effective deployment privileges still depend on those execution roles.
 
 For later role changes, edit `src/deployment-access-stack.ts`, build, review with `access:diff`, and deploy with `access:deploy` using SSO. CDK reuses previously supplied parameters on updates unless you override them. The access stack has termination protection enabled. Its generated assembly is kept in `cdk.out/access/` and contains no application stacks or assets.
 
@@ -73,7 +75,7 @@ For later role changes, edit `src/deployment-access-stack.ts`, build, review wit
 - `pnpm access:synth` — synthesize the separate deployment access stack.
 - `pnpm access:diff` — compare the access stack using templates without creating a change set.
 - `pnpm access:deploy` — deploy the access stack intentionally using SSO credentials.
-- `pnpm test` — compile the infrastructure sources and verify deployment trust and permission scopes.
+- `pnpm test` — compile the infrastructure sources and verify deployment trust, permission scopes, and resource discovery.
 - `pnpm clean` — remove `dist/` and `cdk.out/`.
 - `pnpm deploy` — build, synchronize web assets, and deploy all stacks.
 

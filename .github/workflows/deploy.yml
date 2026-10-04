@@ -24,8 +24,6 @@ jobs:
     env:
       AWS_REGION: eu-central-1
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-      ASSETS_BUCKET_NAME: ${{ vars.ASSETS_BUCKET_NAME }}
-      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
       VITE_APP_VERSION: ${{ github.sha }}
 
     steps:
@@ -35,8 +33,6 @@ jobs:
       - name: Check deployment configuration
         run: |
           : "${AWS_ROLE_ARN:?Set the production environment variable AWS_ROLE_ARN}"
-          : "${ASSETS_BUCKET_NAME:?Set the production environment variable ASSETS_BUCKET_NAME}"
-          : "${CLOUDFRONT_DISTRIBUTION_ID:?Set the production environment variable CLOUDFRONT_DISTRIBUTION_ID}"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -66,6 +62,9 @@ jobs:
 
       - name: Synthesize infrastructure
         run: pnpm --filter @tasan/infra cdk:synth --lookups=false
+
+      - name: Discover deployed resources
+        run: bash scripts/resolve-deployment-resources.sh >> "$GITHUB_ENV"
 
       # Upload before changing the server; keep assets referenced by older pages.
       - name: Upload web assets

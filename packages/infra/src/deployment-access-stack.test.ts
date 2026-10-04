@@ -93,6 +93,12 @@ await test("permissions are limited to regional bootstrap roles and the configur
         },
         {
           Effect: "Allow",
+          Action: "cloudformation:ListStackResources",
+          Resource:
+            "arn:aws:cloudformation:eu-central-1:412381763181:stack/TasanStack/*",
+        },
+        {
+          Effect: "Allow",
           Action: "s3:ListBucket",
           Resource: {
             "Fn::Join": ["", ["arn:aws:s3:::", { Ref: "AssetsBucketName" }]],
@@ -154,7 +160,7 @@ await test("the account-wide OIDC provider can be reused and is retained when ma
   template.resourceCountIs("AWS::Lambda::Function", 0);
 });
 
-await test("existing app resources are parameters and are exposed with the role ARN for GitHub setup", () => {
+await test("existing app resources scope permissions through parameters and only the role ARN is output", () => {
   const template = synthesize();
   template.hasParameter("AssetsBucketName", {
     Type: "String",
@@ -167,12 +173,14 @@ await test("existing app resources are parameters and are exposed with the role 
   template.hasOutput("AWSRoleArn", {
     Value: { "Fn::GetAtt": [Match.anyValue(), "Arn"] },
   });
-  template.hasOutput("AssetsBucketNameOutput", {
-    Value: { Ref: "AssetsBucketName" },
-  });
-  template.hasOutput("CloudFrontDistributionIdOutput", {
-    Value: { Ref: "CloudFrontDistributionId" },
-  });
+  template.templateMatches(
+    Match.objectLike({
+      Outputs: {
+        AssetsBucketNameOutput: Match.absent(),
+        CloudFrontDistributionIdOutput: Match.absent(),
+      },
+    }),
+  );
   template.resourceCountIs("AWS::S3::Bucket", 0);
   template.resourceCountIs("AWS::CloudFront::Distribution", 0);
 });
