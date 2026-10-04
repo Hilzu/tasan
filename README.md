@@ -83,7 +83,7 @@ pnpm --filter @tasan/web test
 
 ## Infrastructure
 
-Infrastructure is managed from `packages/infra`. See the [infrastructure README](./packages/infra/README.md) for AWS authentication and CDK commands. Deployments modify live AWS resources and should only be run intentionally.
+Infrastructure is managed from `packages/infra`. See the [infrastructure README](./packages/infra/README.md) for GitHub Actions deployment setup, AWS authentication, and CDK commands. Deployments modify live AWS resources and should only be run intentionally.
 
 ## Contributing and security
 

@@ -1,0 +1,85 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: production
+      url: https://tasan.app
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-central-1
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ASSETS_BUCKET_NAME: ${{ vars.ASSETS_BUCKET_NAME }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      VITE_APP_VERSION: ${{ github.sha }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Check deployment configuration
+        run: |
+          : "${AWS_ROLE_ARN:?Set the production environment variable AWS_ROLE_ARN}"
+          : "${ASSETS_BUCKET_NAME:?Set the production environment variable ASSETS_BUCKET_NAME}"
+          : "${CLOUDFRONT_DISTRIBUTION_ID:?Set the production environment variable CLOUDFRONT_DISTRIBUTION_ID}"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: tasan-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: "412381763181"
+
+      - name: Synthesize infrastructure
+        run: pnpm --filter @tasan/infra cdk:synth --lookups=false
+
+      # Upload before changing the server; keep assets referenced by older pages.
+      - name: Upload web assets
+        run: |
+          aws s3 sync packages/web/build/client/assets "s3://${ASSETS_BUCKET_NAME}/assets" \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 sync packages/web/build/client "s3://${ASSETS_BUCKET_NAME}" \
+            --exclude "assets/*" --cache-control "public, max-age=1209600"
+
+      - name: Deploy infrastructure
+        run: pnpm --filter @tasan/infra exec cdk deploy --app cdk.out --all --require-approval never --ci
+
+      - name: Refresh public root files
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --paths /favicon.ico /robots.txt
