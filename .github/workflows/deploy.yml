@@ -66,7 +66,7 @@ jobs:
       - name: Discover deployed resources
         run: bash scripts/resolve-deployment-resources.sh >> "$GITHUB_ENV"
 
-      # Upload before changing the server; keep assets referenced by older pages.
+      # Upload assets before the server starts referencing them.
       - name: Upload web assets
         run: |
           aws s3 sync packages/web/build/client/assets "s3://${ASSETS_BUCKET_NAME}/assets" \

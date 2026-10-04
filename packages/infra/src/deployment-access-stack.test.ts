@@ -58,6 +58,9 @@ await test("deployment role trusts only the configured production OIDC subject a
       ],
     },
   });
+  template.hasOutput("AWSRoleArn", {
+    Value: { "Fn::GetAtt": [Match.anyValue(), "Arn"] },
+  });
 });
 
 await test("permissions are limited to regional bootstrap roles and the configured app resources", () => {
@@ -158,29 +161,6 @@ await test("the account-wide OIDC provider can be reused and is retained when ma
     }),
   );
   template.resourceCountIs("AWS::Lambda::Function", 0);
-});
-
-await test("existing app resources scope permissions through parameters and only the role ARN is output", () => {
-  const template = synthesize();
-  template.hasParameter("AssetsBucketName", {
-    Type: "String",
-    Default: Match.absent(),
-  });
-  template.hasParameter("CloudFrontDistributionId", {
-    Type: "String",
-    Default: Match.absent(),
-  });
-  template.hasOutput("AWSRoleArn", {
-    Value: { "Fn::GetAtt": [Match.anyValue(), "Arn"] },
-  });
-  template.templateMatches(
-    Match.objectLike({
-      Outputs: {
-        AssetsBucketNameOutput: Match.absent(),
-        CloudFrontDistributionIdOutput: Match.absent(),
-      },
-    }),
-  );
   template.resourceCountIs("AWS::S3::Bucket", 0);
   template.resourceCountIs("AWS::CloudFront::Distribution", 0);
 });

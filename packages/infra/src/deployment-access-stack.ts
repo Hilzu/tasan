@@ -52,7 +52,7 @@ export class DeploymentAccessStack extends Stack {
       clientIdList: ["sts.amazonaws.com"],
     });
     provider.cfnOptions.condition = createProviderCondition;
-    // The account-wide provider may be used by other repositories as well.
+    // Other repositories may share this provider.
     provider.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
     const providerArn = Fn.conditionIf(
