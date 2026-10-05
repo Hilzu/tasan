@@ -5,12 +5,16 @@
   "type": "module",
   "main": "dist/cdk-app.js",
   "scripts": {
+    "access:deploy": "cdk deploy --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access TasanDeploymentAccessStack",
+    "access:diff": "cdk diff --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access --method template TasanDeploymentAccessStack",
+    "access:synth": "cdk synth --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access",
     "build": "tsc",
     "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
     "deploy": "pnpm build-and-sync && cdk deploy --all",
     "start": "node --enable-source-maps .",
+    "test": "pnpm build && node --test dist/*.test.js",
     "build-and-sync": "../../scripts/build-and-sync.sh"
   },
   "engines": {
