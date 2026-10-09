@@ -8,6 +8,7 @@ import { renderToPipeableStream } from "react-dom/server";
 import type { EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 
+import { parseAcceptLanguage } from "~/.server/accept-language";
 import { LanguageContext, NonceContext, TimeZoneContext } from "~/context";
 
 export const streamTimeout = 5_000;
@@ -23,10 +24,9 @@ export default function handleRequest(
     const userAgent = request.headers.get("user-agent");
     const scriptNonce = crypto.randomBytes(16).toString("base64url");
 
-    const acceptLanguage = request.headers.get("accept-language");
-    let language: string | undefined;
-    if (acceptLanguage)
-      language = acceptLanguage.split(",")[0].split(";")[0].trim() || undefined;
+    const language = parseAcceptLanguage(
+      request.headers.get("accept-language"),
+    );
 
     const timeZone =
       request.headers.get("cloudfront-viewer-time-zone") ?? undefined;
