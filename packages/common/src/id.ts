@@ -10,7 +10,9 @@ const genID = <T extends string>(prefix: T): ID<T> =>
 const ulidRegex = /^[0-7][0-9abcdefghjkmnpqrstvwxyz]{25}$/;
 
 const asValidID = <T extends string>(prefix: T, id: string): ID<T> => {
-  const [p, u] = id.split("_");
+  const parts = id.split("_");
+  const [p, u] = parts;
+  if (parts.length !== 2) throw new Error(`Invalid ${prefix} id: ${id}`);
   if (p !== prefix) throw new Error(`Invalid ${prefix} id: ${id}`);
   if (!ulidRegex.test(u)) throw new Error(`Invalid ulid in id: ${id}`);
   // TODO: extract timestamp and check it's not in the future or too old

@@ -34,3 +34,11 @@ The AWS SDK also reads its credential, region, and endpoint configuration from t
 - `pnpm clean` — remove generated output and caches.
 
 Generated output is written to `.react-router/`, `build/`, and `dist/`; edit files in `app/` instead.
+
+## Expense submission and retries
+
+New expenses use a browser-generated expense ID. Before sending a submission, the browser saves its exact form payload in session storage, scoped to the signed-in user and split. A failed connection or reload can retry that payload with the same ID. Confirmed success clears the saved submission and returns to the split; validation errors allow a corrected submission with a new ID. Browser session storage must be available to submit an expense. Recovery lasts for the current tab session, not across closed tabs or devices.
+
+The server conditionally inserts the expense and stores an immutable creation fingerprint. Repeated submissions from the same actor with the same input return the original ID without changing the expense, exchange rate, or deletion state. Reusing an existing ID with different input or a different actor returns HTTP 409. Existing expenses need no migration; they remain readable and cannot be overwritten through creation.
+
+This protection currently covers expense creation. Future append-only edits should have their own client-generated event IDs.

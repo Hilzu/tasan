@@ -6,6 +6,7 @@ import { genExpenseID, genSplitID, genUserID } from "@tasan/common/id";
 import type {
   createSplitExpense,
   deleteSplitExpense,
+  findExpenseCreation,
   findSplitUsers,
   Split,
 } from "@tasan/data";
@@ -29,6 +30,7 @@ const split: Split = {
   createdAt: new Date(),
 };
 const expense: NewExpense = {
+  id: genExpenseID(),
   name: "Dinner",
   currency: "EUR",
   amount: 10,
@@ -38,6 +40,10 @@ const expense: NewExpense = {
 const persistenceMock = {
   cache: true,
   exports: {
+    ExpenseIDConflictError: class ExpenseIDConflictError extends Error {},
+    findExpenseCreation: mock.fn<typeof findExpenseCreation>(() =>
+      Promise.resolve(undefined),
+    ),
     createSplitExpense: mock.fn<typeof createSplitExpense>(() =>
       Promise.resolve({ id: genExpenseID() }),
     ),
@@ -82,7 +88,10 @@ const { createSplitExpense: save, deleteSplitExpense: remove } =
 
 beforeEach(() => {
   for (const dependency of [
-    ...Object.values(persistenceMock.exports),
+    save,
+    remove,
+    persistenceMock.exports.findExpenseCreation,
+    persistenceMock.exports.findSplitUsers,
     ...Object.values(splitMock.exports),
     rate,
   ]) {
@@ -188,4 +197,74 @@ await test("provider failures and invalid rates cannot persist an expense", asyn
     );
     assert.equal(save.mock.callCount(), 0);
   }
+});
+
+await test("retries return the original ID without fetching rates or validating changed membership", async () => {
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.resolve({ id: expense.id }),
+  );
+  assert.deepEqual(
+    await createExpense(actorID, splitID, { ...expense, currency: "USD" }),
+    { id: expense.id },
+  );
+  assert.equal(save.mock.callCount(), 0);
+  assert.equal(rate.mock.callCount(), 0);
+  assert.equal(persistenceMock.exports.findSplitUsers.mock.callCount(), 0);
+});
+
+await test("creation hashes are stable across participant order and exclude fetched rates", async () => {
+  const participants = new Map([
+    [actorID, 4],
+    [payerID, 6],
+  ]);
+  await createExpense(actorID, splitID, {
+    ...expense,
+    currency: "USD",
+    participants,
+  });
+  rate.mock.mockImplementation(() => Promise.resolve(0.9));
+  await createExpense(actorID, splitID, {
+    ...expense,
+    currency: "USD",
+    participants: new Map([...participants].reverse()),
+  });
+  const first = save.mock.calls[0].arguments[0];
+  const second = save.mock.calls[1].arguments[0];
+  assert.equal(first.id, expense.id);
+  assert.equal(first.creationRequestHash, second.creationRequestHash);
+  assert.notEqual(first.conversionRate, second.conversionRate);
+  await createExpense(actorID, splitID, { ...expense, name: "Lunch" });
+  assert.notEqual(
+    first.creationRequestHash,
+    save.mock.calls[2].arguments[0].creationRequestHash,
+  );
+});
+
+await test("both lookup and racing writes translate ID collisions into conflicts", async () => {
+  const collision = new persistenceMock.exports.ExpenseIDConflictError();
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.reject(collision),
+  );
+  await assert.rejects(() => createExpense(actorID, splitID, expense), {
+    code: "conflict",
+  });
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.resolve(undefined),
+  );
+  save.mock.mockImplementation(() => Promise.reject(collision));
+  await assert.rejects(() => createExpense(actorID, splitID, expense), {
+    code: "conflict",
+  });
+});
+
+await test("malformed client expense IDs are rejected without writing", async () => {
+  await assert.rejects(
+    () =>
+      createExpense(actorID, splitID, {
+        ...expense,
+        id: `${expense.id}_extra` as typeof expense.id,
+      }),
+    { code: "invalid_input" },
+  );
+  assert.equal(save.mock.callCount(), 0);
 });

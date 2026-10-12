@@ -1,9 +1,14 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import { asSplitID, asUserID } from "@tasan/common/id";
+import { asSplitID, asUserID, genExpenseID } from "@tasan/common/id";
 import { currencySymbolSchema } from "@tasan/common/validation";
-import { useEffect, useLayoutEffect, useState } from "react";
-import { href, redirect, useFetcher, useRouteLoaderData } from "react-router";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  href,
+  useFetcher,
+  useNavigate,
+  useRouteLoaderData,
+} from "react-router";
 
 import { getSessionOrRedirect } from "~/.server/auth";
 import { createExpense } from "~/.server/services/expenses";
@@ -20,6 +25,10 @@ import {
 import { MainHeading } from "~/components/heading";
 import { useStorage } from "~/hooks";
 import { newExpenseFormSchema } from "~/routes/split/new-expense-form";
+import {
+  decodePendingExpense,
+  encodePendingExpense,
+} from "~/routes/split/pending-expense";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
 
@@ -40,13 +49,14 @@ export async function action({ request, params, url }: Route.ActionArgs) {
   );
   try {
     await createExpense(session.userID, splitID, {
+      id: data.expenseID,
       name: data.expenseName,
       currency: data.currency,
       amount: data.amount,
       payer: data.payer,
       participants,
     });
-    return redirect(href("/splits/:splitID", { splitID }));
+    return { success: true as const };
   } catch (error) {
     return formErrorResponse(error, { name: "expenseName" });
   }
@@ -57,7 +67,53 @@ export default function NewExpense(_: Route.ComponentProps) {
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
   const fetcher = useFetcher<typeof action>();
-  const actionData = fetcher.data;
+  const actionData =
+    fetcher.data && "errors" in fetcher.data ? fetcher.data : undefined;
+  const navigate = useNavigate();
+  const processedResponse = useRef(fetcher.data);
+  const storageKey = `pendingExpense:${session.userID}:${split.id}`;
+  const [expenseID, setExpenseID] = useState("");
+  const [pending, setPending] = useState<FormData | null>(null);
+  const [storageError, setStorageError] = useState<string>();
+  const pendingName = pending?.get("expenseName");
+  useEffect(() => {
+    setExpenseID(genExpenseID());
+    try {
+      const saved = window.sessionStorage.getItem(storageKey);
+      if (saved) setPending(decodePendingExpense(saved));
+    } catch {
+      setExpenseID("");
+      setStorageError(
+        "Unable to recover a saved submission. Check the expense list before creating another expense.",
+      );
+    }
+  }, [storageKey]);
+  useEffect(() => {
+    if (
+      !fetcher.data ||
+      fetcher.state !== "idle" ||
+      processedResponse.current === fetcher.data
+    )
+      return;
+    processedResponse.current = fetcher.data;
+    if ("success" in fetcher.data) {
+      try {
+        window.sessionStorage.removeItem(storageKey);
+      } catch {
+        /* A stale saved submission can only replay the same expense. */
+      }
+      void navigate(href("/splits/:splitID", { splitID: split.id }));
+    } else {
+      // Validation failed before writing, so corrections are a new submission.
+      try {
+        window.sessionStorage.removeItem(storageKey);
+      } catch {
+        /* Keep the current page usable if storage becomes unavailable. */
+      }
+      setPending(null);
+      setExpenseID(genExpenseID());
+    }
+  }, [fetcher.data, fetcher.state, navigate, storageKey, split.id]);
   const [preferredCurrency, setPreferredCurrency] =
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
@@ -91,7 +147,50 @@ export default function NewExpense(_: Route.ComponentProps) {
   return (
     <div>
       <MainHeading>New expense for {split.name}</MainHeading>
-      <fetcher.Form method="post" className="max-w-md space-y-2">
+      {storageError && <FieldError errors={[storageError]} />}
+      {pending && (
+        <div className="space-y-2">
+          <p>
+            Waiting for confirmation of “
+            {typeof pendingName === "string" ? pendingName : "Expense"}”. Retry
+            sends the same expense safely, even if it was already saved.
+          </p>
+          <Button
+            type="button"
+            disabled={fetcher.state !== "idle"}
+            onClick={() => {
+              void fetcher.submit(pending, { method: "post" });
+            }}
+          >
+            {fetcher.state === "idle" ? "Retry" : "Creating..."}
+          </Button>
+        </div>
+      )}
+      <fetcher.Form
+        method="post"
+        className="max-w-md space-y-2"
+        hidden={pending !== null}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (pending || fetcher.state !== "idle" || !expenseID) return;
+          const form = new FormData(event.currentTarget);
+          try {
+            window.sessionStorage.setItem(
+              storageKey,
+              encodePendingExpense(form),
+            );
+          } catch {
+            setStorageError(
+              "Unable to save this submission for recovery. Please enable browser storage and try again.",
+            );
+            return;
+          }
+          setStorageError(undefined);
+          setPending(form);
+          void fetcher.submit(form, { method: "post" });
+        }}
+      >
+        <input type="hidden" name="expenseID" value={expenseID} />
         <InputField
           label="Name"
           name="expenseName"
@@ -192,7 +291,7 @@ export default function NewExpense(_: Route.ComponentProps) {
         <Button
           type="submit"
           className="mt-2"
-          disabled={fetcher.state !== "idle"}
+          disabled={fetcher.state !== "idle" || !expenseID}
         >
           {fetcher.state === "submitting" ? "Creating..." : "Create"}
         </Button>

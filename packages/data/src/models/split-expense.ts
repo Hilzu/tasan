@@ -1,13 +1,9 @@
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import {
-  type ExpenseID,
-  genExpenseID,
-  type SplitID,
-  type UserID,
-} from "@tasan/common/id";
+import type { ExpenseID, SplitID, UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -37,6 +33,7 @@ interface SplitExpenseItem {
   conversionRate?: number;
   payer: UserID;
   participants: Record<UserID, number>;
+  creationRequestHash?: string;
   deletedAt?: string;
   deletedBy?: string;
 }
@@ -65,17 +62,41 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   };
 };
 
-export type CreateSplitExpense = Omit<SplitExpense, "id" | "createdAt">;
+export class ExpenseIDConflictError extends Error {
+  constructor() {
+    super("This expense ID has already been used for another submission.");
+    this.name = "ExpenseIDConflictError";
+  }
+}
+
+// Read the immutable creation fingerprint, even for a soft-deleted expense.
+export const findExpenseCreation = async (
+  splitID: SplitID,
+  id: ExpenseID,
+  actorID: UserID,
+  requestHash: string,
+): Promise<{ id: ExpenseID } | undefined> => {
+  const item = await getSplitExpenseItem(splitID, id);
+  if (!item) return undefined;
+  if (item.createdBy !== actorID || item.creationRequestHash !== requestHash)
+    throw new ExpenseIDConflictError();
+  return { id };
+};
+
+export type CreateSplitExpense = Omit<SplitExpense, "createdAt"> & {
+  creationRequestHash: string;
+};
 
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
   async (expense: CreateSplitExpense): Promise<{ id: ExpenseID }> => {
-    const id = genExpenseID();
+    const { id } = expense;
     const Item: SplitExpenseItem = {
       pk: expense.splitID,
       sk: id,
       createdAt: new Date().toISOString(),
       createdBy: expense.createdBy,
+      creationRequestHash: expense.creationRequestHash,
       amount: expense.amount.value,
       name: expense.name,
       currency: expense.currency,
@@ -85,9 +106,25 @@ export const createSplitExpense = captureAsync(
         [...expense.participants].map(([k, v]) => [k, v.value]),
       ),
     };
-    const cmd = new PutCommand({ TableName, Item });
+    const cmd = new PutCommand({
+      TableName,
+      Item,
+      ConditionExpression: "attribute_not_exists(pk)",
+    });
 
-    await documentClient().send(cmd);
+    try {
+      await documentClient().send(cmd);
+    } catch (error) {
+      if (!(error instanceof ConditionalCheckFailedException)) throw error;
+      const existing = await findExpenseCreation(
+        expense.splitID,
+        id,
+        expense.createdBy,
+        expense.creationRequestHash,
+      );
+      if (!existing) throw error;
+      return existing;
+    }
     return { id };
   },
 );
@@ -99,7 +136,7 @@ const getSplitExpenseItem = captureAsync(
     expenseID: ExpenseID,
   ): Promise<SplitExpenseItem | undefined> => {
     const Key: PrimaryKey = { pk: splitID, sk: expenseID };
-    const cmd = new GetCommand({ TableName, Key });
+    const cmd = new GetCommand({ TableName, Key, ConsistentRead: true });
     const { Item } = await documentClient().send(cmd);
     return Item as SplitExpenseItem | undefined;
   },
