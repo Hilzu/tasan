@@ -138,6 +138,7 @@ await test("expense operations stop when membership is rejected", async () => {
   assert.equal(splitMock.exports.requireSplit.mock.callCount(), 0);
   assert.equal(save.mock.callCount(), 0);
   assert.equal(remove.mock.callCount(), 0);
+  assert.equal(persistenceMock.exports.findExpenseCreation.mock.callCount(), 0);
 });
 
 await test("expense validation rejects invalid members, totals, and precision without writing", async (t) => {
@@ -259,5 +260,31 @@ await test("malformed client expense IDs are rejected without writing", async ()
       }),
     { code: "invalid_input" },
   );
+  assert.equal(save.mock.callCount(), 0);
+});
+
+await test("client ownership fields cannot replace the authenticated actor", async () => {
+  const input = { ...expense, createdBy: outsiderID, actorID: outsiderID };
+  await createExpense(actorID, splitID, input);
+  assert.equal(save.mock.calls[0].arguments[0].createdBy, actorID);
+});
+
+await test("malformed and oversized IDs never reach persistence", async () => {
+  for (const id of [
+    `${expense.id}\n`,
+    ` ${expense.id}`,
+    expense.id.toUpperCase(),
+    `exp_${"0".repeat(100_000)}`,
+  ]) {
+    await assert.rejects(
+      () =>
+        createExpense(actorID, splitID, {
+          ...expense,
+          id: id as typeof expense.id,
+        }),
+      { code: "invalid_input" },
+    );
+  }
+  assert.equal(persistenceMock.exports.findExpenseCreation.mock.callCount(), 0);
   assert.equal(save.mock.callCount(), 0);
 });

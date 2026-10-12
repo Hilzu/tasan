@@ -55,3 +55,12 @@ await test("expense forms require a well-formed client expense ID", () => {
     assert.equal(newExpenseFormSchema.safeParse(data).success, false);
   }
 });
+
+await test("expense transport discards client ownership and timestamp fields", () => {
+  const data = form();
+  data.set("createdBy", genUserID());
+  data.set("createdAt", "2099-01-01T00:00:00.000Z");
+  const parsed = newExpenseFormSchema.parse(data);
+  assert.equal("createdBy" in parsed, false);
+  assert.equal("createdAt" in parsed, false);
+});
