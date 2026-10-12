@@ -27,7 +27,6 @@ const expense = {
   amount: D.create(1000, 0),
   payer: actorID,
   participants: new Map([[actorID, D.create(1000, 0)]]),
-  creationRequestHash: "original-request",
 };
 const conditionFailure = () =>
   new ConditionalCheckFailedException({ $metadata: {}, message: "Exists" });
@@ -98,17 +97,29 @@ await test("a lost response after commit can safely be retried", async () => {
   assert.equal(writes, 1);
 });
 
-await test("different payloads and actors cannot overwrite an existing expense", async () => {
+await test("the first creation wins when the same actor reuses an ID with changed input", async () => {
   const db = storage();
   await createSplitExpense(expense);
-  for (const changed of [
-    { ...expense, creationRequestHash: "changed-request" },
-    { ...expense, createdBy: genUserID() },
-  ])
-    await assert.rejects(
-      () => createSplitExpense(changed),
-      ExpenseIDConflictError,
-    );
+  assert.deepEqual(
+    await createSplitExpense({
+      ...expense,
+      name: "Lunch",
+      amount: D.create(2000, 0),
+    }),
+    { id: expense.id },
+  );
+  assert.equal(db.writes, 1);
+  assert.equal(db.item?.name, "Dinner");
+  assert.equal(db.item.amount, 1000);
+});
+
+await test("different actors cannot reuse an existing expense ID", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  await assert.rejects(
+    () => createSplitExpense({ ...expense, createdBy: genUserID() }),
+    ExpenseIDConflictError,
+  );
   assert.equal(db.writes, 1);
 });
 
@@ -127,19 +138,13 @@ await test("creation retries preserve original rates and soft deletion", async (
   assert.equal(db.writes, 2);
 });
 
-await test("missing fingerprints on legacy expenses are conflicts", async () => {
+await test("existing expenses are recognized without creation metadata", async () => {
   mock.method(DynamoDBDocumentClient.prototype, "send", () =>
     Promise.resolve({ Item: { createdBy: actorID } }),
   );
-  await assert.rejects(
-    () =>
-      findExpenseCreation(
-        expense.splitID,
-        expense.id,
-        actorID,
-        expense.creationRequestHash,
-      ),
-    ExpenseIDConflictError,
+  assert.deepEqual(
+    await findExpenseCreation(expense.splitID, expense.id, actorID),
+    { id: expense.id },
   );
 });
 

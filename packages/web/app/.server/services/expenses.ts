@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import type { CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import * as D from "@tasan/common/decimal";
@@ -46,36 +44,18 @@ export const createExpense = async (
   } catch {
     invalidField("id", "Invalid expense ID.");
   }
-  const split = await requireSplit(splitID);
-  validateName(input.name);
-  validateCurrency(input.currency);
-  const amount = toAmount(input.amount, input.currency, "amount");
-  const creationRequestHash = createHash("sha256")
-    .update(
-      JSON.stringify({
-        name: input.name,
-        currency: input.currency,
-        amount: amount.value,
-        payer: input.payer,
-        participants: [...input.participants].sort(([a], [b]) =>
-          a.localeCompare(b),
-        ),
-      }),
-    )
-    .digest("hex");
   try {
-    const existing = await findExpenseCreation(
-      splitID,
-      input.id,
-      actorID,
-      creationRequestHash,
-    );
+    const existing = await findExpenseCreation(splitID, input.id, actorID);
     if (existing) return existing;
   } catch (error) {
     if (error instanceof ExpenseIDConflictError)
       throw new ApplicationError("conflict", error.message);
     throw error;
   }
+  const split = await requireSplit(splitID);
+  validateName(input.name);
+  validateCurrency(input.currency);
+  const amount = toAmount(input.amount, input.currency, "amount");
   const members = new Set(
     (await findSplitUsers(splitID)).map((user) => user.userID),
   );
@@ -107,7 +87,6 @@ export const createExpense = async (
   try {
     return await createSplitExpense({
       id: input.id,
-      creationRequestHash,
       splitID,
       name: input.name,
       currency: input.currency,

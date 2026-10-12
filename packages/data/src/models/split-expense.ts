@@ -33,7 +33,6 @@ interface SplitExpenseItem {
   conversionRate?: number;
   payer: UserID;
   participants: Record<UserID, number>;
-  creationRequestHash?: string;
   deletedAt?: string;
   deletedBy?: string;
 }
@@ -64,28 +63,25 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
 
 export class ExpenseIDConflictError extends Error {
   constructor() {
-    super("This expense ID has already been used for another submission.");
+    super("This expense ID has already been used for another user.");
     this.name = "ExpenseIDConflictError";
   }
 }
 
-// Read the immutable creation fingerprint, even for a soft-deleted expense.
+// The first accepted creation wins, even if a retry changes the payload.
+// Keep recognizing soft-deleted expenses so retries never resurrect them.
 export const findExpenseCreation = async (
   splitID: SplitID,
   id: ExpenseID,
   actorID: UserID,
-  requestHash: string,
 ): Promise<{ id: ExpenseID } | undefined> => {
   const item = await getSplitExpenseItem(splitID, id);
   if (!item) return undefined;
-  if (item.createdBy !== actorID || item.creationRequestHash !== requestHash)
-    throw new ExpenseIDConflictError();
+  if (item.createdBy !== actorID) throw new ExpenseIDConflictError();
   return { id };
 };
 
-export type CreateSplitExpense = Omit<SplitExpense, "createdAt"> & {
-  creationRequestHash: string;
-};
+export type CreateSplitExpense = Omit<SplitExpense, "createdAt">;
 
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
@@ -96,7 +92,6 @@ export const createSplitExpense = captureAsync(
       sk: id,
       createdAt: new Date().toISOString(),
       createdBy: expense.createdBy,
-      creationRequestHash: expense.creationRequestHash,
       amount: expense.amount.value,
       name: expense.name,
       currency: expense.currency,
@@ -120,7 +115,6 @@ export const createSplitExpense = captureAsync(
         expense.splitID,
         id,
         expense.createdBy,
-        expense.creationRequestHash,
       );
       if (!existing) throw error;
       return existing;

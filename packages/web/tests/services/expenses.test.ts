@@ -212,32 +212,25 @@ await test("retries return the original ID without fetching rates or validating 
   assert.equal(persistenceMock.exports.findSplitUsers.mock.callCount(), 0);
 });
 
-await test("creation hashes are stable across participant order and exclude fetched rates", async () => {
-  const participants = new Map([
-    [actorID, 4],
-    [payerID, 6],
-  ]);
-  await createExpense(actorID, splitID, {
-    ...expense,
-    currency: "USD",
-    participants,
-  });
-  rate.mock.mockImplementation(() => Promise.resolve(0.9));
-  await createExpense(actorID, splitID, {
-    ...expense,
-    currency: "USD",
-    participants: new Map([...participants].reverse()),
-  });
-  const first = save.mock.calls[0].arguments[0];
-  const second = save.mock.calls[1].arguments[0];
-  assert.equal(first.id, expense.id);
-  assert.equal(first.creationRequestHash, second.creationRequestHash);
-  assert.notEqual(first.conversionRate, second.conversionRate);
-  await createExpense(actorID, splitID, { ...expense, name: "Lunch" });
-  assert.notEqual(
-    first.creationRequestHash,
-    save.mock.calls[2].arguments[0].creationRequestHash,
+await test("existing IDs return the first result without validating replacement payloads", async () => {
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.resolve({ id: expense.id }),
   );
+  assert.deepEqual(
+    await createExpense(actorID, splitID, {
+      ...expense,
+      name: "",
+      amount: 0,
+      participants: new Map(),
+    }),
+    { id: expense.id },
+  );
+  assert.deepEqual(
+    persistenceMock.exports.findExpenseCreation.mock.calls[0].arguments,
+    [splitID, expense.id, actorID],
+  );
+  assert.equal(save.mock.callCount(), 0);
+  assert.equal(splitMock.exports.requireSplit.mock.callCount(), 0);
 });
 
 await test("both lookup and racing writes translate ID collisions into conflicts", async () => {
