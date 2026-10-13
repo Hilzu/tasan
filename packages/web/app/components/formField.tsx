@@ -6,6 +6,7 @@ import {
   type ReactNode,
   useEffect,
   useId,
+  useRef,
   useState,
 } from "react";
 
@@ -42,13 +43,17 @@ function FormField({
 }
 
 type InputFieldProps = FieldProps &
-  ComponentProps<"input"> & { leadingAddon?: ReactNode };
+  ComponentProps<"input"> & {
+    leadingAddon?: ReactNode;
+    trailingAddon?: ReactNode;
+  };
 
 export function InputField({
   label,
   errors,
   description,
   leadingAddon,
+  trailingAddon,
   ...rest
 }: InputFieldProps) {
   const id = useId();
@@ -61,6 +66,7 @@ export function InputField({
           id={id}
           className="block min-w-0 grow px-2 py-1 focus:outline-none"
         />
+        {trailingAddon}
       </div>
     </FormField>
   );
@@ -83,13 +89,26 @@ type CurrencyInputFieldProps = Omit<
   value?: Decimal.Decimal;
 };
 
-const parseNumber = (valueParam: string) => {
+export const parseNumber = (valueParam: string) => {
   let value = valueParam;
   const commaIndex = value.lastIndexOf(",");
   if (commaIndex !== -1)
     value = value.slice(0, commaIndex) + "." + value.slice(commaIndex + 1);
 
   return Number(value.replace(/[^0-9.]/g, ""));
+};
+
+// Evaluates simple arithmetic like "12,50 + 3*2"; undefined if invalid.
+export const evaluateExpression = (value: string) => {
+  const expression = value.replaceAll(",", ".");
+  if (!/^[\d.\s+\-*/()]*$/.test(expression)) return undefined;
+  try {
+    // Safe to eval: the expression can only contain numbers and operators.
+    const result = Number(globalThis.eval(expression) as unknown);
+    return Number.isFinite(result) ? result : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 export function CurrencyInputField({
@@ -99,7 +118,10 @@ export function CurrencyInputField({
   ...rest
 }: CurrencyInputFieldProps) {
   const [value, setValue] = useState("");
+  const [expressionMode, setExpressionMode] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { fractions } = currencies[currencySymbol];
+  const preview = expressionMode ? evaluateExpression(value) : undefined;
   useEffect(() => {
     if (valueProp !== undefined) {
       setValue(Decimal.toString(valueProp));
@@ -107,17 +129,46 @@ export function CurrencyInputField({
   }, [valueProp]);
   return (
     <InputField
+      ref={inputRef}
       type="text"
-      inputMode="decimal"
-      pattern="\d+([.,]\d{0,2})?"
+      inputMode={expressionMode ? "text" : "decimal"}
+      pattern={expressionMode ? undefined : "\\d+([.,]\\d{0,2})?"}
       leadingAddon={currencySymbol}
+      trailingAddon={
+        <>
+          {preview !== undefined && /[+\-*/]/.test(value) && (
+            <span className="pr-1 whitespace-nowrap text-gray-400">
+              = {Decimal.toString(Decimal.create(preview, fractions))}
+            </span>
+          )}
+          <button
+            type="button"
+            title="Enter a calculation"
+            aria-pressed={expressionMode}
+            className={classNames(
+              "mr-1 rounded-sm px-1.5 text-sm",
+              expressionMode ? "bg-brand-700 text-white" : "text-gray-500",
+            )}
+            onClick={() => {
+              setExpressionMode(!expressionMode);
+              inputRef.current?.focus();
+            }}
+          >
+            =
+          </button>
+        </>
+      }
       value={value}
       onChange={(e) => {
         const newValue = e.target.value;
         setValue(newValue);
       }}
       onBlur={() => {
-        const newValue = Decimal.create(parseNumber(value), fractions);
+        const number =
+          expressionMode ?
+            (evaluateExpression(value) ?? 0)
+          : parseNumber(value);
+        const newValue = Decimal.create(number, fractions);
         setValue(Decimal.toString(newValue));
         onDecimalChange(newValue);
       }}
