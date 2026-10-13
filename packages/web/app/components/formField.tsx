@@ -4,11 +4,12 @@ import classNames from "classnames";
 import {
   type ComponentProps,
   type ReactNode,
-  useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (
@@ -81,6 +82,7 @@ type CurrencyInputFieldProps = Omit<
   | "pattern"
   | "onChange"
   | "onBlur"
+  | "onKeyDown"
   | "value"
   | "defaultValue"
 > & {
@@ -141,22 +143,54 @@ export const evaluateExpression = (value: string) => {
   }
 };
 
+const invalidExpressionError = "Invalid calculation";
+
+// Resolves field input into an amount rounded to the currency's precision, or
+// undefined if the input is an invalid calculation.
+export const resolveAmount = (
+  value: string,
+  expressionMode: boolean,
+  fractions: number,
+) => {
+  const number =
+    expressionMode ? evaluateExpression(value) : parseNumber(value);
+  return number === undefined ? undefined : Decimal.create(number, fractions);
+};
+
 export function CurrencyInputField({
   currencySymbol,
   onDecimalChange,
   value: valueProp,
+  errors,
   ...rest
 }: CurrencyInputFieldProps) {
   const [value, setValue] = useState("");
   const [expressionMode, setExpressionMode] = useState(false);
+  const [showInvalid, setShowInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { fractions } = currencies[currencySymbol];
-  const preview = expressionMode ? evaluateExpression(value) : undefined;
-  useEffect(() => {
+  const resolved = resolveAmount(value, expressionMode, fractions);
+  const invalid = expressionMode && resolved === undefined;
+  // Layout effects so that amounts are in the DOM before a submit reads them.
+  useLayoutEffect(() => {
     if (valueProp !== undefined) {
       setValue(Decimal.toString(valueProp));
     }
   }, [valueProp]);
+  useLayoutEffect(() => {
+    inputRef.current?.setCustomValidity(invalid ? invalidExpressionError : "");
+  }, [invalid]);
+  const commit = () => {
+    setShowInvalid(resolved === undefined);
+    if (resolved === undefined) return false;
+    setValue(Decimal.toString(resolved));
+    onDecimalChange(resolved);
+    return true;
+  };
+  const allErrors = [
+    ...(errors ?? []),
+    ...(invalid && showInvalid ? [invalidExpressionError] : []),
+  ];
   return (
     <InputField
       ref={inputRef}
@@ -164,13 +198,16 @@ export function CurrencyInputField({
       inputMode={expressionMode ? "text" : "decimal"}
       pattern={expressionMode ? undefined : "\\d+([.,]\\d{0,2})?"}
       leadingAddon={currencySymbol}
+      errors={allErrors.length ? allErrors : undefined}
       trailingAddon={
         <>
-          {preview !== undefined && /[+\-*/]/.test(value) && (
-            <span className="pr-1 whitespace-nowrap text-gray-400">
-              = {Decimal.toString(Decimal.create(preview, fractions))}
-            </span>
-          )}
+          {resolved !== undefined &&
+            expressionMode &&
+            /[+\-*/]/.test(value) && (
+              <span className="pr-1 whitespace-nowrap text-gray-400">
+                = {Decimal.toString(resolved)}
+              </span>
+            )}
           <button
             type="button"
             title="Enter a calculation"
@@ -193,14 +230,14 @@ export function CurrencyInputField({
         const newValue = e.target.value;
         setValue(newValue);
       }}
-      onBlur={() => {
-        const number =
-          expressionMode ?
-            (evaluateExpression(value) ?? 0)
-          : parseNumber(value);
-        const newValue = Decimal.create(number, fractions);
-        setValue(Decimal.toString(newValue));
-        onDecimalChange(newValue);
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter") return;
+        // Commit before submitting so the form posts resolved amounts.
+        e.preventDefault();
+        const input = e.currentTarget;
+        if (flushSync(commit)) input.form?.requestSubmit();
+        else input.reportValidity();
       }}
       {...rest}
     />
