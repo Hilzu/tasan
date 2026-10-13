@@ -21,17 +21,12 @@ export const toAmount = (
   value: number,
   currency: CurrencySymbol,
   field: string,
-  allowZero = false,
 ) => {
   const amount = D.create(value, currencies[currency].fractions);
-  if (
-    !Number.isFinite(value) ||
-    (allowZero ? value < 0 : value <= 0) ||
-    !D.equals(amount, value)
-  )
+  if (!Number.isFinite(value) || value <= 0 || !D.equals(amount, value))
     invalidField(
       field,
-      `Amount must be ${allowZero ? "non-negative" : "positive"} and use ${String(currencies[currency].fractions)} decimal places at most.`,
+      `Amount must be positive and use ${String(currencies[currency].fractions)} decimal places at most.`,
     );
   return amount;
 };

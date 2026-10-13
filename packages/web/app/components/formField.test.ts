@@ -7,14 +7,10 @@ import {
   resolveAmount,
 } from "~/components/formField";
 
-await test("empty amounts stay automatic while zero is explicit", () => {
+await test("empty amounts stay automatic", () => {
   for (const expressionMode of [false, true]) {
     assert.equal(resolveAmount("", expressionMode, 2), undefined);
     assert.equal(resolveAmount("  ", expressionMode, 0), undefined);
-    assert.deepEqual(resolveAmount("0", expressionMode, 0), {
-      value: 0,
-      fractions: 0,
-    });
   }
 });
 

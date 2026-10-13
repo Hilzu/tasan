@@ -101,6 +101,13 @@ export default function NewExpense(_: Route.ComponentProps) {
       `Shares exceed total by ${currency} ${D.toString(D.mul(calculated.difference, -1))}.`
     : undefined;
 
+  const canSubmit =
+    calculated.hasAmounts &&
+    D.gt(calculated.amount, 0) &&
+    allocationError === undefined &&
+    participants.size > 0 &&
+    calculated.invalidShares.size === 0;
+
   return (
     <div>
       <MainHeading>New expense for {split.name}</MainHeading>
@@ -108,13 +115,7 @@ export default function NewExpense(_: Route.ComponentProps) {
         method="post"
         className="max-w-md space-y-2"
         onSubmit={(event) => {
-          if (
-            !calculated.hasAmounts ||
-            !D.gt(calculated.amount, 0) ||
-            allocationError ||
-            participants.size === 0
-          )
-            event.preventDefault();
+          if (!canSubmit) event.preventDefault();
         }}
       >
         <input type="hidden" name="expenseID" value={expenseID} />
@@ -190,6 +191,7 @@ export default function NewExpense(_: Route.ComponentProps) {
 
         <CheckboxGroupField
           label="Participants"
+          description="Remove anyone who does not owe a share."
           inline
           items={users.map((u) => ({
             value: u.id,
@@ -212,6 +214,11 @@ export default function NewExpense(_: Route.ComponentProps) {
             currencySymbol={currency}
             label={`${users.find((u) => u.id === userID)?.name ?? "Unknown"} amount`}
             name={`participants.${userID}`}
+            errors={
+              calculated.hasAmounts && calculated.invalidShares.has(userID) ?
+                ["Enter a positive share or remove this participant."]
+              : undefined
+            }
             automaticAmount={calculated.participants.get(userID)}
             placeholder={
               share === undefined && calculated.hasAmounts ?
@@ -244,14 +251,7 @@ export default function NewExpense(_: Route.ComponentProps) {
         <Button
           type="submit"
           className="mt-2"
-          disabled={
-            fetcher.state !== "idle" ||
-            !expenseID ||
-            !calculated.hasAmounts ||
-            !D.gt(calculated.amount, 0) ||
-            allocationError !== undefined ||
-            participants.size === 0
-          }
+          disabled={fetcher.state !== "idle" || !expenseID || !canSubmit}
         >
           {fetcher.state === "submitting" ? "Creating..." : "Create"}
         </Button>

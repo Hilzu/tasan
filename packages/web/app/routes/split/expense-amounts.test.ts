@@ -61,7 +61,7 @@ await test("total first splits equally and specific shares take precedence", () 
   );
 });
 
-await test("shares first calculate the total, including explicit zero", () => {
+await test("shares first calculate the total", () => {
   const result = calculateExpenseAmounts(
     undefined,
     inputs([2000, 3000, 1500, 2500]),
@@ -71,17 +71,6 @@ await test("shares first calculate the total, including explicit zero", () => {
   assert.equal(result.amount.value, 9000);
   assert.deepEqual(values(result), [2000, 3000, 1500, 2500]);
   assert.equal(result.difference.value, 0);
-  assert.deepEqual(
-    values(
-      calculateExpenseAmounts(
-        D.create(100, 0),
-        inputs([0, undefined]),
-        0,
-        payer,
-      ),
-    ),
-    [0, 100],
-  );
   assert.deepEqual(
     values(
       calculateExpenseAmounts(undefined, inputs([100, undefined]), 0, payer),
@@ -135,9 +124,9 @@ await test("mismatches preserve amounts without negative automatic shares", () =
   assert.deepEqual(values(over), [110, 0]);
 });
 
-await test("JPY and EUR rounding sums to total even when total is smaller than participant count", () => {
+await test("JPY and EUR rounding sums to the total", () => {
   for (const fractions of [0, 2]) {
-    for (let units = 1; units <= 200; units++) {
+    for (let units = 10; units <= 200; units++) {
       const total = D.create(units / 10 ** fractions, fractions);
       for (const selected of [
         inputs([undefined, undefined, undefined], fractions),
@@ -163,8 +152,8 @@ await test("JPY and EUR rounding sums to total even when total is smaller than p
     [third, undefined],
   ]);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(1, 0), noPayer, 0, payer)),
-    [1, 0],
+    values(calculateExpenseAmounts(D.create(100, 0), noPayer, 0, payer)),
+    [50, 50],
   );
 });
 
@@ -178,4 +167,16 @@ await test("currency changes round specific shares before calculating remainder"
   assert.equal(result.amount.value, 10);
   assert.deepEqual(values(result), [3, 7]);
   assert.equal(result.difference.value, 0);
+});
+
+await test("explicit shares must be positive at the currency precision", () => {
+  for (const share of [0, -1]) {
+    const result = calculateExpenseAmounts(
+      D.create(100, 0),
+      inputs([share, undefined], 2),
+      0,
+      payer,
+    );
+    assert.deepEqual([...result.invalidShares], [payer]);
+  }
 });

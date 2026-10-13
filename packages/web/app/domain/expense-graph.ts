@@ -41,7 +41,7 @@ export const createGraphWithCurrency = (
   for (const expense of expenses) {
     const { payer, conversionRate } = expense;
     for (const [userID, amountValue] of expense.participants) {
-      if (userID === payer || D.equals(amountValue, 0)) continue;
+      if (userID === payer) continue;
       let amount = D.create(amountValue, fractions);
       if (conversionRate) amount = D.mul(amount, conversionRate);
       graph = G.upsertEdge(graph, userID, payer, amount);

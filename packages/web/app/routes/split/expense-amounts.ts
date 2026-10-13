@@ -1,7 +1,7 @@
 import * as D from "@tasan/common/decimal";
 import type { UserID } from "@tasan/common/id";
 
-// Undefined means automatic; an explicitly entered zero stays fixed.
+// Undefined means automatic; specific shares must be positive.
 export const calculateExpenseAmounts = (
   total: D.Decimal | undefined,
   inputs: ReadonlyMap<UserID, D.Decimal | undefined>,
@@ -49,6 +49,11 @@ export const calculateExpenseAmounts = (
   return {
     amount,
     participants,
+    invalidShares: new Set(
+      [...participants]
+        .filter(([, value]) => !D.gt(value, 0))
+        .map(([id]) => id),
+    ),
     difference: D.sub(amount, participantTotal),
     hasAmounts:
       total !== undefined ||
