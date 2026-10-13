@@ -67,7 +67,10 @@ export const createExpense = async (
   for (const [userID, value] of input.participants) {
     if (!members.has(userID))
       invalidField("participants", "Participants must be in the split.");
-    participants.set(userID, toAmount(value, input.currency, "participants"));
+    participants.set(
+      userID,
+      toAmount(value, input.currency, "participants", true),
+    );
   }
   const total = [...participants.values()].reduce(
     (sum, share) => D.add(sum, share),

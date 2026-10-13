@@ -7,6 +7,17 @@ import {
   resolveAmount,
 } from "~/components/formField";
 
+await test("empty amounts stay automatic while zero is explicit", () => {
+  for (const expressionMode of [false, true]) {
+    assert.equal(resolveAmount("", expressionMode, 2), undefined);
+    assert.equal(resolveAmount("  ", expressionMode, 0), undefined);
+    assert.deepEqual(resolveAmount("0", expressionMode, 0), {
+      value: 0,
+      fractions: 0,
+    });
+  }
+});
+
 await test("parseNumber leniently parses numbers", () => {
   assert.equal(parseNumber("12,5"), 12.5);
   assert.equal(parseNumber("€ 1 234,5"), 1234.5);

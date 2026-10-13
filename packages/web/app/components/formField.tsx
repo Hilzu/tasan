@@ -32,10 +32,11 @@ function FormField({
   description,
   errors,
   children,
+  id,
 }: FieldProps & { id: string; children: ReactNode }) {
   return (
     <div className="flex flex-col">
-      <label>{label}</label>
+      <label htmlFor={id}>{label}</label>
       {children}
       {errors && <FieldError errors={errors} />}
       {description && <p className="text-sm">{description}</p>}
@@ -87,8 +88,9 @@ type CurrencyInputFieldProps = Omit<
   | "defaultValue"
 > & {
   currencySymbol: CurrencySymbol;
-  onDecimalChange: (value: Decimal.Decimal) => void;
+  onDecimalChange: (value: Decimal.Decimal | undefined) => void;
   value?: Decimal.Decimal;
+  automaticAmount?: Decimal.Decimal;
 };
 
 export const parseNumber = (valueParam: string) => {
@@ -152,15 +154,20 @@ export const resolveAmount = (
   expressionMode: boolean,
   fractions: number,
 ) => {
+  if (value.trim() === "") return undefined;
   const number =
     expressionMode ? evaluateExpression(value) : parseNumber(value);
-  return number === undefined ? undefined : Decimal.create(number, fractions);
+  return number === undefined || !Number.isFinite(number) ?
+      undefined
+    : Decimal.create(number, fractions);
 };
 
 export function CurrencyInputField({
   currencySymbol,
   onDecimalChange,
   value: valueProp,
+  automaticAmount,
+  name,
   errors,
   ...rest
 }: CurrencyInputFieldProps) {
@@ -170,7 +177,13 @@ export function CurrencyInputField({
   const inputRef = useRef<HTMLInputElement>(null);
   const { fractions } = currencies[currencySymbol];
   const resolved = resolveAmount(value, expressionMode, fractions);
-  const invalid = expressionMode && resolved === undefined;
+  const empty = value.trim() === "";
+  const validationError =
+    !empty && resolved === undefined ? invalidExpressionError
+    : resolved && resolved.value < 0 ? "Amount must not be negative."
+    : "";
+  const invalid = validationError !== "";
+  const submittedAmount = empty ? automaticAmount : resolved;
   // Layout effects so that amounts are in the DOM before a submit reads them.
   useLayoutEffect(() => {
     if (valueProp !== undefined) {
@@ -178,69 +191,89 @@ export function CurrencyInputField({
     }
   }, [valueProp]);
   useLayoutEffect(() => {
-    inputRef.current?.setCustomValidity(invalid ? invalidExpressionError : "");
-  }, [invalid]);
+    inputRef.current?.setCustomValidity(validationError);
+  }, [validationError]);
   const commit = () => {
-    setShowInvalid(resolved === undefined);
-    if (resolved === undefined) return false;
+    if (empty) {
+      setValue("");
+      setShowInvalid(false);
+      onDecimalChange(undefined);
+      return true;
+    }
+    setShowInvalid(invalid);
+    if (invalid || resolved === undefined) return false;
     setValue(Decimal.toString(resolved));
     onDecimalChange(resolved);
     return true;
   };
   const allErrors = [
     ...(errors ?? []),
-    ...(invalid && showInvalid ? [invalidExpressionError] : []),
+    ...(invalid && showInvalid ? [validationError] : []),
   ];
   return (
-    <InputField
-      ref={inputRef}
-      type="text"
-      inputMode={expressionMode ? "text" : "decimal"}
-      pattern={expressionMode ? undefined : "\\d+([.,]\\d{0,2})?"}
-      leadingAddon={currencySymbol}
-      errors={allErrors.length ? allErrors : undefined}
-      trailingAddon={
-        <>
-          {resolved !== undefined &&
-            expressionMode &&
-            /[+\-*/]/.test(value) && (
-              <span className="pr-1 whitespace-nowrap text-gray-400">
-                = {Decimal.toString(resolved)}
-              </span>
-            )}
-          <button
-            type="button"
-            title="Enter a calculation"
-            aria-pressed={expressionMode}
-            className={classNames(
-              "mr-1 rounded-sm px-1.5 text-sm",
-              expressionMode ? "bg-brand-700 text-white" : "text-gray-500",
-            )}
-            onClick={() => {
-              setExpressionMode(!expressionMode);
-              inputRef.current?.focus();
-            }}
-          >
-            =
-          </button>
-        </>
-      }
-      value={value}
-      onChange={(e) => {
-        const newValue = e.target.value;
-        setValue(newValue);
-      }}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter") return;
-        // Commit before submitting so the form posts resolved amounts.
-        e.preventDefault();
-        const input = e.currentTarget;
-        if (flushSync(commit)) input.form?.requestSubmit();
-        else input.reportValidity();
-      }}
-      {...rest}
-    />
+    <>
+      {name && (
+        <input
+          type="hidden"
+          name={name}
+          value={submittedAmount ? Decimal.toString(submittedAmount) : ""}
+        />
+      )}
+      <InputField
+        ref={inputRef}
+        type="text"
+        inputMode={expressionMode ? "text" : "decimal"}
+        pattern={expressionMode ? undefined : "\\d+([.,]\\d{0,2})?"}
+        leadingAddon={currencySymbol}
+        errors={allErrors.length ? allErrors : undefined}
+        trailingAddon={
+          <>
+            {resolved !== undefined &&
+              expressionMode &&
+              /[+\-*/]/.test(value) && (
+                <span className="pr-1 whitespace-nowrap text-gray-400">
+                  = {Decimal.toString(resolved)}
+                </span>
+              )}
+            <button
+              type="button"
+              title="Enter a calculation"
+              aria-pressed={expressionMode}
+              className={classNames(
+                "mr-1 rounded-sm px-1.5 text-sm",
+                expressionMode ? "bg-brand-700 text-white" : "text-gray-500",
+              )}
+              onClick={() => {
+                setExpressionMode(!expressionMode);
+                inputRef.current?.focus();
+              }}
+            >
+              =
+            </button>
+          </>
+        }
+        value={value}
+        onChange={(e) => {
+          const newValue = e.target.value;
+          setValue(newValue);
+          onDecimalChange(
+            newValue.trim() === "" ?
+              undefined
+            : resolveAmount(newValue, expressionMode, fractions),
+          );
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return;
+          // Commit before submitting so the form posts resolved amounts.
+          e.preventDefault();
+          const input = e.currentTarget;
+          if (flushSync(commit)) input.form?.requestSubmit();
+          else input.reportValidity();
+        }}
+        {...rest}
+      />
+    </>
   );
 }
 

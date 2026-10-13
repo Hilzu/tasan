@@ -124,6 +124,19 @@ await test("same-currency expenses do not call the rate provider", async () => {
   assert.equal(save.mock.calls[0].arguments[0].conversionRate, undefined);
 });
 
+await test("zero shares are accepted while the total remains positive", async () => {
+  await createExpense(actorID, splitID, {
+    ...expense,
+    participants: new Map([
+      [actorID, 0],
+      [payerID, 10],
+    ]),
+  });
+  const [saved] = save.mock.calls[0].arguments;
+  assert.equal(saved.participants.get(actorID)?.value, 0);
+  assert.equal(saved.participants.get(payerID)?.value, 10);
+});
+
 await test("expense operations stop when membership is rejected", async () => {
   splitMock.exports.requireMembership.mock.mockImplementation(() =>
     Promise.reject(new ApplicationError("not_found", "Split not found.")),

@@ -1,6 +1,11 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import { asSplitID, asUserID, genExpenseID } from "@tasan/common/id";
+import {
+  asSplitID,
+  asUserID,
+  genExpenseID,
+  type UserID,
+} from "@tasan/common/id";
 import { currencySymbolSchema } from "@tasan/common/validation";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { href, redirect, useFetcher, useRouteLoaderData } from "react-router";
@@ -19,6 +24,7 @@ import {
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { useStorage } from "~/hooks";
+import { calculateExpenseAmounts } from "~/routes/split/expense-amounts";
 import { newExpenseFormSchema } from "~/routes/split/new-expense-form";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
@@ -67,37 +73,50 @@ export default function NewExpense(_: Route.ComponentProps) {
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
   const fractionDigits = currencies[currency].fractions;
-  const [amount, setAmount] = useState(D.create(0, fractionDigits));
-  const [participantCount, setParticipantCount] = useState(users.length);
+  const [amount, setAmount] = useState<D.Decimal>();
+  const [payer, setPayer] = useState(session.userID);
   const [participants, setParticipants] = useState(
-    () => new Map(users.map(({ id }) => [id, D.create(0, fractionDigits)])),
+    () =>
+      new Map<UserID, D.Decimal | undefined>(
+        users.map(({ id }) => [id, undefined]),
+      ),
   );
   useLayoutEffect(() => {
     if (preferredCurrency) setCurrency(preferredCurrency);
   }, []);
-  // Layout effect so shares are updated before a submit reads the form.
-  useLayoutEffect(() => {
-    setParticipants((prev) => {
-      const participantAmount = D.div(amount, participantCount || 1);
-      const total = D.mul(participantAmount, participantCount);
-      const diff = D.sub(amount, total);
-      const payerAmount = D.add(participantAmount, diff);
-      return new Map(
-        [...prev.keys()].map((userID) => [
-          userID,
-          userID === session.userID ? payerAmount : participantAmount,
-        ]),
-      );
-    });
-  }, [participantCount, amount]);
-  const participantTotal = [...participants.values()].reduce((a, b) =>
-    D.add(a, b),
+  const calculated = calculateExpenseAmounts(
+    amount,
+    participants,
+    fractionDigits,
+    payer,
   );
+  const amountError =
+    calculated.hasAmounts && !D.gt(calculated.amount, 0) ?
+      "Enter a positive total or participant amounts."
+    : undefined;
+  const allocationError =
+    D.gt(calculated.difference, 0) ?
+      `${currency} ${D.toString(calculated.difference)} left to allocate.`
+    : D.gt(D.create(0, fractionDigits), calculated.difference) ?
+      `Shares exceed total by ${currency} ${D.toString(D.mul(calculated.difference, -1))}.`
+    : undefined;
 
   return (
     <div>
       <MainHeading>New expense for {split.name}</MainHeading>
-      <fetcher.Form method="post" className="max-w-md space-y-2">
+      <fetcher.Form
+        method="post"
+        className="max-w-md space-y-2"
+        onSubmit={(event) => {
+          if (
+            !calculated.hasAmounts ||
+            !D.gt(calculated.amount, 0) ||
+            allocationError ||
+            participants.size === 0
+          )
+            event.preventDefault();
+        }}
+      >
         <input type="hidden" name="expenseID" value={expenseID} />
         <InputField
           label="Name"
@@ -129,15 +148,29 @@ export default function NewExpense(_: Route.ComponentProps) {
         </SelectField>
 
         <CurrencyInputField
-          required
-          label="Amount"
+          label="Total"
+          automaticAmount={
+            calculated.hasAmounts ? calculated.amount : undefined
+          }
+          placeholder={
+            calculated.hasAmounts && amount === undefined ?
+              D.toString(calculated.amount)
+            : undefined
+          }
           name="amount"
           onDecimalChange={(decimal) => {
             setAmount(decimal);
           }}
           currencySymbol={currency}
-          description="This will be divided equally among the participants when set."
-          errors={actionData?.errors.fieldErrors.amount}
+          description={
+            amount === undefined && calculated.hasAmounts ?
+              `Calculated total: ${currency} ${D.toString(calculated.amount)}. Enter a total to split the remainder equally.`
+            : "Enter a total or individual amounts. Clear the total to calculate it from shares."
+          }
+          errors={[
+            ...(actionData?.errors.fieldErrors.amount ?? []),
+            ...(amountError ? [amountError] : []),
+          ]}
         />
 
         <RadioGroupField
@@ -147,7 +180,10 @@ export default function NewExpense(_: Route.ComponentProps) {
             value: u.id,
             label: u.name,
             name: "payer",
-            defaultChecked: u.id === session.userID,
+            checked: u.id === payer,
+            onChange: () => {
+              setPayer(u.id);
+            },
           }))}
           errors={actionData?.errors.fieldErrors.payer}
         />
@@ -162,24 +198,36 @@ export default function NewExpense(_: Route.ComponentProps) {
             onChange: (event) => {
               setParticipants((prev) => {
                 const newMap = new Map(prev);
-                if (event.target.checked)
-                  newMap.set(u.id, D.create(0, fractionDigits));
+                if (event.target.checked) newMap.set(u.id, undefined);
                 else newMap.delete(u.id);
-                setParticipantCount(newMap.size);
                 return newMap;
               });
             },
           }))}
         />
 
-        {[...participants.entries()].map(([userID, amount]) => (
+        {[...participants.entries()].map(([userID, share]) => (
           <CurrencyInputField
-            required
             key={userID}
             currencySymbol={currency}
             label={`${users.find((u) => u.id === userID)?.name ?? "Unknown"} amount`}
             name={`participants.${userID}`}
-            value={amount}
+            automaticAmount={calculated.participants.get(userID)}
+            placeholder={
+              share === undefined && calculated.hasAmounts ?
+                D.toString(
+                  calculated.participants.get(userID) ??
+                    D.create(0, fractionDigits),
+                )
+              : undefined
+            }
+            description={
+              share === undefined ?
+                amount === undefined ?
+                  "Enter an amount, or set a total for equal sharing."
+                : "Equal share of the remainder. Enter an amount to override."
+              : "Specific amount. Clear to return to automatic sharing."
+            }
             onDecimalChange={(decimal) => {
               setParticipants((prev) => new Map(prev).set(userID, decimal));
             }}
@@ -188,18 +236,22 @@ export default function NewExpense(_: Route.ComponentProps) {
         {actionData?.errors.fieldErrors.participants && (
           <FieldError errors={actionData.errors.fieldErrors.participants} />
         )}
-        {!D.equals(participantTotal, amount) && (
-          <FieldError
-            errors={[
-              `Total amount must match the expense amount. Difference: ${D.toString(D.sub(participantTotal, amount))}`,
-            ]}
-          />
+        {allocationError && <FieldError errors={[allocationError]} />}
+        {participants.size === 0 && (
+          <FieldError errors={["Select at least one participant."]} />
         )}
 
         <Button
           type="submit"
           className="mt-2"
-          disabled={fetcher.state !== "idle" || !expenseID}
+          disabled={
+            fetcher.state !== "idle" ||
+            !expenseID ||
+            !calculated.hasAmounts ||
+            !D.gt(calculated.amount, 0) ||
+            allocationError !== undefined ||
+            participants.size === 0
+          }
         >
           {fetcher.state === "submitting" ? "Creating..." : "Create"}
         </Button>

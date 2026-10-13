@@ -52,6 +52,19 @@ await test("createGraphWithCurrency", async (t) => {
     assert.deepEqual(graph, new Map());
   });
 
+  await t.test("zero shares do not create debts", () => {
+    const payer = genTestUserID("payer");
+    const other = genTestUserID("other");
+    const graph = createGraphWithCurrency("EUR", [
+      createTestExpense({
+        payer,
+        amount: D.create(10),
+        participants: { [payer]: D.create(10), [other]: D.create(0) },
+      }),
+    ]);
+    assert.deepEqual(graph, new Map());
+  });
+
   await t.test("creates a graph with one expense", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
