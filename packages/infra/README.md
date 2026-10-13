@@ -17,8 +17,6 @@ aws sso login
 
 Run the [Deploy workflow](../../.github/workflows/deploy.yml) from **Actions → Deploy → Run workflow** on `main`. It builds, tests, and deploys the existing production installation. Review infrastructure changes before running it.
 
-The build uses the short Git commit hash as the version displayed in the app. The job's `production` environment automatically records the commit and job status in [GitHub Deployments](https://github.com/Hilzu/tasan/deployments), where you can view current and previous deployments, workflow logs, and the application URL.
-
 For initial setup, ensure account `412381763181` has the default [CDK bootstrap resources](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping-env.html) in `eu-central-1`, `ap-southeast-1`, and `us-east-1`. Using the SSO profile above, run these commands from the repository root:
 
 ```sh
