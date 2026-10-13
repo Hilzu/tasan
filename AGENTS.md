@@ -51,4 +51,5 @@ Prefer the narrowest relevant check while iterating, then run `pnpm test` before
 - Do not add dependencies unless the existing platform cannot reasonably support the change. If one is needed, add it to the package that uses it with the appropriate `pnpm` command.
 - Never edit `pnpm-lock.yaml` manually. It may only be updated by `pnpm` commands.
 - Update documentation when commands, package responsibilities, configuration, or user-visible behavior change.
+- Keep READMEs focused on the most important information and setup instructions. Put implementation details in code or pull request descriptions.
 - In the handoff, summarize changed files and report the exact validation commands run, including any failures or checks that could not be run.
