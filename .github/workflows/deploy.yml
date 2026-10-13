@@ -24,11 +24,13 @@ jobs:
     env:
       AWS_REGION: eu-central-1
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-      VITE_APP_VERSION: ${{ github.sha }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Set build version
+        run: echo "VITE_APP_VERSION=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
       - name: Check deployment configuration
         run: |

@@ -23,7 +23,7 @@ Workspace packages:
 - Run all checks with `pnpm test`. This runs package tests, formatting checks, ESLint, and TypeScript checks.
 - Build all packages with `pnpm build`.
 - Start the web development server with `pnpm --filter @tasan/web dev`.
-- Run a single web test file with `pnpm --filter @tasan/web exec tsx --test path/to/file.test.ts`.
+- Run a single web test file with `pnpm --filter @tasan/web exec node --import tsx --experimental-test-module-mocks --test path/to/file.test.ts`.
 - Format and auto-fix the repository with `pnpm fix`; note that this can touch files outside the immediate change.
 
 Prefer the narrowest relevant check while iterating, then run `pnpm test` before handing off when practical.
@@ -36,7 +36,7 @@ Prefer the narrowest relevant check while iterating, then run `pnpm test` before
 - Preserve package boundaries. Put broadly reusable domain logic in `common`, persistence concerns in `data`, UI and request handling in `web`, and deployment concerns in `infra`.
 - Use workspace package imports such as `@tasan/common/...` and `@tasan/data` instead of reaching into another package's source tree.
 - Follow nearby naming and file-layout patterns. React Router routes are registered in `packages/web/app/routes.ts`; reusable UI belongs in `packages/web/app/components`.
-- Add or update focused `*.test.ts` files for behavior changes where feasible. Tests use Node's built-in test runner through `tsx --test`.
+- Add or update focused `*.test.ts` files for behavior changes where feasible. TypeScript tests use Node's built-in test runner with `node --import tsx --test`, avoiding the tsx CLI's IPC socket requirement.
 
 ## Generated files and infrastructure
 
@@ -51,4 +51,5 @@ Prefer the narrowest relevant check while iterating, then run `pnpm test` before
 - Do not add dependencies unless the existing platform cannot reasonably support the change. If one is needed, add it to the package that uses it with the appropriate `pnpm` command.
 - Never edit `pnpm-lock.yaml` manually. It may only be updated by `pnpm` commands.
 - Update documentation when commands, package responsibilities, configuration, or user-visible behavior change.
+- Keep READMEs focused on the most important information and setup instructions. Put implementation details in code or pull request descriptions.
 - In the handoff, summarize changed files and report the exact validation commands run, including any failures or checks that could not be run.
