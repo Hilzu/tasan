@@ -100,14 +100,44 @@ export const parseNumber = (valueParam: string) => {
 
 // Evaluates simple arithmetic like "12,50 + 3*2"; undefined if invalid.
 export const evaluateExpression = (value: string) => {
-  const expression = value.replaceAll(",", ".");
-  if (!/^[\d.\s+\-*/()]*$/.test(expression)) return undefined;
+  const tokens = value.match(/\d+[.,]?\d*|[.,]\d+|[-+*/()]|\S/g) ?? [];
+  let pos = 0;
+
+  // expr = term (("+" | "-") term)*
+  const expr = (): number => {
+    let result = term();
+    while (tokens[pos] === "+" || tokens[pos] === "-")
+      result = tokens[pos++] === "+" ? result + term() : result - term();
+    return result;
+  };
+  // term = factor (("*" | "/") factor)*
+  const term = (): number => {
+    let result = factor();
+    while (tokens[pos] === "*" || tokens[pos] === "/")
+      result = tokens[pos++] === "*" ? result * factor() : result / factor();
+    return result;
+  };
+  // factor = ("+" | "-") factor | "(" expr ")" | number
+  const factor = (): number => {
+    const token = tokens.at(pos++);
+    if (token === "+") return factor();
+    if (token === "-") return -factor();
+    if (token === "(") {
+      const result = expr();
+      return tokens[pos++] === ")" ? result : NaN;
+    }
+    return token !== undefined && /^[\d.,]+$/.test(token) ?
+        Number(token.replace(",", "."))
+      : NaN;
+  };
+
   try {
-    // Safe to eval: the expression can only contain numbers and operators.
-    const result = Number(globalThis.eval(expression) as unknown);
-    return Number.isFinite(result) ? result : undefined;
+    const result = expr();
+    return pos === tokens.length && Number.isFinite(result) ?
+        result
+      : undefined;
   } catch {
-    return undefined;
+    return undefined; // e.g. stack overflow on absurdly nested input
   }
 };
 
