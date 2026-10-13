@@ -19,16 +19,18 @@ jobs:
       name: production
       url: https://tasan.app
     permissions:
-      contents: read
+      contents: write
       id-token: write
     env:
       AWS_REGION: eu-central-1
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-      VITE_APP_VERSION: ${{ github.sha }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Set build version
+        run: echo "VITE_APP_VERSION=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
       - name: Check deployment configuration
         run: |
@@ -82,3 +84,8 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
             --paths /favicon.ico /robots.txt
+
+      - name: Mark deployed commit
+        run: |
+          git tag --force production "$GITHUB_SHA"
+          git push --force origin refs/tags/production
