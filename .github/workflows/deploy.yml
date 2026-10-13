@@ -19,7 +19,7 @@ jobs:
       name: production
       url: https://tasan.app
     permissions:
-      contents: write
+      contents: read
       id-token: write
     env:
       AWS_REGION: eu-central-1
@@ -84,8 +84,3 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
             --paths /favicon.ico /robots.txt
-
-      - name: Mark deployed commit
-        run: |
-          git tag --force production "$GITHUB_SHA"
-          git push --force origin refs/tags/production
