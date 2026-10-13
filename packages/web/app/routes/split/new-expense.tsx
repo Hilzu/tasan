@@ -75,7 +75,8 @@ export default function NewExpense(_: Route.ComponentProps) {
   useLayoutEffect(() => {
     if (preferredCurrency) setCurrency(preferredCurrency);
   }, []);
-  useEffect(() => {
+  // Layout effect so shares are updated before a submit reads the form.
+  useLayoutEffect(() => {
     setParticipants((prev) => {
       const participantAmount = D.div(amount, participantCount || 1);
       const total = D.mul(participantAmount, participantCount);
