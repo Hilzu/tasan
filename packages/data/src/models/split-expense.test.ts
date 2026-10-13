@@ -35,13 +35,18 @@ afterEach(() => {
 });
 
 // This fake models the atomic condition, so overlapping requests exercise the loser path.
-const storage = () => {
+const storage = (missEventualReads = false) => {
+  const reads: boolean[] = [];
   let item: Record<string, unknown> | undefined;
   let writes = 0;
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
     if (command instanceof GetCommand) {
-      assert.equal(command.input.ConsistentRead, true);
-      return Promise.resolve({ Item: item && { ...item } });
+      const consistent = command.input.ConsistentRead === true;
+      reads.push(consistent);
+      return Promise.resolve({
+        Item:
+          missEventualReads && !consistent ? undefined : item && { ...item },
+      });
     }
     assert.ok(command instanceof PutCommand);
     if (command.input.ConditionExpression) {
@@ -56,6 +61,7 @@ const storage = () => {
     return Promise.resolve({});
   });
   return {
+    reads,
     get item() {
       return item;
     },
@@ -75,6 +81,7 @@ await test("sequential and concurrent retries create exactly one expense", async
   assert.deepEqual(await createSplitExpense(expense), { id: expense.id });
   assert.equal(db.writes, 1);
   assert.equal(db.item?.sk, expense.id);
+  assert.deepEqual(db.reads, [true, true]);
 });
 
 await test("a lost response after commit can safely be retried", async () => {
@@ -136,6 +143,7 @@ await test("creation retries preserve original rates and soft deletion", async (
   assert.equal(db.item.conversionRate, 0.006);
   assert.equal(db.item.deletedAt, deletedAt);
   assert.equal(db.writes, 2);
+  assert.deepEqual(db.reads, [false, true]);
 });
 
 await test("existing expenses are recognized without creation metadata", async () => {
@@ -157,4 +165,32 @@ await test("unrelated storage failures propagate unchanged", async () => {
     () => createSplitExpense(expense),
     (failure: unknown) => failure === error,
   );
+});
+
+await test("creation lookups default to eventual consistency and allow opting into strong reads", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  assert.deepEqual(
+    await findExpenseCreation(expense.splitID, expense.id, actorID),
+    { id: expense.id },
+  );
+  assert.deepEqual(
+    await findExpenseCreation(expense.splitID, expense.id, actorID, {
+      consistentRead: true,
+    }),
+    { id: expense.id },
+  );
+  assert.deepEqual(db.reads, [false, true]);
+});
+
+await test("an eventual lookup miss is resolved by a strong read after the failed insert", async () => {
+  const db = storage(true);
+  await createSplitExpense(expense);
+  assert.equal(
+    await findExpenseCreation(expense.splitID, expense.id, actorID),
+    undefined,
+  );
+  assert.deepEqual(await createSplitExpense(expense), { id: expense.id });
+  assert.deepEqual(db.reads, [false, true]);
+  assert.equal(db.writes, 1);
 });

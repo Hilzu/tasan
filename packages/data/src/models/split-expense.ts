@@ -39,6 +39,10 @@ interface SplitExpenseItem {
 
 type PrimaryKey = Pick<SplitExpenseItem, "pk" | "sk">;
 
+interface ExpenseReadOptions {
+  consistentRead?: boolean;
+}
+
 export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   const item = Item as unknown as SplitExpenseItem;
   const fractionDigits = currencies[item.currency].fractions;
@@ -74,8 +78,9 @@ export const findExpenseCreation = async (
   splitID: SplitID,
   id: ExpenseID,
   actorID: UserID,
+  options: ExpenseReadOptions = {},
 ): Promise<{ id: ExpenseID } | undefined> => {
-  const item = await getSplitExpenseItem(splitID, id);
+  const item = await getSplitExpenseItem(splitID, id, options);
   if (!item) return undefined;
   if (item.createdBy !== actorID) throw new ExpenseIDConflictError();
   return { id };
@@ -115,6 +120,8 @@ export const createSplitExpense = captureAsync(
         expense.splitID,
         id,
         expense.createdBy,
+        // The failed condition proves the item exists; read the committed write.
+        { consistentRead: true },
       );
       if (!existing) throw error;
       return existing;
@@ -128,9 +135,14 @@ const getSplitExpenseItem = captureAsync(
   async (
     splitID: SplitID,
     expenseID: ExpenseID,
+    options: ExpenseReadOptions = {},
   ): Promise<SplitExpenseItem | undefined> => {
     const Key: PrimaryKey = { pk: splitID, sk: expenseID };
-    const cmd = new GetCommand({ TableName, Key, ConsistentRead: true });
+    const cmd = new GetCommand({
+      TableName,
+      Key,
+      ConsistentRead: options.consistentRead ?? false,
+    });
     const { Item } = await documentClient().send(cmd);
     return Item as SplitExpenseItem | undefined;
   },
