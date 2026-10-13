@@ -7,6 +7,7 @@ export const errorResponse = (error: unknown) => {
   const status =
     error.code === "not_found" ? 404
     : error.code === "forbidden" ? 403
+    : error.code === "conflict" ? 409
     : 400;
   return new Response(error.message, { status });
 };

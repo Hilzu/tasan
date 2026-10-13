@@ -1,6 +1,6 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import { asSplitID, asUserID } from "@tasan/common/id";
+import { asSplitID, asUserID, genExpenseID } from "@tasan/common/id";
 import { currencySymbolSchema } from "@tasan/common/validation";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { href, redirect, useFetcher, useRouteLoaderData } from "react-router";
@@ -40,6 +40,7 @@ export async function action({ request, params, url }: Route.ActionArgs) {
   );
   try {
     await createExpense(session.userID, splitID, {
+      id: data.expenseID,
       name: data.expenseName,
       currency: data.currency,
       amount: data.amount,
@@ -58,6 +59,10 @@ export default function NewExpense(_: Route.ComponentProps) {
   const { split, users, session } = parentData;
   const fetcher = useFetcher<typeof action>();
   const actionData = fetcher.data;
+  const [expenseID, setExpenseID] = useState("");
+  useEffect(() => {
+    setExpenseID(genExpenseID());
+  }, [split.id, session.userID]);
   const [preferredCurrency, setPreferredCurrency] =
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
@@ -92,6 +97,7 @@ export default function NewExpense(_: Route.ComponentProps) {
     <div>
       <MainHeading>New expense for {split.name}</MainHeading>
       <fetcher.Form method="post" className="max-w-md space-y-2">
+        <input type="hidden" name="expenseID" value={expenseID} />
         <InputField
           label="Name"
           name="expenseName"
@@ -192,7 +198,7 @@ export default function NewExpense(_: Route.ComponentProps) {
         <Button
           type="submit"
           className="mt-2"
-          disabled={fetcher.state !== "idle"}
+          disabled={fetcher.state !== "idle" || !expenseID}
         >
           {fetcher.state === "submitting" ? "Creating..." : "Create"}
         </Button>

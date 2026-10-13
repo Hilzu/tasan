@@ -56,3 +56,10 @@ await test("form errors map application names to explicit browser field names", 
     currency: ["Invalid currency"],
   });
 });
+
+await test("conflicts produce a 409 response", () => {
+  assert.equal(
+    errorResponse(new ApplicationError("conflict", "ID already used")).status,
+    409,
+  );
+});

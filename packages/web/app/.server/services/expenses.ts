@@ -1,13 +1,21 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import * as D from "@tasan/common/decimal";
-import type { ExpenseID, SplitID, UserID } from "@tasan/common/id";
+import {
+  asExpenseID,
+  type ExpenseID,
+  type SplitID,
+  type UserID,
+} from "@tasan/common/id";
 import {
   createSplitExpense,
   deleteSplitExpense,
+  ExpenseIDConflictError,
+  findExpenseCreation,
   findSplitUsers,
 } from "@tasan/data";
 
+import { ApplicationError } from "./errors";
 import { requireMembership, requireSplit } from "./splits";
 import {
   invalidField,
@@ -17,6 +25,7 @@ import {
 } from "./validation";
 
 export interface NewExpense {
+  id: ExpenseID;
   name: string;
   currency: CurrencySymbol;
   amount: number;
@@ -30,6 +39,19 @@ export const createExpense = async (
   input: NewExpense,
 ) => {
   await requireMembership(actorID, splitID);
+  try {
+    asExpenseID(input.id);
+  } catch {
+    invalidField("id", "Invalid expense ID.");
+  }
+  try {
+    const existing = await findExpenseCreation(splitID, input.id, actorID);
+    if (existing) return existing;
+  } catch (error) {
+    if (error instanceof ExpenseIDConflictError)
+      throw new ApplicationError("conflict", error.message);
+    throw error;
+  }
   const split = await requireSplit(splitID);
   validateName(input.name);
   validateCurrency(input.currency);
@@ -62,16 +84,23 @@ export const createExpense = async (
     (!Number.isFinite(conversionRate) || conversionRate <= 0)
   )
     throw new Error("Invalid exchange rate from currency provider");
-  return createSplitExpense({
-    splitID,
-    name: input.name,
-    currency: input.currency,
-    amount,
-    payer: input.payer,
-    participants,
-    conversionRate,
-    createdBy: actorID,
-  });
+  try {
+    return await createSplitExpense({
+      id: input.id,
+      splitID,
+      name: input.name,
+      currency: input.currency,
+      amount,
+      payer: input.payer,
+      participants,
+      conversionRate,
+      createdBy: actorID,
+    });
+  } catch (error) {
+    if (error instanceof ExpenseIDConflictError)
+      throw new ApplicationError("conflict", error.message);
+    throw error;
+  }
 };
 
 export const deleteExpense = async (

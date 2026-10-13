@@ -1,4 +1,8 @@
-export type ApplicationErrorCode = "not_found" | "forbidden" | "invalid_input";
+export type ApplicationErrorCode =
+  | "not_found"
+  | "forbidden"
+  | "invalid_input"
+  | "conflict";
 
 export class ApplicationError extends Error {
   constructor(

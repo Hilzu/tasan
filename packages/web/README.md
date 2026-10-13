@@ -34,3 +34,11 @@ The AWS SDK also reads its credential, region, and endpoint configuration from t
 - `pnpm clean` — remove generated output and caches.
 
 Generated output is written to `.react-router/`, `build/`, and `dist/`; edit files in `app/` instead.
+
+## Expense submission and retries
+
+New expenses use a browser-generated expense ID kept for the lifetime of the mounted form. Submissions and retries from that form use the same ID. Validation errors leave the form editable, and successful creation redirects to the split. Reloading or remounting the form resets its values and ID; submissions are not persisted for recovery. If a response is lost and the form is reloaded, re-entering the expense can create a duplicate because it uses a new ID.
+
+The server conditionally inserts the expense. Expense lookups use eventually consistent reads by default. Only the duplicate lookup following a failed conditional insert uses a strongly consistent read, so it sees the committed expense immediately. The first accepted creation for an expense ID wins: repeated submissions from the same actor return the original ID, even if the payload differs, without changing the expense, exchange rate, or deletion state. Each intentional new operation must use a fresh ID. Client IDs must have the exact prefix, length, and lowercase ULID alphabet, with no whitespace or suffixes. ULID timestamps are unrestricted; ID-based ordering may reflect client clock skew. Ownership and acceptance timestamps come from the authenticated session and server, and split membership is checked before looking up or creating expenses. Reusing an existing ID with a different actor returns HTTP 409. Existing expenses need no migration; they remain readable and cannot be overwritten through creation.
+
+This protection currently covers expense creation. Future append-only edits should have their own client-generated event IDs.

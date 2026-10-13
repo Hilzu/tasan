@@ -1,13 +1,9 @@
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import {
-  type ExpenseID,
-  genExpenseID,
-  type SplitID,
-  type UserID,
-} from "@tasan/common/id";
+import type { ExpenseID, SplitID, UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -43,6 +39,10 @@ interface SplitExpenseItem {
 
 type PrimaryKey = Pick<SplitExpenseItem, "pk" | "sk">;
 
+interface ExpenseReadOptions {
+  consistentRead?: boolean;
+}
+
 export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   const item = Item as unknown as SplitExpenseItem;
   const fractionDigits = currencies[item.currency].fractions;
@@ -65,12 +65,33 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   };
 };
 
-export type CreateSplitExpense = Omit<SplitExpense, "id" | "createdAt">;
+export class ExpenseIDConflictError extends Error {
+  constructor() {
+    super("This expense ID has already been used for another user.");
+    this.name = "ExpenseIDConflictError";
+  }
+}
+
+// The first accepted creation wins, even if a retry changes the payload.
+// Keep recognizing soft-deleted expenses so retries never resurrect them.
+export const findExpenseCreation = async (
+  splitID: SplitID,
+  id: ExpenseID,
+  actorID: UserID,
+  options: ExpenseReadOptions = {},
+): Promise<{ id: ExpenseID } | undefined> => {
+  const item = await getSplitExpenseItem(splitID, id, options);
+  if (!item) return undefined;
+  if (item.createdBy !== actorID) throw new ExpenseIDConflictError();
+  return { id };
+};
+
+export type CreateSplitExpense = Omit<SplitExpense, "createdAt">;
 
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
   async (expense: CreateSplitExpense): Promise<{ id: ExpenseID }> => {
-    const id = genExpenseID();
+    const { id } = expense;
     const Item: SplitExpenseItem = {
       pk: expense.splitID,
       sk: id,
@@ -85,9 +106,26 @@ export const createSplitExpense = captureAsync(
         [...expense.participants].map(([k, v]) => [k, v.value]),
       ),
     };
-    const cmd = new PutCommand({ TableName, Item });
+    const cmd = new PutCommand({
+      TableName,
+      Item,
+      ConditionExpression: "attribute_not_exists(pk)",
+    });
 
-    await documentClient().send(cmd);
+    try {
+      await documentClient().send(cmd);
+    } catch (error) {
+      if (!(error instanceof ConditionalCheckFailedException)) throw error;
+      const existing = await findExpenseCreation(
+        expense.splitID,
+        id,
+        expense.createdBy,
+        // The failed condition proves the item exists; read the committed write.
+        { consistentRead: true },
+      );
+      if (!existing) throw error;
+      return existing;
+    }
     return { id };
   },
 );
@@ -97,9 +135,14 @@ const getSplitExpenseItem = captureAsync(
   async (
     splitID: SplitID,
     expenseID: ExpenseID,
+    options: ExpenseReadOptions = {},
   ): Promise<SplitExpenseItem | undefined> => {
     const Key: PrimaryKey = { pk: splitID, sk: expenseID };
-    const cmd = new GetCommand({ TableName, Key });
+    const cmd = new GetCommand({
+      TableName,
+      Key,
+      ConsistentRead: options.consistentRead ?? false,
+    });
     const { Item } = await documentClient().send(cmd);
     return Item as SplitExpenseItem | undefined;
   },

@@ -6,6 +6,7 @@ import { genExpenseID, genSplitID, genUserID } from "@tasan/common/id";
 import type {
   createSplitExpense,
   deleteSplitExpense,
+  findExpenseCreation,
   findSplitUsers,
   Split,
 } from "@tasan/data";
@@ -29,6 +30,7 @@ const split: Split = {
   createdAt: new Date(),
 };
 const expense: NewExpense = {
+  id: genExpenseID(),
   name: "Dinner",
   currency: "EUR",
   amount: 10,
@@ -38,6 +40,10 @@ const expense: NewExpense = {
 const persistenceMock = {
   cache: true,
   exports: {
+    ExpenseIDConflictError: class ExpenseIDConflictError extends Error {},
+    findExpenseCreation: mock.fn<typeof findExpenseCreation>(() =>
+      Promise.resolve(undefined),
+    ),
     createSplitExpense: mock.fn<typeof createSplitExpense>(() =>
       Promise.resolve({ id: genExpenseID() }),
     ),
@@ -82,7 +88,10 @@ const { createSplitExpense: save, deleteSplitExpense: remove } =
 
 beforeEach(() => {
   for (const dependency of [
-    ...Object.values(persistenceMock.exports),
+    save,
+    remove,
+    persistenceMock.exports.findExpenseCreation,
+    persistenceMock.exports.findSplitUsers,
     ...Object.values(splitMock.exports),
     rate,
   ]) {
@@ -129,6 +138,7 @@ await test("expense operations stop when membership is rejected", async () => {
   assert.equal(splitMock.exports.requireSplit.mock.callCount(), 0);
   assert.equal(save.mock.callCount(), 0);
   assert.equal(remove.mock.callCount(), 0);
+  assert.equal(persistenceMock.exports.findExpenseCreation.mock.callCount(), 0);
 });
 
 await test("expense validation rejects invalid members, totals, and precision without writing", async (t) => {
@@ -188,4 +198,93 @@ await test("provider failures and invalid rates cannot persist an expense", asyn
     );
     assert.equal(save.mock.callCount(), 0);
   }
+});
+
+await test("retries return the original ID without fetching rates or validating changed membership", async () => {
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.resolve({ id: expense.id }),
+  );
+  assert.deepEqual(
+    await createExpense(actorID, splitID, { ...expense, currency: "USD" }),
+    { id: expense.id },
+  );
+  assert.equal(save.mock.callCount(), 0);
+  assert.equal(rate.mock.callCount(), 0);
+  assert.equal(persistenceMock.exports.findSplitUsers.mock.callCount(), 0);
+});
+
+await test("existing IDs return the first result without validating replacement payloads", async () => {
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.resolve({ id: expense.id }),
+  );
+  assert.deepEqual(
+    await createExpense(actorID, splitID, {
+      ...expense,
+      name: "",
+      amount: 0,
+      participants: new Map(),
+    }),
+    { id: expense.id },
+  );
+  assert.deepEqual(
+    persistenceMock.exports.findExpenseCreation.mock.calls[0].arguments,
+    [splitID, expense.id, actorID],
+  );
+  assert.equal(save.mock.callCount(), 0);
+  assert.equal(splitMock.exports.requireSplit.mock.callCount(), 0);
+});
+
+await test("both lookup and racing writes translate ID collisions into conflicts", async () => {
+  const collision = new persistenceMock.exports.ExpenseIDConflictError();
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.reject(collision),
+  );
+  await assert.rejects(() => createExpense(actorID, splitID, expense), {
+    code: "conflict",
+  });
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.resolve(undefined),
+  );
+  save.mock.mockImplementation(() => Promise.reject(collision));
+  await assert.rejects(() => createExpense(actorID, splitID, expense), {
+    code: "conflict",
+  });
+});
+
+await test("malformed client expense IDs are rejected without writing", async () => {
+  await assert.rejects(
+    () =>
+      createExpense(actorID, splitID, {
+        ...expense,
+        id: `${expense.id}_extra` as typeof expense.id,
+      }),
+    { code: "invalid_input" },
+  );
+  assert.equal(save.mock.callCount(), 0);
+});
+
+await test("client ownership fields cannot replace the authenticated actor", async () => {
+  const input = { ...expense, createdBy: outsiderID, actorID: outsiderID };
+  await createExpense(actorID, splitID, input);
+  assert.equal(save.mock.calls[0].arguments[0].createdBy, actorID);
+});
+
+await test("malformed and oversized IDs never reach persistence", async () => {
+  for (const id of [
+    `${expense.id}\n`,
+    ` ${expense.id}`,
+    expense.id.toUpperCase(),
+    `exp_${"0".repeat(100_000)}`,
+  ]) {
+    await assert.rejects(
+      () =>
+        createExpense(actorID, splitID, {
+          ...expense,
+          id: id as typeof expense.id,
+        }),
+      { code: "invalid_input" },
+    );
+  }
+  assert.equal(persistenceMock.exports.findExpenseCreation.mock.callCount(), 0);
+  assert.equal(save.mock.callCount(), 0);
 });

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { genUserID } from "@tasan/common/id";
+import { genExpenseID, genUserID } from "@tasan/common/id";
 import { flattenError } from "zod";
 
 import { newExpenseFormSchema } from "./new-expense-form";
@@ -9,6 +9,7 @@ import { newExpenseFormSchema } from "./new-expense-form";
 const payer = genUserID();
 const form = () => {
   const data = new FormData();
+  data.set("expenseID", genExpenseID());
   data.set("expenseName", "Dinner");
   data.set("currency", "JPY");
   data.set("amount", "10.005");
@@ -45,4 +46,21 @@ await test("malformed participant IDs produce validation errors", () => {
   data.set("participants.invalid-user", "10");
   const parsed = newExpenseFormSchema.safeParse(data);
   assert.equal(parsed.success, false);
+});
+
+await test("expense forms require a well-formed client expense ID", () => {
+  for (const id of ["", "invalid", `${genExpenseID()}_extra`, genUserID()]) {
+    const data = form();
+    data.set("expenseID", id);
+    assert.equal(newExpenseFormSchema.safeParse(data).success, false);
+  }
+});
+
+await test("expense transport discards client ownership and timestamp fields", () => {
+  const data = form();
+  data.set("createdBy", genUserID());
+  data.set("createdAt", "2099-01-01T00:00:00.000Z");
+  const parsed = newExpenseFormSchema.parse(data);
+  assert.equal("createdBy" in parsed, false);
+  assert.equal("createdAt" in parsed, false);
 });
