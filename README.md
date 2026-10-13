@@ -4,8 +4,6 @@ This project was bootstrapped with [create-ts-node](https://www.npmjs.com/packag
 
 Tasan is a full-stack web application for splitting bills and tracking shared expenses.
 
-Expense amounts start empty. Enter a total to split it equally, or individual amounts to calculate the total. Specific shares stay fixed; clearing a share returns it to automatic sharing. Remove participants who do not owe a share.
-
 The repository is a TypeScript monorepo built with pnpm workspaces. The web application uses React Router, React, and Tailwind CSS; data is stored in DynamoDB; and the production infrastructure is defined with AWS CDK.
 
 ## Project status
