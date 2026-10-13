@@ -16,7 +16,9 @@ const inputs = (values: (number | undefined)[], fractions = 0) =>
     ]),
   );
 const values = (result: ReturnType<typeof calculateExpenseAmounts>) =>
-  [...result.participants.values()].map((share) => share.value);
+  [...result.participants.values()].map(
+    (participantAmount) => participantAmount.value,
+  );
 
 await test("starts empty and handles no participants", () => {
   const result = calculateExpenseAmounts(
@@ -35,7 +37,7 @@ await test("starts empty and handles no participants", () => {
   );
 });
 
-await test("total first splits equally and specific shares take precedence", () => {
+await test("total first splits equally and specific amounts take precedence", () => {
   const total = D.create(10000, 0);
   assert.deepEqual(
     values(
@@ -61,7 +63,7 @@ await test("total first splits equally and specific shares take precedence", () 
   );
 });
 
-await test("shares first calculate the total", () => {
+await test("individual amounts first calculate the total", () => {
   const result = calculateExpenseAmounts(
     undefined,
     inputs([2000, 3000, 1500, 2500]),
@@ -79,21 +81,21 @@ await test("shares first calculate the total", () => {
   );
 });
 
-await test("changing total, selection, and clearing a share preserves other specific amounts", () => {
-  const shares = inputs([1000, undefined, undefined, undefined]);
+await test("changing total, selection, and clearing an amount preserves other specific amounts", () => {
+  const amounts = inputs([1000, undefined, undefined, undefined]);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(7000, 0), shares, 0, payer)),
+    values(calculateExpenseAmounts(D.create(7000, 0), amounts, 0, payer)),
     [1000, 2000, 2000, 2000],
   );
-  shares.delete(fourth);
+  amounts.delete(fourth);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(7000, 0), shares, 0, payer)),
+    values(calculateExpenseAmounts(D.create(7000, 0), amounts, 0, payer)),
     [1000, 3000, 3000],
   );
-  shares.set(fourth, undefined);
-  shares.set(payer, undefined);
+  amounts.set(fourth, undefined);
+  amounts.set(payer, undefined);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(10000, 0), shares, 0, payer)),
+    values(calculateExpenseAmounts(D.create(10000, 0), amounts, 0, payer)),
     [2500, 2500, 2500, 2500],
   );
 });
@@ -109,7 +111,7 @@ await test("clearing total returns to the sum of specific amounts", () => {
   assert.deepEqual(values(result), [1000, 2000, 0, 0]);
 });
 
-await test("mismatches preserve amounts without negative automatic shares", () => {
+await test("mismatches preserve amounts without negative automatic amounts", () => {
   const total = D.create(100, 0);
   const under = calculateExpenseAmounts(total, inputs([40, 50]), 0, payer);
   assert.equal(under.difference.value, 10);
@@ -157,7 +159,7 @@ await test("JPY and EUR rounding sums to the total", () => {
   );
 });
 
-await test("currency changes round specific shares before calculating remainder", () => {
+await test("currency changes round specific amounts before calculating remainder", () => {
   const result = calculateExpenseAmounts(
     D.create(10.25, 2),
     inputs([2.55, undefined], 2),
@@ -169,14 +171,14 @@ await test("currency changes round specific shares before calculating remainder"
   assert.equal(result.difference.value, 0);
 });
 
-await test("explicit shares must be positive at the currency precision", () => {
-  for (const share of [0, -1]) {
+await test("explicit amounts must be positive at the currency precision", () => {
+  for (const participantAmount of [0, -1]) {
     const result = calculateExpenseAmounts(
       D.create(100, 0),
-      inputs([share, undefined], 2),
+      inputs([participantAmount, undefined], 2),
       0,
       payer,
     );
-    assert.deepEqual([...result.invalidShares], [payer]);
+    assert.deepEqual([...result.invalidAmounts], [payer]);
   }
 });

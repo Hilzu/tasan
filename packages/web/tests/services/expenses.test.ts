@@ -161,7 +161,7 @@ await test("expense validation rejects invalid members, totals, and precision wi
       "participants",
     ],
     [
-      "zero share",
+      "zero participant amount",
       {
         participants: new Map([
           [actorID, 0],

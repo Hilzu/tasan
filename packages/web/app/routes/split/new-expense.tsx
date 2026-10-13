@@ -98,7 +98,7 @@ export default function NewExpense(_: Route.ComponentProps) {
     D.gt(calculated.difference, 0) ?
       `${currency} ${D.toString(calculated.difference)} left to allocate.`
     : D.gt(D.create(0, fractionDigits), calculated.difference) ?
-      `Shares exceed total by ${currency} ${D.toString(D.mul(calculated.difference, -1))}.`
+      `Participant amounts exceed total by ${currency} ${D.toString(D.mul(calculated.difference, -1))}.`
     : undefined;
 
   const canSubmit =
@@ -106,7 +106,7 @@ export default function NewExpense(_: Route.ComponentProps) {
     D.gt(calculated.amount, 0) &&
     allocationError === undefined &&
     participants.size > 0 &&
-    calculated.invalidShares.size === 0;
+    calculated.invalidAmounts.size === 0;
 
   return (
     <div>
@@ -166,7 +166,7 @@ export default function NewExpense(_: Route.ComponentProps) {
           description={
             amount === undefined && calculated.hasAmounts ?
               `Calculated total: ${currency} ${D.toString(calculated.amount)}. Enter a total to split the remainder equally.`
-            : "Enter a total or individual amounts. Clear the total to calculate it from shares."
+            : "Enter a total or individual amounts. Clear the total to calculate it from individual amounts."
           }
           errors={[
             ...(actionData?.errors.fieldErrors.amount ?? []),
@@ -191,7 +191,7 @@ export default function NewExpense(_: Route.ComponentProps) {
 
         <CheckboxGroupField
           label="Participants"
-          description="Remove anyone who does not owe a share."
+          description="Remove anyone who does not owe an amount."
           inline
           items={users.map((u) => ({
             value: u.id,
@@ -208,20 +208,20 @@ export default function NewExpense(_: Route.ComponentProps) {
           }))}
         />
 
-        {[...participants.entries()].map(([userID, share]) => (
+        {[...participants.entries()].map(([userID, participantAmount]) => (
           <CurrencyInputField
             key={userID}
             currencySymbol={currency}
             label={`${users.find((u) => u.id === userID)?.name ?? "Unknown"} amount`}
             name={`participants.${userID}`}
             errors={
-              calculated.hasAmounts && calculated.invalidShares.has(userID) ?
-                ["Enter a positive share or remove this participant."]
+              calculated.hasAmounts && calculated.invalidAmounts.has(userID) ?
+                ["Enter a positive amount or remove this participant."]
               : undefined
             }
             automaticAmount={calculated.participants.get(userID)}
             placeholder={
-              share === undefined && calculated.hasAmounts ?
+              participantAmount === undefined && calculated.hasAmounts ?
                 D.toString(
                   calculated.participants.get(userID) ??
                     D.create(0, fractionDigits),
@@ -229,11 +229,11 @@ export default function NewExpense(_: Route.ComponentProps) {
               : undefined
             }
             description={
-              share === undefined ?
+              participantAmount === undefined ?
                 amount === undefined ?
                   "Enter an amount, or set a total for equal sharing."
-                : "Equal share of the remainder. Enter an amount to override."
-              : "Specific amount. Clear to return to automatic sharing."
+                : "Remainder split equally. Enter an amount to override."
+              : "Specific amount. Clear to return to automatic calculation."
             }
             onDecimalChange={(decimal) => {
               setParticipants((prev) => new Map(prev).set(userID, decimal));

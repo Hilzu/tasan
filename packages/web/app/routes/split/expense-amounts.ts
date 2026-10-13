@@ -1,7 +1,7 @@
 import * as D from "@tasan/common/decimal";
 import type { UserID } from "@tasan/common/id";
 
-// Undefined means automatic; specific shares must be positive.
+// Undefined means automatic; specific amounts must be positive.
 export const calculateExpenseAmounts = (
   total: D.Decimal | undefined,
   inputs: ReadonlyMap<UserID, D.Decimal | undefined>,
@@ -18,12 +18,12 @@ export const calculateExpenseAmounts = (
     (id) => inputs.get(id) === undefined,
   );
   const remaining = D.sub(amount, explicitTotal);
-  // Distribute in minor units so shares never become negative through rounding.
+  // Distribute in minor units so amounts never become negative through rounding.
   const units = Math.round(Math.max(0, remaining.value) * 10 ** fractions);
-  const shareUnits = Math.floor(units / (automatic.length || 1));
-  let extraUnits = units - shareUnits * automatic.length;
-  const automaticShares = new Map<UserID, D.Decimal>();
-  // Give the payer the first rounding unit when they have an automatic share.
+  const perPersonUnits = Math.floor(units / (automatic.length || 1));
+  let extraUnits = units - perPersonUnits * automatic.length;
+  const automaticAmounts = new Map<UserID, D.Decimal>();
+  // Give the payer the first rounding unit when they have an automatic amount.
   const order =
     automatic.includes(payer) ?
       [payer, ...automatic.filter((id) => id !== payer)]
@@ -31,15 +31,15 @@ export const calculateExpenseAmounts = (
   for (const id of order) {
     const extra = extraUnits > 0 ? 1 : 0;
     extraUnits -= extra;
-    automaticShares.set(
+    automaticAmounts.set(
       id,
-      D.create((shareUnits + extra) / 10 ** fractions, fractions),
+      D.create((perPersonUnits + extra) / 10 ** fractions, fractions),
     );
   }
   const participants = new Map(
     [...inputs].map(([id, value]) => [
       id,
-      value ? D.create(value, fractions) : (automaticShares.get(id) ?? zero),
+      value ? D.create(value, fractions) : (automaticAmounts.get(id) ?? zero),
     ]),
   );
   const participantTotal = [...participants.values()].reduce(
@@ -49,7 +49,7 @@ export const calculateExpenseAmounts = (
   return {
     amount,
     participants,
-    invalidShares: new Set(
+    invalidAmounts: new Set(
       [...participants]
         .filter(([, value]) => !D.gt(value, 0))
         .map(([id]) => id),
