@@ -2,6 +2,7 @@ import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import {
   CurrencyInputField,
+  emptyAmountInput,
   InputField,
   RadioGroupField,
   SelectField,
@@ -13,6 +14,7 @@ import { Link } from "~/components/link";
 import type { Route } from "./+types/components";
 
 export default function Components(_: Route.ComponentProps) {
+  const [amount, setAmount] = useState(emptyAmountInput);
   return (
     <div>
       <MainHeading>Million dollar budget design system</MainHeading>
@@ -103,9 +105,8 @@ export default function Components(_: Route.ComponentProps) {
       <CurrencyInputField
         label="Currency"
         currencySymbol="HKD"
-        onDecimalChange={(...args) => {
-          console.log("onDecimalChange", ...args);
-        }}
+        value={amount}
+        onValueChange={setAmount}
       />
 
       <SubHeading className="mt-4">Card</SubHeading>
@@ -118,3 +119,4 @@ export default function Components(_: Route.ComponentProps) {
     </div>
   );
 }
+import { useState } from "react";

@@ -88,9 +88,19 @@ type CurrencyInputFieldProps = Omit<
   | "defaultValue"
 > & {
   currencySymbol: CurrencySymbol;
-  onDecimalChange: (value: Decimal.Decimal | undefined) => void;
-  value?: Decimal.Decimal;
+  onValueChange: (value: AmountInput) => void;
+  value: AmountInput;
   automaticAmount?: Decimal.Decimal;
+};
+
+export interface AmountInput {
+  text: string;
+  expressionMode: boolean;
+}
+
+export const emptyAmountInput: AmountInput = {
+  text: "",
+  expressionMode: false,
 };
 
 export const parseNumber = (valueParam: string) => {
@@ -162,57 +172,48 @@ export const resolveAmount = (
     : Decimal.create(number, fractions);
 };
 
+// Currency changes normalize valid input while leaving blanks and errors intact.
+export const normalizeAmountInput = (
+  input: AmountInput,
+  fractions: number,
+): AmountInput => {
+  const amount = resolveAmount(input.text, input.expressionMode, fractions);
+  return amount && amount.value >= 0 ?
+      { ...input, text: Decimal.toString(amount) }
+    : input;
+};
+
 export function CurrencyInputField({
   currencySymbol,
-  onDecimalChange,
-  value: valueProp,
+  onValueChange,
+  value,
   automaticAmount,
   name,
   errors,
   ...rest
 }: CurrencyInputFieldProps) {
-  const [value, setValue] = useState("");
-  const [expressionMode, setExpressionMode] = useState(false);
   const [showInvalid, setShowInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const previousCurrency = useRef(currencySymbol);
   const { fractions } = currencies[currencySymbol];
-  const resolved = resolveAmount(value, expressionMode, fractions);
-  const empty = value.trim() === "";
+  const { text, expressionMode } = value;
+  const resolved = resolveAmount(text, expressionMode, fractions);
+  const empty = text.trim() === "";
   const validationError =
     !empty && resolved === undefined ? invalidExpressionError
     : resolved && resolved.value < 0 ? "Amount must not be negative."
     : "";
   const invalid = validationError !== "";
   const submittedAmount = empty ? automaticAmount : resolved;
-  // Layout effects so that amounts are in the DOM before a submit reads them.
-  useLayoutEffect(() => {
-    if (valueProp !== undefined) {
-      setValue(Decimal.toString(valueProp));
-    }
-  }, [valueProp]);
   useLayoutEffect(() => {
     inputRef.current?.setCustomValidity(validationError);
   }, [validationError]);
-  useLayoutEffect(() => {
-    if (previousCurrency.current === currencySymbol) return;
-    previousCurrency.current = currencySymbol;
-    // Keep automatic fields empty and preserve invalid input for correction.
-    if (empty || invalid || resolved === undefined) return;
-    setValue(Decimal.toString(resolved));
-    onDecimalChange(resolved);
-  }, [currencySymbol, empty, invalid, resolved, onDecimalChange]);
   const commit = () => {
-    if (empty) {
-      setValue("");
-      setShowInvalid(false);
-      onDecimalChange(undefined);
-      return true;
-    }
     setShowInvalid(invalid);
-    if (invalid || resolved === undefined) return false;
-    setValue(Decimal.toString(resolved));
-    onDecimalChange(resolved);
+    if (invalid) return false;
+    onValueChange({
+      ...value,
+      text: resolved ? Decimal.toString(resolved) : "",
+    });
     return true;
   };
   const allErrors = [
@@ -239,7 +240,7 @@ export function CurrencyInputField({
           <>
             {resolved !== undefined &&
               expressionMode &&
-              /[+\-*/]/.test(value) && (
+              /[+\-*/]/.test(text) && (
                 <span className="pr-1 whitespace-nowrap text-gray-400">
                   = {Decimal.toString(resolved)}
                 </span>
@@ -253,7 +254,7 @@ export function CurrencyInputField({
                 expressionMode ? "bg-brand-700 text-white" : "text-gray-500",
               )}
               onClick={() => {
-                setExpressionMode(!expressionMode);
+                onValueChange({ ...value, expressionMode: !expressionMode });
                 inputRef.current?.focus();
               }}
             >
@@ -261,15 +262,9 @@ export function CurrencyInputField({
             </button>
           </>
         }
-        value={value}
+        value={text}
         onChange={(e) => {
-          const newValue = e.target.value;
-          setValue(newValue);
-          onDecimalChange(
-            newValue.trim() === "" ?
-              undefined
-            : resolveAmount(newValue, expressionMode, fractions),
-          );
+          onValueChange({ ...value, text: e.target.value });
         }}
         onBlur={commit}
         onKeyDown={(e) => {

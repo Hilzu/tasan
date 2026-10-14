@@ -9,8 +9,14 @@ export const calculateExpenseAmounts = (
   payer: UserID,
 ) => {
   const zero = D.create(0, fractions);
-  const explicitTotal = [...inputs.values()].reduce<D.Decimal>(
-    (sum, value) => D.add(sum, value ? D.create(value, fractions) : zero),
+  const participants = new Map(
+    [...inputs].map(([id, value]) => [
+      id,
+      value ? D.create(value, fractions) : zero,
+    ]),
+  );
+  const explicitTotal = [...participants.values()].reduce(
+    (sum, value) => D.add(sum, value),
     zero,
   );
   const amount = total ? D.create(total, fractions) : explicitTotal;
@@ -22,7 +28,6 @@ export const calculateExpenseAmounts = (
   const units = Math.round(Math.max(0, remaining.value) * 10 ** fractions);
   const perPersonUnits = Math.floor(units / (automatic.length || 1));
   let extraUnits = units - perPersonUnits * automatic.length;
-  const automaticAmounts = new Map<UserID, D.Decimal>();
   // Give the payer the first rounding unit when they have an automatic amount.
   const order =
     automatic.includes(payer) ?
@@ -31,30 +36,29 @@ export const calculateExpenseAmounts = (
   for (const id of order) {
     const extra = extraUnits > 0 ? 1 : 0;
     extraUnits -= extra;
-    automaticAmounts.set(
+    participants.set(
       id,
       D.create((perPersonUnits + extra) / 10 ** fractions, fractions),
     );
   }
-  const participants = new Map(
-    [...inputs].map(([id, value]) => [
-      id,
-      value ? D.create(value, fractions) : (automaticAmounts.get(id) ?? zero),
-    ]),
-  );
   const participantTotal = [...participants.values()].reduce(
     (sum, value) => D.add(sum, value),
     zero,
   );
+  const difference = D.sub(amount, participantTotal);
+  const invalidAmounts = new Set(
+    [...participants].filter(([, value]) => !D.gt(value, 0)).map(([id]) => id),
+  );
   return {
     amount,
     participants,
-    invalidAmounts: new Set(
-      [...participants]
-        .filter(([, value]) => !D.gt(value, 0))
-        .map(([id]) => id),
-    ),
-    difference: D.sub(amount, participantTotal),
+    invalidAmounts,
+    difference,
+    valid:
+      participants.size > 0 &&
+      D.gt(amount, 0) &&
+      D.equals(difference, 0) &&
+      invalidAmounts.size === 0,
     hasAmounts:
       total !== undefined ||
       [...inputs.values()].some((value) => value !== undefined),

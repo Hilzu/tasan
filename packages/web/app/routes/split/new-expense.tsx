@@ -15,11 +15,15 @@ import { createExpense } from "~/.server/services/expenses";
 import { formErrorResponse } from "~/.server/services/http";
 import { Button } from "~/components/button";
 import {
+  type AmountInput,
   CheckboxGroupField,
   CurrencyInputField,
+  emptyAmountInput,
   FieldError,
   InputField,
+  normalizeAmountInput,
   RadioGroupField,
+  resolveAmount,
   SelectField,
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
@@ -73,20 +77,30 @@ export default function NewExpense(_: Route.ComponentProps) {
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(split.currency);
   const fractionDigits = currencies[currency].fractions;
-  const [amount, setAmount] = useState<D.Decimal>();
+  const [total, setTotal] = useState(emptyAmountInput);
   const [payer, setPayer] = useState(session.userID);
   const [participants, setParticipants] = useState(
     () =>
-      new Map<UserID, D.Decimal | undefined>(
-        users.map(({ id }) => [id, undefined]),
+      new Map<UserID, AmountInput>(
+        users.map(({ id }) => [id, emptyAmountInput]),
       ),
   );
   useLayoutEffect(() => {
     if (preferredCurrency) setCurrency(preferredCurrency);
   }, []);
+  const amount = resolveAmount(
+    total.text,
+    total.expressionMode,
+    fractionDigits,
+  );
   const calculated = calculateExpenseAmounts(
     amount,
-    participants,
+    new Map(
+      [...participants].map(([id, input]) => [
+        id,
+        resolveAmount(input.text, input.expressionMode, fractionDigits),
+      ]),
+    ),
     fractionDigits,
     payer,
   );
@@ -101,13 +115,6 @@ export default function NewExpense(_: Route.ComponentProps) {
       `Participant amounts exceed total by ${currency} ${D.toString(D.mul(calculated.difference, -1))}.`
     : undefined;
 
-  const canSubmit =
-    calculated.hasAmounts &&
-    D.gt(calculated.amount, 0) &&
-    allocationError === undefined &&
-    participants.size > 0 &&
-    calculated.invalidAmounts.size === 0;
-
   return (
     <div>
       <MainHeading>New expense for {split.name}</MainHeading>
@@ -115,7 +122,7 @@ export default function NewExpense(_: Route.ComponentProps) {
         method="post"
         className="max-w-md space-y-2"
         onSubmit={(event) => {
-          if (!canSubmit) event.preventDefault();
+          if (!calculated.valid) event.preventDefault();
         }}
       >
         <input type="hidden" name="expenseID" value={expenseID} />
@@ -137,6 +144,17 @@ export default function NewExpense(_: Route.ComponentProps) {
           value={currency}
           onChange={(event) => {
             const currency = currencySymbolSchema.parse(event.target.value);
+            const fractions = currencies[currency].fractions;
+            setTotal((input) => normalizeAmountInput(input, fractions));
+            setParticipants(
+              (inputs) =>
+                new Map(
+                  [...inputs].map(([id, input]) => [
+                    id,
+                    normalizeAmountInput(input, fractions),
+                  ]),
+                ),
+            );
             setCurrency(currency);
             setPreferredCurrency(currency);
           }}
@@ -159,9 +177,8 @@ export default function NewExpense(_: Route.ComponentProps) {
             : undefined
           }
           name="amount"
-          onDecimalChange={(decimal) => {
-            setAmount(decimal);
-          }}
+          value={total}
+          onValueChange={setTotal}
           currencySymbol={currency}
           description={
             amount === undefined && calculated.hasAmounts ?
@@ -200,7 +217,7 @@ export default function NewExpense(_: Route.ComponentProps) {
             onChange: (event) => {
               setParticipants((prev) => {
                 const newMap = new Map(prev);
-                if (event.target.checked) newMap.set(u.id, undefined);
+                if (event.target.checked) newMap.set(u.id, emptyAmountInput);
                 else newMap.delete(u.id);
                 return newMap;
               });
@@ -208,7 +225,7 @@ export default function NewExpense(_: Route.ComponentProps) {
           }))}
         />
 
-        {[...participants.entries()].map(([userID, participantAmount]) => (
+        {[...participants.entries()].map(([userID, input]) => (
           <CurrencyInputField
             key={userID}
             currencySymbol={currency}
@@ -221,7 +238,7 @@ export default function NewExpense(_: Route.ComponentProps) {
             }
             automaticAmount={calculated.participants.get(userID)}
             placeholder={
-              participantAmount === undefined && calculated.hasAmounts ?
+              input.text.trim() === "" && calculated.hasAmounts ?
                 D.toString(
                   calculated.participants.get(userID) ??
                     D.create(0, fractionDigits),
@@ -229,14 +246,15 @@ export default function NewExpense(_: Route.ComponentProps) {
               : undefined
             }
             description={
-              participantAmount === undefined ?
+              input.text.trim() === "" ?
                 amount === undefined ?
                   "Enter an amount, or set a total for equal sharing."
                 : "Remainder split equally. Enter an amount to override."
               : "Specific amount. Clear to return to automatic calculation."
             }
-            onDecimalChange={(decimal) => {
-              setParticipants((prev) => new Map(prev).set(userID, decimal));
+            value={input}
+            onValueChange={(input) => {
+              setParticipants((prev) => new Map(prev).set(userID, input));
             }}
           />
         ))}
@@ -251,7 +269,7 @@ export default function NewExpense(_: Route.ComponentProps) {
         <Button
           type="submit"
           className="mt-2"
-          disabled={fetcher.state !== "idle" || !expenseID || !canSubmit}
+          disabled={fetcher.state !== "idle" || !expenseID || !calculated.valid}
         >
           {fetcher.state === "submitting" ? "Creating..." : "Create"}
         </Button>

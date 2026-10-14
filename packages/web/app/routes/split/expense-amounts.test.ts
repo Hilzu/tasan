@@ -28,6 +28,7 @@ await test("starts empty and handles no participants", () => {
     payer,
   );
   assert.equal(result.hasAmounts, false);
+  assert.equal(result.valid, false);
   assert.equal(result.amount.value, 0);
   assert.deepEqual(values(result), [0, 0]);
   assert.equal(
@@ -71,6 +72,7 @@ await test("individual amounts first calculate the total", () => {
     payer,
   );
   assert.equal(result.amount.value, 9000);
+  assert.equal(result.valid, true);
   assert.deepEqual(values(result), [2000, 3000, 1500, 2500]);
   assert.equal(result.difference.value, 0);
   assert.deepEqual(
@@ -115,6 +117,7 @@ await test("mismatches preserve amounts without negative automatic amounts", () 
   const total = D.create(100, 0);
   const under = calculateExpenseAmounts(total, inputs([40, 50]), 0, payer);
   assert.equal(under.difference.value, 10);
+  assert.equal(under.valid, false);
   assert.deepEqual(values(under), [40, 50]);
   const over = calculateExpenseAmounts(
     total,
@@ -123,6 +126,7 @@ await test("mismatches preserve amounts without negative automatic amounts", () 
     payer,
   );
   assert.equal(over.difference.value, -10);
+  assert.equal(over.valid, false);
   assert.deepEqual(values(over), [110, 0]);
 });
 
@@ -180,5 +184,6 @@ await test("explicit amounts must be positive at the currency precision", () => 
       payer,
     );
     assert.deepEqual([...result.invalidAmounts], [payer]);
+    assert.equal(result.valid, false);
   }
 });
