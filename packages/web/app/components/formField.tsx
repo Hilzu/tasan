@@ -175,6 +175,7 @@ export function CurrencyInputField({
   const [expressionMode, setExpressionMode] = useState(false);
   const [showInvalid, setShowInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previousCurrency = useRef(currencySymbol);
   const { fractions } = currencies[currencySymbol];
   const resolved = resolveAmount(value, expressionMode, fractions);
   const empty = value.trim() === "";
@@ -193,6 +194,14 @@ export function CurrencyInputField({
   useLayoutEffect(() => {
     inputRef.current?.setCustomValidity(validationError);
   }, [validationError]);
+  useLayoutEffect(() => {
+    if (previousCurrency.current === currencySymbol) return;
+    previousCurrency.current = currencySymbol;
+    // Keep automatic fields empty and preserve invalid input for correction.
+    if (empty || invalid || resolved === undefined) return;
+    setValue(Decimal.toString(resolved));
+    onDecimalChange(resolved);
+  }, [currencySymbol, empty, invalid, resolved, onDecimalChange]);
   const commit = () => {
     if (empty) {
       setValue("");

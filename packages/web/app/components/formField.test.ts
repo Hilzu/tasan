@@ -7,6 +7,22 @@ import {
   resolveAmount,
 } from "~/components/formField";
 
+await test("amounts resolve at the new currency precision", () => {
+  assert.deepEqual(resolveAmount("100.50", false, 0), {
+    value: 101,
+    fractions: 0,
+  });
+  assert.deepEqual(resolveAmount("101", false, 2), {
+    value: 101,
+    fractions: 2,
+  });
+  assert.deepEqual(resolveAmount("100 + 0.50", true, 0), {
+    value: 101,
+    fractions: 0,
+  });
+  assert.equal(resolveAmount("1 +", true, 0), undefined);
+});
+
 await test("empty amounts stay automatic", () => {
   for (const expressionMode of [false, true]) {
     assert.equal(resolveAmount("", expressionMode, 2), undefined);
