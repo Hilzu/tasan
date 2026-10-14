@@ -3,9 +3,41 @@ import { test } from "node:test";
 
 import {
   evaluateExpression,
+  normalizeAmountInput,
   parseNumber,
   resolveAmount,
 } from "~/components/formField";
+
+await test("currency normalization keeps displayed and resolved amounts consistent", () => {
+  for (const input of [
+    { text: "100.50", expressionMode: false },
+    { text: "100 + 0.50", expressionMode: true },
+  ]) {
+    const yen = normalizeAmountInput(input, 0);
+    assert.equal(yen.text, "101");
+    assert.equal(resolveAmount(yen.text, yen.expressionMode, 0)?.value, 101);
+    const euros = normalizeAmountInput(yen, 2);
+    assert.equal(euros.text, "101.00");
+    assert.equal(
+      resolveAmount(euros.text, euros.expressionMode, 2)?.value,
+      101,
+    );
+  }
+});
+
+await test("currency normalization preserves blank and invalid input", () => {
+  for (const text of ["", "  ", "1 +", "1 / 0", "-1"]) {
+    const input = { text, expressionMode: true };
+    assert.strictEqual(normalizeAmountInput(input, 0), input);
+  }
+});
+
+await test("empty amounts stay automatic", () => {
+  for (const expressionMode of [false, true]) {
+    assert.equal(resolveAmount("", expressionMode, 2), undefined);
+    assert.equal(resolveAmount("  ", expressionMode, 0), undefined);
+  }
+});
 
 await test("parseNumber leniently parses numbers", () => {
   assert.equal(parseNumber("12,5"), 12.5);

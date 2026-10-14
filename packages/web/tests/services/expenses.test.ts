@@ -160,6 +160,16 @@ await test("expense validation rejects invalid members, totals, and precision wi
       { participants: new Map([[actorID, -10]]) },
       "participants",
     ],
+    [
+      "zero participant amount",
+      {
+        participants: new Map([
+          [actorID, 0],
+          [payerID, 10],
+        ]),
+      },
+      "participants",
+    ],
     ["zero amount", { amount: 0 }, "amount"],
     ["non-finite amount", { amount: Infinity }, "amount"],
     ["excess precision", { amount: 10.001 }, "amount"],
