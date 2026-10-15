@@ -31,13 +31,11 @@ import { deleteExpenseFormSchema } from "./new-expense-form";
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   try {
-    return {
-      history: await getExpenseHistory(
-        context.get(authenticatedSessionContext).userID,
-        asSplitID(params.splitID),
-        asExpenseID(params.expenseID),
-      ),
-    };
+    return await getExpenseHistory(
+      context.get(authenticatedSessionContext).userID,
+      asSplitID(params.splitID),
+      asExpenseID(params.expenseID),
+    );
   } catch (error) {
     throw errorResponse(error);
   }
@@ -82,9 +80,8 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users } = parentData;
-  const expense = loaderData.history.at(-1)?.expense;
-  const [expectedVersion] = useState(expense?.version);
-  if (!expense) return <div>No such expense.</div>;
+  const { expense } = loaderData;
+  const [expectedVersion] = useState(expense.version);
   const exchangeRate =
     expense.conversionRate ? (1 / expense.conversionRate).toFixed(5) : "-";
   return (
@@ -192,7 +189,7 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
             .submit(
               {
                 operationID,
-                expectedVersion: expectedVersion ?? expense.version,
+                expectedVersion,
               },
               { method: "post" },
             )

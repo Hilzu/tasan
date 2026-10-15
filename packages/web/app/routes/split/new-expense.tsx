@@ -1,7 +1,8 @@
 import { asSplitID, asUserID } from "@tasan/common/id";
-import { href, redirect } from "react-router";
+import { data as respond, href, redirect } from "react-router";
 
 import { authenticatedSessionContext } from "~/.server/auth";
+import { ApplicationError } from "~/.server/services/errors";
 import { createExpense } from "~/.server/services/expenses";
 import { formErrorResponse } from "~/.server/services/http";
 import { newExpenseFormSchema } from "~/routes/split/new-expense-form";
@@ -33,6 +34,11 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     });
     return redirect(href("/splits/:splitID", { splitID }));
   } catch (error) {
+    if (error instanceof ApplicationError && error.code === "conflict")
+      return respond(
+        { errors: { formErrors: [error.message], fieldErrors: {} } },
+        { status: 409 },
+      );
     return formErrorResponse(error, { name: "expenseName" });
   }
 }

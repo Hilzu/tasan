@@ -25,19 +25,18 @@ import { useStorage } from "~/hooks";
 import { calculateExpenseAmounts } from "~/routes/split/expense-amounts";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
-import type { action } from "./new-expense";
 export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
-  const fetcher = useFetcher<typeof action>();
+  const fetcher = useFetcher<{
+    errors: { formErrors: string[]; fieldErrors: Record<string, string[]> };
+  }>();
   const actionData = fetcher.data;
-  const [expenseID, setExpenseID] = useState("");
-  const [operationID, setOperationID] = useState("");
+  const [submissionID, setSubmissionID] = useState("");
   const [expectedVersion] = useState(expense?.version);
   useEffect(() => {
-    setExpenseID(expense?.id ?? genExpenseID());
-    setOperationID(genOperationID());
+    setSubmissionID(expense ? genOperationID() : genExpenseID());
   }, [split.id, session.userID, expense?.id]);
   const [preferredCurrency, setPreferredCurrency] =
     useStorage<CurrencySymbol>("preferredCurrency");
@@ -104,14 +103,14 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
       >
         {expense ?
           <>
-            <input type="hidden" name="operationID" value={operationID} />
+            <input type="hidden" name="operationID" value={submissionID} />
             <input
               type="hidden"
               name="expectedVersion"
               value={expectedVersion}
             />
           </>
-        : <input type="hidden" name="expenseID" value={expenseID} />}
+        : <input type="hidden" name="expenseID" value={submissionID} />}
         <InputField
           label="Name"
           name="expenseName"
@@ -257,10 +256,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
           type="submit"
           className="mt-2"
           disabled={
-            fetcher.state !== "idle" ||
-            !expenseID ||
-            (expense !== undefined && !operationID) ||
-            !calculated.valid
+            fetcher.state !== "idle" || !submissionID || !calculated.valid
           }
         >
           {fetcher.state === "submitting" ?

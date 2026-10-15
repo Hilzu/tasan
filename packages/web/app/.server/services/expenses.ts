@@ -18,7 +18,6 @@ import {
   ExpenseNotFoundError,
   type ExpenseOperation,
   findExpenseCreation,
-  findExpenseOperation,
   findExpenseRevisions,
   findSplitUsers,
   getSplitExpense,
@@ -75,7 +74,10 @@ export const createExpense = async (
           return existing;
         }
       } catch (error) {
-        if (error instanceof ExpenseIDConflictError)
+        if (
+          error instanceof ExpenseIDConflictError ||
+          error instanceof ExpenseConflictError
+        )
           throw new ApplicationError("conflict", error.message);
         throw error;
       }
@@ -107,7 +109,10 @@ export const createExpense = async (
           createdBy: actorID,
         });
       } catch (error) {
-        if (error instanceof ExpenseIDConflictError)
+        if (
+          error instanceof ExpenseIDConflictError ||
+          error instanceof ExpenseConflictError
+        )
           throw new ApplicationError("conflict", error.message);
         throw error;
       }
@@ -182,17 +187,7 @@ export const getExpenseHistory = async (
 ) => {
   const expense = await requireExpense(actorID, splitID, expenseID);
   const revisions = await findExpenseRevisions(splitID, expenseID);
-  // Unedited legacy expenses have no stored revisions yet.
-  return revisions.length ? revisions : (
-      [
-        {
-          action: "created" as const,
-          recordedAt: expense.createdAt,
-          recordedBy: expense.createdBy,
-          expense,
-        },
-      ]
-    );
+  return { expense, history: revisions };
 };
 
 export const editExpense = async (
@@ -221,50 +216,40 @@ export const editExpense = async (
       await requireMembership(actorID, splitID);
       validateOperation(operation);
       try {
-        const accepted = await findExpenseOperation(
+        return await editSplitExpense(
           splitID,
           expenseID,
-          operation.operationID,
           actorID,
-          "edited",
+          operation,
+          async (current) => {
+            const [split, members] = await Promise.all([
+              requireSplit(splitID),
+              findSplitUsers(splitID),
+            ]);
+            const { amount, participants } = validateExpense(input, members);
+            const conversionRate =
+              input.currency === current.currency ? current.conversionRate
+              : input.currency === split.currency ? undefined
+              : await fetchCurrencyConversionRate(
+                  input.currency,
+                  split.currency,
+                );
+            if (
+              conversionRate !== undefined &&
+              (!Number.isFinite(conversionRate) || conversionRate <= 0)
+            )
+              throw new Error("Invalid exchange rate from currency provider");
+            getLogger().appendKeys({ conversionRate });
+            return {
+              name: input.name,
+              currency: input.currency,
+              amount,
+              participants,
+              payer: input.payer,
+              conversionRate,
+            };
+          },
         );
-        if (accepted) return accepted;
-        const current = await getSplitExpense(splitID, expenseID);
-        if (current?.version !== operation.expectedVersion) {
-          const accepted = await findExpenseOperation(
-            splitID,
-            expenseID,
-            operation.operationID,
-            actorID,
-            "edited",
-          );
-          if (accepted) return accepted;
-          if (!current) throw new ExpenseNotFoundError();
-          throw new ExpenseConflictError();
-        }
-        const [split, members] = await Promise.all([
-          requireSplit(splitID),
-          findSplitUsers(splitID),
-        ]);
-        const { amount, participants } = validateExpense(input, members);
-        const conversionRate =
-          input.currency === current.currency ? current.conversionRate
-          : input.currency === split.currency ? undefined
-          : await fetchCurrencyConversionRate(input.currency, split.currency);
-        if (
-          conversionRate !== undefined &&
-          (!Number.isFinite(conversionRate) || conversionRate <= 0)
-        )
-          throw new Error("Invalid exchange rate from currency provider");
-        getLogger().appendKeys({ conversionRate });
-        return await editSplitExpense(splitID, expenseID, actorID, operation, {
-          name: input.name,
-          currency: input.currency,
-          amount,
-          participants,
-          payer: input.payer,
-          conversionRate,
-        });
       } catch (error) {
         mutationError(error);
       }

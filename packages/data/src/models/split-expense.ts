@@ -1,3 +1,5 @@
+import { setTimeout } from "node:timers/promises";
+
 import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 import {
   GetCommand,
@@ -151,9 +153,10 @@ export const createSplitExpense = captureAsync(
     });
 
     try {
-      await documentClient().send(cmd);
+      await sendExpenseTransaction(cmd);
     } catch (error) {
-      if (!isConditionFailure(error)) throw error;
+      if (!isConditionFailure(error) && !isTransactionConflict(error))
+        throw error;
       const existing = await findExpenseCreation(
         expense.splitID,
         id,
@@ -161,8 +164,12 @@ export const createSplitExpense = captureAsync(
         // The failed condition proves the item exists; read the committed write.
         { consistentRead: true },
       );
-      if (!existing) throw error;
-      return existing;
+      if (existing) return existing;
+      if (isTransactionConflict(error))
+        throw new ExpenseConflictError(
+          "This expense is being saved. Please try again.",
+        );
+      throw error;
     }
     return { id };
   },
@@ -205,7 +212,7 @@ export class ExpenseNotFoundError extends Error {
 type RevisionAction = "created" | "edited" | "deleted";
 interface ExpenseRevisionItem {
   pk: string;
-  sk: ExpenseID | OperationID;
+  sk: string;
   action: RevisionAction;
   recordedAt: string;
   recordedBy: UserID;
@@ -220,8 +227,16 @@ export interface ExpenseRevision {
   expense: SplitExpense;
 }
 
-const historyKey = (splitID: SplitID, expenseID: ExpenseID) =>
-  `history#${splitID}#${expenseID}`;
+// Keep history out of normal split reads, but allow querying a whole split's audit log.
+const historyPartitionKey = (splitID: SplitID) => `history#${splitID}`;
+const historyKey = (
+  splitID: SplitID,
+  expenseID: ExpenseID,
+  id: ExpenseID | OperationID,
+) => ({
+  pk: historyPartitionKey(splitID),
+  sk: `${expenseID}#${id}`,
+});
 
 const revisionItem = (
   state: SplitExpenseItem,
@@ -230,8 +245,7 @@ const revisionItem = (
   recordedBy: UserID,
   recordedAt: string,
 ): ExpenseRevisionItem => ({
-  pk: historyKey(state.pk, state.sk),
-  sk: id,
+  ...historyKey(state.pk, state.sk, id),
   action,
   recordedAt,
   recordedBy,
@@ -243,6 +257,28 @@ const isConditionFailure = (error: unknown) =>
   error.CancellationReasons?.some(
     (reason) => reason.Code === "ConditionalCheckFailed",
   );
+
+// Retry contention only, using the same command and expected version each time.
+const isTransactionConflict = (error: unknown) =>
+  error instanceof TransactionCanceledException &&
+  error.CancellationReasons?.some(
+    (reason) => reason.Code === "TransactionConflict",
+  ) &&
+  error.CancellationReasons.every(
+    (reason) => reason.Code === "None" || reason.Code === "TransactionConflict",
+  );
+
+const sendExpenseTransaction = async (command: TransactWriteCommand) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await documentClient().send(command);
+      return;
+    } catch (error) {
+      if (!isTransactionConflict(error) || attempt === 2) throw error;
+      await setTimeout(25 * 2 ** attempt);
+    }
+  }
+};
 
 export const getSplitExpense = async (
   splitID: SplitID,
@@ -269,7 +305,7 @@ export const findExpenseOperation = async (
   const { Item } = await documentClient().send(
     new GetCommand({
       TableName,
-      Key: { pk: historyKey(splitID, expenseID), sk: operationID },
+      Key: historyKey(splitID, expenseID, operationID),
       ConsistentRead: true,
     }),
   );
@@ -289,8 +325,11 @@ export const findExpenseRevisions = async (
     { client: documentClient() },
     {
       TableName,
-      KeyConditionExpression: "pk = :pk",
-      ExpressionAttributeValues: { ":pk": historyKey(splitID, expenseID) },
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": historyPartitionKey(splitID),
+        ":prefix": `${expenseID}#`,
+      },
       ConsistentRead: true,
     },
   )) {
@@ -298,9 +337,9 @@ export const findExpenseRevisions = async (
       const revision = item as ExpenseRevisionItem;
       revisions.push({
         operationID:
-          revision.sk.startsWith("op_") ?
-            (revision.sk as OperationID)
-          : undefined,
+          revision.action === "created" ?
+            undefined
+          : (revision.sk.slice(expenseID.length + 1) as OperationID),
         action: revision.action,
         recordedAt: new Date(revision.recordedAt),
         recordedBy: revision.recordedBy,
@@ -321,9 +360,9 @@ const changeSplitExpense = async (
   expenseID: ExpenseID,
   actorID: UserID,
   operation: ExpenseOperation,
-  changes?: EditSplitExpense,
+  prepareChanges?: (current: SplitExpense) => Promise<EditSplitExpense>,
 ): Promise<{ id: ExpenseID; version: number }> => {
-  const action = changes ? "edited" : "deleted";
+  const action = prepareChanges ? "edited" : "deleted";
   const previous = await findExpenseOperation(
     splitID,
     expenseID,
@@ -350,6 +389,7 @@ const changeSplitExpense = async (
     if (accepted) return accepted;
     throw new ExpenseConflictError();
   }
+  const changes = await prepareChanges?.(fromItem({ ...current }));
   const now = new Date().toISOString();
   const next: SplitExpenseItem = {
     ...current,
@@ -418,11 +458,12 @@ const changeSplitExpense = async (
       },
     });
   try {
-    await documentClient().send(
+    await sendExpenseTransaction(
       new TransactWriteCommand({ TransactItems: transactItems }),
     );
   } catch (error) {
-    if (!isConditionFailure(error)) throw error;
+    if (!isConditionFailure(error) && !isTransactionConflict(error))
+      throw error;
     const accepted = await findExpenseOperation(
       splitID,
       expenseID,
@@ -443,8 +484,9 @@ export const editSplitExpense = captureAsync(
     expenseID: ExpenseID,
     actorID: UserID,
     operation: ExpenseOperation,
-    changes: EditSplitExpense,
-  ) => changeSplitExpense(splitID, expenseID, actorID, operation, changes),
+    prepareChanges: (current: SplitExpense) => Promise<EditSplitExpense>,
+  ) =>
+    changeSplitExpense(splitID, expenseID, actorID, operation, prepareChanges),
 );
 
 export const deleteSplitExpense = captureAsync(

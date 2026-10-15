@@ -1,10 +1,5 @@
 import { asExpenseID, asSplitID, asUserID } from "@tasan/common/id";
-import {
-  data,
-  href,
-  redirect,
-  type ShouldRevalidateFunctionArgs,
-} from "react-router";
+import { data, href, redirect } from "react-router";
 
 import { authenticatedSessionContext } from "~/.server/auth";
 import { ApplicationError } from "~/.server/services/errors";
@@ -82,13 +77,4 @@ export default function EditExpense({ loaderData }: Route.ComponentProps) {
   return (
     <ExpenseForm key={loaderData.expense.id} expense={loaderData.expense} />
   );
-}
-
-export function shouldRevalidate({
-  actionStatus,
-  defaultShouldRevalidate,
-}: ShouldRevalidateFunctionArgs) {
-  return actionStatus === 409 || actionStatus === 404 ?
-      false
-    : defaultShouldRevalidate;
 }

@@ -5,6 +5,7 @@ import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
+  QueryCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import * as D from "@tasan/common/decimal";
@@ -24,6 +25,7 @@ const {
   editSplitExpense,
   ExpenseConflictError,
   findExpenseOperation,
+  findExpenseRevisions,
 } = await import("./split-expense.js");
 const actorID = genUserID();
 const expense = {
@@ -53,6 +55,8 @@ const storage = (missEventualReads = false) => {
   const key = (item: Record<string, unknown>) =>
     `${String(item.pk)}|${String(item.sk)}`;
   let writes = 0;
+  let conflicts = 0;
+  const transactions: TransactWriteCommand[] = [];
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
     if (command instanceof GetCommand) {
       const consistent = command.input.ConsistentRead === true;
@@ -65,7 +69,22 @@ const storage = (missEventualReads = false) => {
           ),
       });
     }
+    if (command instanceof QueryCommand) {
+      const values = command.input.ExpressionAttributeValues;
+      return Promise.resolve({
+        Items: [...items.values()].filter(
+          (item) =>
+            item.pk === values?.[":pk"] &&
+            String(item.sk).startsWith(String(values?.[":prefix"])),
+        ),
+      });
+    }
     assert.ok(command instanceof TransactWriteCommand);
+    transactions.push(command);
+    if (conflicts > 0) {
+      conflicts--;
+      return Promise.reject(transactionConflict());
+    }
     const puts = (command.input.TransactItems ?? []).map((entry) => {
       assert.ok(entry.Put);
       return entry.Put;
@@ -97,6 +116,10 @@ const storage = (missEventualReads = false) => {
   return {
     reads,
     items,
+    transactions,
+    contendNext(count: number) {
+      conflicts = count;
+    },
     get item() {
       return items.get(`${expense.splitID}|${expense.id}`);
     },
@@ -247,7 +270,7 @@ await test("edits atomically preserve snapshots and original creation metadata",
     expense.id,
     actorID,
     edit,
-    { ...expense, name: "Lunch" },
+    () => Promise.resolve({ ...expense, name: "Lunch" }),
   );
   assert.deepEqual(result, { id: expense.id, version: 2 });
   assert.equal(db.item?.createdAt, original?.createdAt);
@@ -265,10 +288,12 @@ await test("concurrent edits from the same version accept only one revision", as
   await createSplitExpense(expense);
   const results = await Promise.allSettled(
     ["Lunch", "Breakfast"].map((name) =>
-      editSplitExpense(expense.splitID, expense.id, actorID, operation(), {
-        ...expense,
-        name,
-      }),
+      editSplitExpense(expense.splitID, expense.id, actorID, operation(), () =>
+        Promise.resolve({
+          ...expense,
+          name,
+        }),
+      ),
     ),
   );
   assert.equal(
@@ -290,19 +315,28 @@ await test("edit retries return their original result even after later edits and
     expense.id,
     actorID,
     edit,
-    expense,
+    () => Promise.resolve(expense),
   );
-  await editSplitExpense(expense.splitID, expense.id, actorID, operation(2), {
-    ...expense,
-    name: "Later",
-  });
+  await editSplitExpense(
+    expense.splitID,
+    expense.id,
+    actorID,
+    operation(2),
+    () =>
+      Promise.resolve({
+        ...expense,
+        name: "Later",
+      }),
+  );
   const deletion = operation(3);
   await deleteSplitExpense(expense.splitID, expense.id, actorID, deletion);
   assert.deepEqual(
-    await editSplitExpense(expense.splitID, expense.id, actorID, edit, {
-      ...expense,
-      name: "Retry changed",
-    }),
+    await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
+      Promise.resolve({
+        ...expense,
+        name: "Retry changed",
+      }),
+    ),
     first,
   );
   assert.deepEqual(
@@ -313,12 +347,8 @@ await test("edit retries return their original result even after later edits and
   assert.equal(db.item?.name, "Later");
   await assert.rejects(
     () =>
-      editSplitExpense(
-        expense.splitID,
-        expense.id,
-        actorID,
-        operation(4),
-        expense,
+      editSplitExpense(expense.splitID, expense.id, actorID, operation(4), () =>
+        Promise.resolve(expense),
       ),
     ExpenseConflictError,
   );
@@ -328,7 +358,9 @@ await test("operation IDs cannot be reused by another actor or action", async ()
   storage();
   await createSplitExpense(expense);
   const edit = operation();
-  await editSplitExpense(expense.splitID, expense.id, actorID, edit, expense);
+  await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
+    Promise.resolve(expense),
+  );
   await assert.rejects(
     () =>
       findExpenseOperation(
@@ -351,10 +383,17 @@ await test("the first legacy edit atomically adds the original revision", async 
   await createSplitExpense(expense);
   delete db.item?.version;
   for (const [key, item] of db.items) if (item.state) db.items.delete(key);
-  await editSplitExpense(expense.splitID, expense.id, actorID, operation(), {
-    ...expense,
-    name: "Edited legacy",
-  });
+  await editSplitExpense(
+    expense.splitID,
+    expense.id,
+    actorID,
+    operation(),
+    () =>
+      Promise.resolve({
+        ...expense,
+        name: "Edited legacy",
+      }),
+  );
   const snapshots = [...db.items.values()].filter((item) => item.state);
   assert.equal(snapshots.length, 2);
   assert.ok(
@@ -370,11 +409,18 @@ await test("the first legacy edit atomically adds the original revision", async 
 await test("returning to the split currency removes the old conversion rate", async () => {
   const db = storage();
   await createSplitExpense({ ...expense, conversionRate: 0.006 });
-  await editSplitExpense(expense.splitID, expense.id, actorID, operation(), {
-    ...expense,
-    currency: "EUR",
-    conversionRate: undefined,
-  });
+  await editSplitExpense(
+    expense.splitID,
+    expense.id,
+    actorID,
+    operation(),
+    () =>
+      Promise.resolve({
+        ...expense,
+        currency: "EUR",
+        conversionRate: undefined,
+      }),
+  );
   assert.equal(db.item?.conversionRate, undefined);
 });
 
@@ -382,12 +428,8 @@ await test("an edit and deletion from the same version cannot both commit", asyn
   const db = storage();
   await createSplitExpense(expense);
   const results = await Promise.allSettled([
-    editSplitExpense(
-      expense.splitID,
-      expense.id,
-      actorID,
-      operation(),
-      expense,
+    editSplitExpense(expense.splitID, expense.id, actorID, operation(), () =>
+      Promise.resolve(expense),
     ),
     deleteSplitExpense(expense.splitID, expense.id, actorID, operation()),
   ]);
@@ -396,4 +438,138 @@ await test("an edit and deletion from the same version cannot both commit", asyn
     1,
   );
   assert.equal(db.writes, 2);
+});
+
+const transactionConflict = () =>
+  new TransactionCanceledException({
+    $metadata: {},
+    message: "Contention",
+    CancellationReasons: [{ Code: "TransactionConflict" }, { Code: "None" }],
+  });
+
+await test("creation contention retries the same transaction and commits once", async () => {
+  const db = storage();
+  db.contendNext(2);
+  await createSplitExpense(expense);
+  assert.equal(db.writes, 1);
+  assert.equal(db.transactions.length, 3);
+  assert.ok(db.transactions.every((command) => command === db.transactions[0]));
+});
+
+await test("edit contention retries without preparing changes again or changing the base version", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  db.contendNext(2);
+  const prepare = mock.fn(() =>
+    Promise.resolve({ ...expense, name: "Correction" }),
+  );
+  await editSplitExpense(
+    expense.splitID,
+    expense.id,
+    actorID,
+    operation(),
+    prepare,
+  );
+  assert.equal(prepare.mock.callCount(), 1);
+  assert.equal(db.item?.version, 2);
+  assert.equal(db.writes, 2);
+  assert.equal(db.reads.length, 2);
+  assert.ok(
+    db.transactions.slice(1).every((command) => command === db.transactions[1]),
+  );
+});
+
+await test("persistent contention produces recoverable conflicts with no extra writes", async () => {
+  const db = storage();
+  db.contendNext(3);
+  await assert.rejects(() => createSplitExpense(expense), ExpenseConflictError);
+  assert.equal(db.writes, 0);
+  await createSplitExpense(expense);
+  db.contendNext(3);
+  await assert.rejects(
+    () =>
+      editSplitExpense(expense.splitID, expense.id, actorID, operation(), () =>
+        Promise.resolve(expense),
+      ),
+    ExpenseConflictError,
+  );
+  db.contendNext(3);
+  await assert.rejects(
+    () => deleteSplitExpense(expense.splitID, expense.id, actorID, operation()),
+    ExpenseConflictError,
+  );
+  assert.equal(db.writes, 1);
+  assert.equal(db.item?.version, 1);
+});
+
+await test("successful deletion contention retries commit one deletion revision", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  db.contendNext(2);
+  await deleteSplitExpense(expense.splitID, expense.id, actorID, operation());
+  assert.equal(db.writes, 2);
+  assert.ok(db.item?.deletedAt);
+});
+
+await test("conditional failures do not retry or prepare stale changes", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  await editSplitExpense(
+    expense.splitID,
+    expense.id,
+    actorID,
+    operation(),
+    () => Promise.resolve(expense),
+  );
+  const prepare = mock.fn(() => Promise.resolve(expense));
+  await assert.rejects(
+    () =>
+      editSplitExpense(
+        expense.splitID,
+        expense.id,
+        actorID,
+        operation(),
+        prepare,
+      ),
+    ExpenseConflictError,
+  );
+  assert.equal(prepare.mock.callCount(), 0);
+  assert.equal(db.transactions.length, 2);
+});
+
+await test("split history partitions support isolated expense histories and direct operation lookups", async () => {
+  const db = storage();
+  const other = { ...expense, id: genExpenseID() };
+  await createSplitExpense(expense);
+  await createSplitExpense(other);
+  const edit = operation();
+  await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
+    Promise.resolve(expense),
+  );
+  // Idempotency is scoped to an expense, so even the same operation ID cannot collide across expenses.
+  await editSplitExpense(other.splitID, other.id, actorID, edit, () =>
+    Promise.resolve(other),
+  );
+  for (const current of [expense, other]) {
+    const history = await findExpenseRevisions(current.splitID, current.id);
+    assert.deepEqual(
+      history.map((revision) => revision.expense.version),
+      [1, 2],
+    );
+    assert.ok(history.every((revision) => revision.expense.id === current.id));
+    assert.equal(history[1].operationID, edit.operationID);
+    assert.deepEqual(
+      await findExpenseOperation(
+        current.splitID,
+        current.id,
+        edit.operationID,
+        actorID,
+        "edited",
+      ),
+      { id: current.id, version: 2 },
+    );
+  }
+  const historyItems = [...db.items.values()].filter((item) => item.state);
+  assert.equal(new Set(historyItems.map((item) => item.pk)).size, 1);
+  assert.equal(historyItems[0].pk, `history#${expense.splitID}`);
 });
