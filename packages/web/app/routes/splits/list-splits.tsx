@@ -1,6 +1,6 @@
 import { href } from "react-router";
 
-import { getSessionOrRedirect } from "~/.server/auth";
+import { authenticatedSessionContext } from "~/.server/auth";
 import { listSplits } from "~/.server/services/splits";
 import { Button } from "~/components/button";
 import { MainHeading } from "~/components/heading";
@@ -12,9 +12,8 @@ export function meta(_: Route.MetaArgs) {
   return [{ title: "Your splits - Tasan.app" }];
 }
 
-export async function loader({ request, url }: Route.LoaderArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export async function loader({ context }: Route.LoaderArgs) {
+  const session = context.get(authenticatedSessionContext);
 
   const splits = await listSplits(session.userID);
   return { splits };
