@@ -1,9 +1,13 @@
-import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
+import {
+  GetCommand,
+  paginateQuery,
+  TransactWriteCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import type { ExpenseID, SplitID, UserID } from "@tasan/common/id";
+import type { ExpenseID, OperationID, SplitID, UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -16,6 +20,9 @@ export interface SplitExpense {
   amount: D.Decimal;
   createdBy: UserID;
   createdAt: Date;
+  version: number;
+  updatedAt?: Date;
+  updatedBy?: UserID;
   currency: CurrencySymbol;
   conversionRate?: number;
   payer: UserID;
@@ -33,6 +40,9 @@ interface SplitExpenseItem {
   conversionRate?: number;
   payer: UserID;
   participants: Record<UserID, number>;
+  version?: number;
+  updatedAt?: string;
+  updatedBy?: UserID;
   deletedAt?: string;
   deletedBy?: string;
 }
@@ -54,6 +64,9 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
   return {
     id: item.sk,
     splitID: item.pk,
+    version: item.version ?? 1,
+    updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
+    updatedBy: item.updatedBy,
     name: item.name,
     amount: D.create(item.amount, fractionDigits),
     createdBy: item.createdBy,
@@ -86,7 +99,10 @@ export const findExpenseCreation = async (
   return { id };
 };
 
-export type CreateSplitExpense = Omit<SplitExpense, "createdAt">;
+export type CreateSplitExpense = Omit<
+  SplitExpense,
+  "createdAt" | "version" | "updatedAt" | "updatedBy"
+>;
 
 export const createSplitExpense = captureAsync(
   "createSplitExpense",
@@ -95,27 +111,49 @@ export const createSplitExpense = captureAsync(
     const Item: SplitExpenseItem = {
       pk: expense.splitID,
       sk: id,
+      version: 1,
       createdAt: new Date().toISOString(),
       createdBy: expense.createdBy,
       amount: expense.amount.value,
       name: expense.name,
       currency: expense.currency,
-      conversionRate: expense.conversionRate,
+      ...(expense.conversionRate === undefined ?
+        {}
+      : { conversionRate: expense.conversionRate }),
       payer: expense.payer,
       participants: Object.fromEntries(
         [...expense.participants].map(([k, v]) => [k, v.value]),
       ),
     };
-    const cmd = new PutCommand({
-      TableName,
-      Item,
-      ConditionExpression: "attribute_not_exists(pk)",
+    const cmd = new TransactWriteCommand({
+      TransactItems: [
+        {
+          Put: {
+            TableName,
+            Item,
+            ConditionExpression: "attribute_not_exists(pk)",
+          },
+        },
+        {
+          Put: {
+            TableName,
+            Item: revisionItem(
+              Item,
+              id,
+              "created",
+              expense.createdBy,
+              Item.createdAt,
+            ),
+            ConditionExpression: "attribute_not_exists(pk)",
+          },
+        },
+      ],
     });
 
     try {
       await documentClient().send(cmd);
     } catch (error) {
-      if (!(error instanceof ConditionalCheckFailedException)) throw error;
+      if (!isConditionFailure(error)) throw error;
       const existing = await findExpenseCreation(
         expense.splitID,
         id,
@@ -148,18 +186,273 @@ const getSplitExpenseItem = captureAsync(
   },
 );
 
-export const deleteSplitExpense = captureAsync(
-  "deleteSplitExpense",
-  async (
+export class ExpenseConflictError extends Error {
+  constructor(
+    message = "This expense has changed or was deleted. Reload it before saving again.",
+  ) {
+    super(message);
+    this.name = "ExpenseConflictError";
+  }
+}
+
+export class ExpenseNotFoundError extends Error {
+  constructor() {
+    super("Expense not found.");
+    this.name = "ExpenseNotFoundError";
+  }
+}
+
+type RevisionAction = "created" | "edited" | "deleted";
+interface ExpenseRevisionItem {
+  pk: string;
+  sk: ExpenseID | OperationID;
+  action: RevisionAction;
+  recordedAt: string;
+  recordedBy: UserID;
+  state: SplitExpenseItem;
+}
+
+export interface ExpenseRevision {
+  operationID?: OperationID;
+  action: RevisionAction;
+  recordedAt: Date;
+  recordedBy: UserID;
+  expense: SplitExpense;
+}
+
+const historyKey = (splitID: SplitID, expenseID: ExpenseID) =>
+  `history#${splitID}#${expenseID}`;
+
+const revisionItem = (
+  state: SplitExpenseItem,
+  id: ExpenseID | OperationID,
+  action: RevisionAction,
+  recordedBy: UserID,
+  recordedAt: string,
+): ExpenseRevisionItem => ({
+  pk: historyKey(state.pk, state.sk),
+  sk: id,
+  action,
+  recordedAt,
+  recordedBy,
+  state,
+});
+
+const isConditionFailure = (error: unknown) =>
+  error instanceof TransactionCanceledException &&
+  error.CancellationReasons?.some(
+    (reason) => reason.Code === "ConditionalCheckFailed",
+  );
+
+export const getSplitExpense = async (
+  splitID: SplitID,
+  expenseID: ExpenseID,
+) => {
+  const item = await getSplitExpenseItem(splitID, expenseID, {
+    consistentRead: true,
+  });
+  return item && !item.deletedAt ? fromItem({ ...item }) : undefined;
+};
+
+export interface ExpenseOperation {
+  operationID: OperationID;
+  expectedVersion: number;
+}
+
+export const findExpenseOperation = async (
+  splitID: SplitID,
+  expenseID: ExpenseID,
+  operationID: OperationID,
+  actorID: UserID,
+  action: "edited" | "deleted",
+): Promise<{ id: ExpenseID; version: number } | undefined> => {
+  const { Item } = await documentClient().send(
+    new GetCommand({
+      TableName,
+      Key: { pk: historyKey(splitID, expenseID), sk: operationID },
+      ConsistentRead: true,
+    }),
+  );
+  if (!Item) return;
+  const revision = Item as ExpenseRevisionItem;
+  if (revision.recordedBy !== actorID || revision.action !== action)
+    throw new ExpenseConflictError("This operation ID has already been used.");
+  return { id: expenseID, version: revision.state.version ?? 1 };
+};
+
+export const findExpenseRevisions = async (
+  splitID: SplitID,
+  expenseID: ExpenseID,
+): Promise<ExpenseRevision[]> => {
+  const revisions: ExpenseRevision[] = [];
+  for await (const page of paginateQuery(
+    { client: documentClient() },
+    {
+      TableName,
+      KeyConditionExpression: "pk = :pk",
+      ExpressionAttributeValues: { ":pk": historyKey(splitID, expenseID) },
+      ConsistentRead: true,
+    },
+  )) {
+    for (const item of page.Items ?? []) {
+      const revision = item as ExpenseRevisionItem;
+      revisions.push({
+        operationID:
+          revision.sk.startsWith("op_") ?
+            (revision.sk as OperationID)
+          : undefined,
+        action: revision.action,
+        recordedAt: new Date(revision.recordedAt),
+        recordedBy: revision.recordedBy,
+        expense: fromItem({ ...revision.state }),
+      });
+    }
+  }
+  return revisions.sort((a, b) => a.expense.version - b.expense.version);
+};
+
+export type EditSplitExpense = Pick<
+  SplitExpense,
+  "name" | "amount" | "currency" | "conversionRate" | "payer" | "participants"
+>;
+
+const changeSplitExpense = async (
+  splitID: SplitID,
+  expenseID: ExpenseID,
+  actorID: UserID,
+  operation: ExpenseOperation,
+  changes?: EditSplitExpense,
+): Promise<{ id: ExpenseID; version: number }> => {
+  const action = changes ? "edited" : "deleted";
+  const previous = await findExpenseOperation(
+    splitID,
+    expenseID,
+    operation.operationID,
+    actorID,
+    action,
+  );
+  if (previous) return previous;
+  const current = await getSplitExpenseItem(splitID, expenseID, {
+    consistentRead: true,
+  });
+  if (!current) throw new ExpenseNotFoundError();
+  if (
+    current.deletedAt ||
+    (current.version ?? 1) !== operation.expectedVersion
+  ) {
+    const accepted = await findExpenseOperation(
+      splitID,
+      expenseID,
+      operation.operationID,
+      actorID,
+      action,
+    );
+    if (accepted) return accepted;
+    throw new ExpenseConflictError();
+  }
+  const now = new Date().toISOString();
+  const next: SplitExpenseItem = {
+    ...current,
+    version: operation.expectedVersion + 1,
+    updatedAt: now,
+    updatedBy: actorID,
+  };
+  if (changes) {
+    Object.assign(next, {
+      name: changes.name,
+      currency: changes.currency,
+      payer: changes.payer,
+      conversionRate: changes.conversionRate,
+      amount: changes.amount.value,
+      participants: Object.fromEntries(
+        [...changes.participants].map(([id, amount]) => [id, amount.value]),
+      ),
+    });
+    // An absent attribute must remove the old rate when returning to the split currency.
+    if (changes.conversionRate === undefined) delete next.conversionRate;
+  } else {
+    next.deletedAt = now;
+    next.deletedBy = actorID;
+  }
+  const transactItems = [
+    {
+      Put: {
+        TableName,
+        Item: next,
+        ConditionExpression:
+          "attribute_exists(pk) AND attribute_not_exists(deletedAt) AND " +
+          (current.version === undefined ?
+            "attribute_not_exists(#version)"
+          : "#version = :version"),
+        ExpressionAttributeNames: { "#version": "version" },
+        ...(current.version === undefined ?
+          {}
+        : {
+            ExpressionAttributeValues: {
+              ":version": operation.expectedVersion,
+            },
+          }),
+      },
+    },
+    {
+      Put: {
+        TableName,
+        Item: revisionItem(next, operation.operationID, action, actorID, now),
+        ConditionExpression: "attribute_not_exists(pk)",
+      },
+    },
+  ];
+  // Legacy expenses get their original snapshot in the same transaction as their first change.
+  if (current.version === undefined)
+    transactItems.push({
+      Put: {
+        TableName,
+        Item: revisionItem(
+          { ...current, version: 1 },
+          expenseID,
+          "created",
+          current.createdBy,
+          current.createdAt,
+        ),
+        ConditionExpression: "attribute_not_exists(pk)",
+      },
+    });
+  try {
+    await documentClient().send(
+      new TransactWriteCommand({ TransactItems: transactItems }),
+    );
+  } catch (error) {
+    if (!isConditionFailure(error)) throw error;
+    const accepted = await findExpenseOperation(
+      splitID,
+      expenseID,
+      operation.operationID,
+      actorID,
+      action,
+    );
+    if (accepted) return accepted;
+    throw new ExpenseConflictError();
+  }
+  return { id: expenseID, version: operation.expectedVersion + 1 };
+};
+
+export const editSplitExpense = captureAsync(
+  "editSplitExpense",
+  (
     splitID: SplitID,
     expenseID: ExpenseID,
-    userID: UserID,
-  ): Promise<void> => {
-    const Item = await getSplitExpenseItem(splitID, expenseID);
-    if (!Item) throw new Error("Split expense not found");
-    Item.deletedAt = new Date().toISOString();
-    Item.deletedBy = userID;
-    const cmd = new PutCommand({ TableName, Item });
-    await documentClient().send(cmd);
-  },
+    actorID: UserID,
+    operation: ExpenseOperation,
+    changes: EditSplitExpense,
+  ) => changeSplitExpense(splitID, expenseID, actorID, operation, changes),
+);
+
+export const deleteSplitExpense = captureAsync(
+  "deleteSplitExpense",
+  (
+    splitID: SplitID,
+    expenseID: ExpenseID,
+    actorID: UserID,
+    operation: ExpenseOperation,
+  ) => changeSplitExpense(splitID, expenseID, actorID, operation),
 );

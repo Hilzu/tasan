@@ -63,3 +63,8 @@ export const asCognitoUserID = (id: string) => {
 export type ExpenseID = ID<"exp">;
 export const genExpenseID = () => genID("exp");
 export const asExpenseID = (id: string) => asValidID("exp", id);
+
+// operation
+export type OperationID = ID<"op">;
+export const genOperationID = () => genID("op");
+export const asOperationID = (id: string) => asValidID("op", id);
