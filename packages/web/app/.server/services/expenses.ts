@@ -71,13 +71,14 @@ export const createExpense = async (
           throw new ApplicationError("conflict", error.message);
         throw error;
       }
-      const split = await requireSplit(splitID);
+      const [split, splitUsers] = await Promise.all([
+        requireSplit(splitID),
+        findSplitUsers(splitID),
+      ]);
       validateName(input.name);
       validateCurrency(input.currency);
       const amount = toAmount(input.amount, input.currency, "amount");
-      const members = new Set(
-        (await findSplitUsers(splitID)).map((user) => user.userID),
-      );
+      const members = new Set(splitUsers.map((user) => user.userID));
       if (!members.has(input.payer))
         invalidField("payer", "Payer must be in the split.");
       if (input.participants.size === 0)

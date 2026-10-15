@@ -332,3 +332,25 @@ await test("expense logs include action parameters and persisted ID without free
     write.mock.restore();
   }
 });
+
+await test("split metadata and members are fetched concurrently after authorization and deduplication", async () => {
+  let resolveSplit!: (value: Split) => void;
+  splitMock.exports.requireSplit.mock.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        resolveSplit = resolve;
+      }),
+  );
+  persistenceMock.exports.findSplitUsers.mock.mockImplementation(() => {
+    resolveSplit(split);
+    return Promise.resolve(
+      [actorID, payerID].map((userID) => ({
+        userID,
+        splitID,
+        createdBy: actorID,
+      })),
+    );
+  });
+  await createExpense(actorID, splitID, expense);
+  assert.equal(save.mock.callCount(), 1);
+});
