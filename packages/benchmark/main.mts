@@ -23,10 +23,10 @@ const request = async () => {
     },
   });
   if (!res.ok) {
-    console.log("Error status:", res.status);
-    console.log("Error headers:", res.headers);
+    console.error("Error status:", res.status);
+    console.error("Error headers:", res.headers);
     const body = await res.text();
-    console.log("Error response:", body);
+    console.error("Error response:", body);
     throw new Error("Failed to fetch");
   }
   return Date.now() - start;
@@ -70,7 +70,7 @@ const updateFunction = async (
   );
 };
 
-console.log("Arch\tMem\tInit\tMedian\tMin\tMax");
+process.stdout.write("Arch\tMem\tInit\tMedian\tMin\tMax\n");
 for (const architecture of architectures) {
   for (const memorySize of memorySizes) {
     await updateFunction(architecture, memorySize);
@@ -95,6 +95,6 @@ for (const architecture of architectures) {
       min.toString().padStart(4),
       max.toString().padStart(4),
     ].join("\t");
-    console.log(logRow);
+    process.stdout.write(`${logRow}\n`);
   }
 }

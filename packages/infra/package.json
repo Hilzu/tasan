@@ -8,14 +8,15 @@
     "access:deploy": "cdk deploy --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access TasanDeploymentAccessStack",
     "access:diff": "cdk diff --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access --method template TasanDeploymentAccessStack",
     "access:synth": "cdk synth --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access",
-    "build": "tsc && esbuild src/app-origin-request/main.mts --bundle --platform=node --target=node24.16 --format=esm --outfile=dist/app-origin-request/main.mjs",
+    "build": "tsc && pnpm build:edge",
     "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
     "deploy": "pnpm build-and-sync && cdk deploy --all",
     "start": "node --enable-source-maps .",
     "test": "pnpm build && node --test dist/*.test.js",
-    "build-and-sync": "../../scripts/build-and-sync.sh"
+    "build-and-sync": "../../scripts/build-and-sync.sh",
+    "build:edge": "esbuild src/app-origin-request/main.mts --bundle --platform=node --target=node24.16 --format=esm --outfile=dist/app-origin-request/main.mjs"
   },
   "engines": {
     "node": "^24.16.0"

@@ -80,6 +80,14 @@ export default tsEslint.config(
         },
       ],
       "n/prefer-node-protocol": "error",
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "console",
+          property: "log",
+          message: "Use the structured logger for application logs.",
+        },
+      ],
     },
   },
   {
