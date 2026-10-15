@@ -3,6 +3,7 @@ import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
 import * as D from "@tasan/common/decimal";
 import {
   asExpenseID,
+  asOperationID,
   type ExpenseID,
   type SplitID,
   type UserID,
@@ -11,9 +12,16 @@ import { getLogger } from "@tasan/common/logging";
 import {
   createSplitExpense,
   deleteSplitExpense,
+  editSplitExpense,
+  ExpenseConflictError,
   ExpenseIDConflictError,
+  ExpenseNotFoundError,
+  type ExpenseOperation,
   findExpenseCreation,
+  findExpenseOperation,
+  findExpenseRevisions,
   findSplitUsers,
+  getSplitExpense,
 } from "@tasan/data";
 
 import { ApplicationError } from "./errors";
@@ -75,32 +83,7 @@ export const createExpense = async (
         requireSplit(splitID),
         findSplitUsers(splitID),
       ]);
-      validateName(input.name);
-      validateCurrency(input.currency);
-      const amount = toAmount(input.amount, input.currency, "amount");
-      const members = new Set(splitUsers.map((user) => user.userID));
-      if (!members.has(input.payer))
-        invalidField("payer", "Payer must be in the split.");
-      if (input.participants.size === 0)
-        invalidField("participants", "Participants are required.");
-      const participants = new Map<UserID, D.Decimal>();
-      for (const [userID, value] of input.participants) {
-        if (!members.has(userID))
-          invalidField("participants", "Participants must be in the split.");
-        participants.set(
-          userID,
-          toAmount(value, input.currency, "participants"),
-        );
-      }
-      const total = [...participants.values()].reduce(
-        (sum, share) => D.add(sum, share),
-        D.create(0, amount.fractions),
-      );
-      if (!D.equals(total, amount))
-        invalidField(
-          "participants",
-          "Total amount must match the expense amount.",
-        );
+      const { amount, participants } = validateExpense(input, splitUsers);
       const conversionRate =
         input.currency === split.currency ?
           undefined
@@ -132,17 +115,184 @@ export const createExpense = async (
   );
 };
 
-export const deleteExpense = async (
+const validateExpense = (
+  input: Omit<NewExpense, "id">,
+  splitUsers: Awaited<ReturnType<typeof findSplitUsers>>,
+) => {
+  validateName(input.name);
+  validateCurrency(input.currency);
+  const amount = toAmount(input.amount, input.currency, "amount");
+  const members = new Set(splitUsers.map((user) => user.userID));
+  if (!members.has(input.payer))
+    invalidField("payer", "Payer must be in the split.");
+  if (input.participants.size === 0)
+    invalidField("participants", "Participants are required.");
+  const participants = new Map<UserID, D.Decimal>();
+  for (const [userID, value] of input.participants) {
+    if (!members.has(userID))
+      invalidField("participants", "Participants must be in the split.");
+    participants.set(userID, toAmount(value, input.currency, "participants"));
+  }
+  const total = [...participants.values()].reduce(
+    (sum, share) => D.add(sum, share),
+    D.create(0, amount.fractions),
+  );
+  if (!D.equals(total, amount))
+    invalidField("participants", "Total amount must match the expense amount.");
+  return { amount, participants };
+};
+
+const validateOperation = (operation: ExpenseOperation) => {
+  try {
+    asOperationID(operation.operationID);
+  } catch {
+    invalidField("operationID", "Invalid operation ID.");
+  }
+  if (
+    !Number.isSafeInteger(operation.expectedVersion) ||
+    operation.expectedVersion < 1 ||
+    operation.expectedVersion >= Number.MAX_SAFE_INTEGER
+  )
+    invalidField("expectedVersion", "Invalid expense version.");
+};
+
+const mutationError = (error: unknown): never => {
+  if (error instanceof ExpenseConflictError)
+    throw new ApplicationError("conflict", error.message);
+  if (error instanceof ExpenseNotFoundError)
+    throw new ApplicationError("not_found", error.message);
+  throw error;
+};
+
+export const requireExpense = async (
   actorID: UserID,
   splitID: SplitID,
   expenseID: ExpenseID,
 ) => {
-  return logAction(
-    "expense.delete",
-    { userId: actorID, splitId: splitID, expenseId: expenseID },
+  await requireMembership(actorID, splitID);
+  const expense = await getSplitExpense(splitID, expenseID);
+  if (!expense) throw new ApplicationError("not_found", "Expense not found.");
+  return expense;
+};
+
+export const getExpenseHistory = async (
+  actorID: UserID,
+  splitID: SplitID,
+  expenseID: ExpenseID,
+) => {
+  const expense = await requireExpense(actorID, splitID, expenseID);
+  const revisions = await findExpenseRevisions(splitID, expenseID);
+  // Unedited legacy expenses have no stored revisions yet.
+  return revisions.length ? revisions : (
+      [
+        {
+          action: "created" as const,
+          recordedAt: expense.createdAt,
+          recordedBy: expense.createdBy,
+          expense,
+        },
+      ]
+    );
+};
+
+export const editExpense = async (
+  actorID: UserID,
+  splitID: SplitID,
+  expenseID: ExpenseID,
+  operation: ExpenseOperation,
+  input: Omit<NewExpense, "id">,
+) =>
+  logAction(
+    "expense.edit",
+    {
+      userId: actorID,
+      splitId: splitID,
+      expenseId: expenseID,
+      operationId: operation.operationID,
+      expectedVersion: operation.expectedVersion,
+      parameters: {
+        currency: input.currency,
+        amount: input.amount,
+        payer: input.payer,
+        participants: Object.fromEntries(input.participants),
+      },
+    },
     async () => {
       await requireMembership(actorID, splitID);
-      await deleteSplitExpense(splitID, expenseID, actorID);
+      validateOperation(operation);
+      try {
+        const accepted = await findExpenseOperation(
+          splitID,
+          expenseID,
+          operation.operationID,
+          actorID,
+          "edited",
+        );
+        if (accepted) return accepted;
+        const current = await getSplitExpense(splitID, expenseID);
+        if (current?.version !== operation.expectedVersion) {
+          const accepted = await findExpenseOperation(
+            splitID,
+            expenseID,
+            operation.operationID,
+            actorID,
+            "edited",
+          );
+          if (accepted) return accepted;
+          if (!current) throw new ExpenseNotFoundError();
+          throw new ExpenseConflictError();
+        }
+        const [split, members] = await Promise.all([
+          requireSplit(splitID),
+          findSplitUsers(splitID),
+        ]);
+        const { amount, participants } = validateExpense(input, members);
+        const conversionRate =
+          input.currency === current.currency ? current.conversionRate
+          : input.currency === split.currency ? undefined
+          : await fetchCurrencyConversionRate(input.currency, split.currency);
+        if (
+          conversionRate !== undefined &&
+          (!Number.isFinite(conversionRate) || conversionRate <= 0)
+        )
+          throw new Error("Invalid exchange rate from currency provider");
+        getLogger().appendKeys({ conversionRate });
+        return await editSplitExpense(splitID, expenseID, actorID, operation, {
+          name: input.name,
+          currency: input.currency,
+          amount,
+          participants,
+          payer: input.payer,
+          conversionRate,
+        });
+      } catch (error) {
+        mutationError(error);
+      }
     },
   );
-};
+
+export const deleteExpense = async (
+  actorID: UserID,
+  splitID: SplitID,
+  expenseID: ExpenseID,
+  operation: ExpenseOperation,
+) =>
+  logAction(
+    "expense.delete",
+    {
+      userId: actorID,
+      splitId: splitID,
+      expenseId: expenseID,
+      operationId: operation.operationID,
+      expectedVersion: operation.expectedVersion,
+    },
+    async () => {
+      await requireMembership(actorID, splitID);
+      validateOperation(operation);
+      try {
+        return await deleteSplitExpense(splitID, expenseID, actorID, operation);
+      } catch (error) {
+        mutationError(error);
+      }
+    },
+  );

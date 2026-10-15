@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { genExpenseID, genUserID } from "@tasan/common/id";
+import { genExpenseID, genOperationID, genUserID } from "@tasan/common/id";
 import { flattenError } from "zod";
 
-import { newExpenseFormSchema } from "./new-expense-form";
+import {
+  deleteExpenseFormSchema,
+  editExpenseFormSchema,
+  newExpenseFormSchema,
+} from "./new-expense-form";
 
 const payer = genUserID();
 const form = () => {
@@ -63,4 +67,28 @@ await test("expense transport discards client ownership and timestamp fields", (
   const parsed = newExpenseFormSchema.parse(data);
   assert.equal("createdBy" in parsed, false);
   assert.equal("createdAt" in parsed, false);
+});
+
+await test("edit and delete forms require a valid operation ID and base version", () => {
+  const data = form();
+  const operationID = genOperationID();
+  data.set("operationID", operationID);
+  data.set("expectedVersion", "3");
+  const parsed = editExpenseFormSchema.parse(data);
+  assert.equal(parsed.operationID, operationID);
+  assert.equal(parsed.expectedVersion, 3);
+  assert.equal("expenseID" in parsed, false);
+  assert.deepEqual(deleteExpenseFormSchema.parse(data), {
+    operationID,
+    expectedVersion: 3,
+  });
+  for (const version of ["", "0", "-1", "1.5", "NaN", "9007199254740991"]) {
+    data.set("expectedVersion", version);
+    assert.equal(editExpenseFormSchema.safeParse(data).success, false);
+    assert.equal(deleteExpenseFormSchema.safeParse(data).success, false);
+  }
+  data.set("expectedVersion", "3");
+  data.set("operationID", genExpenseID());
+  assert.equal(editExpenseFormSchema.safeParse(data).success, false);
+  assert.equal(deleteExpenseFormSchema.safeParse(data).success, false);
 });

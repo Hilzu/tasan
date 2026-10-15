@@ -4,17 +4,20 @@ import { test } from "node:test";
 import {
   asExpenseID,
   asInviteID,
+  asOperationID,
   asSessionID,
   asSplitID,
   asUserID,
   genExpenseID,
   genInviteID,
+  genOperationID,
   genSessionID,
   genSplitID,
   genUserID,
 } from "@tasan/common/id";
 
 const kinds = [
+  ["op", genOperationID, asOperationID],
   ["exp", genExpenseID, asExpenseID],
   ["inv", genInviteID, asInviteID],
   ["ses", genSessionID, asSessionID],
@@ -37,7 +40,7 @@ await test("generated IDs and the full ULID timestamp range are accepted", () =>
 await test("IDs require an exact prefix, length, and canonical alphabet", () => {
   for (const [prefix, generate, parse] of kinds) {
     const id = generate();
-    const suffix = id.slice(4);
+    const suffix = id.slice(prefix.length + 1);
     for (const invalid of [
       "",
       suffix,

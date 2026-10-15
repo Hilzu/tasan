@@ -2,12 +2,21 @@ import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 
 import type { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
-import { genExpenseID, genSplitID, genUserID } from "@tasan/common/id";
+import {
+  genExpenseID,
+  genOperationID,
+  genSplitID,
+  genUserID,
+} from "@tasan/common/id";
 import type {
   createSplitExpense,
   deleteSplitExpense,
+  editSplitExpense,
   findExpenseCreation,
+  findExpenseOperation,
+  findExpenseRevisions,
   findSplitUsers,
+  getSplitExpense,
   Split,
 } from "@tasan/data";
 
@@ -41,6 +50,28 @@ const persistenceMock = {
   cache: true,
   exports: {
     ExpenseIDConflictError: class ExpenseIDConflictError extends Error {},
+    ExpenseConflictError: class ExpenseConflictError extends Error {},
+    ExpenseNotFoundError: class ExpenseNotFoundError extends Error {},
+    editSplitExpense: mock.fn<typeof editSplitExpense>(() =>
+      Promise.resolve({ id: expense.id, version: 2 }),
+    ),
+    findExpenseOperation: mock.fn<typeof findExpenseOperation>(() =>
+      Promise.resolve(undefined),
+    ),
+    getSplitExpense: mock.fn<typeof getSplitExpense>(() =>
+      Promise.resolve({
+        ...expense,
+        splitID,
+        createdBy: actorID,
+        createdAt: new Date(),
+        version: 1,
+        amount: { value: 10, fractions: 2 },
+        participants: new Map([[actorID, { value: 10, fractions: 2 }]]),
+      }),
+    ),
+    findExpenseRevisions: mock.fn<typeof findExpenseRevisions>(() =>
+      Promise.resolve([]),
+    ),
     findExpenseCreation: mock.fn<typeof findExpenseCreation>(() =>
       Promise.resolve(undefined),
     ),
@@ -48,7 +79,7 @@ const persistenceMock = {
       Promise.resolve({ id: genExpenseID() }),
     ),
     deleteSplitExpense: mock.fn<typeof deleteSplitExpense>(() =>
-      Promise.resolve(),
+      Promise.resolve({ id: expense.id, version: 2 }),
     ),
     findSplitUsers: mock.fn<typeof findSplitUsers>(() =>
       Promise.resolve(
@@ -81,7 +112,7 @@ const currencyMock = {
 mock.module("@tasan/data", persistenceMock);
 mock.module("../../app/.server/services/splits.ts", splitMock);
 mock.module("@tasan/common/currency-convert", currencyMock);
-const { createExpense, deleteExpense } =
+const { createExpense, deleteExpense, editExpense, getExpenseHistory } =
   await import("~/.server/services/expenses");
 const { createSplitExpense: save, deleteSplitExpense: remove } =
   persistenceMock.exports;
@@ -91,6 +122,10 @@ beforeEach(() => {
     save,
     remove,
     persistenceMock.exports.findExpenseCreation,
+    persistenceMock.exports.editSplitExpense,
+    persistenceMock.exports.findExpenseOperation,
+    persistenceMock.exports.getSplitExpense,
+    persistenceMock.exports.findExpenseRevisions,
     persistenceMock.exports.findSplitUsers,
     ...Object.values(splitMock.exports),
     rate,
@@ -132,7 +167,11 @@ await test("expense operations stop when membership is rejected", async () => {
     code: "not_found",
   });
   await assert.rejects(
-    () => deleteExpense(outsiderID, splitID, genExpenseID()),
+    () =>
+      deleteExpense(outsiderID, splitID, genExpenseID(), {
+        operationID: genOperationID(),
+        expectedVersion: 1,
+      }),
     { code: "not_found" },
   );
   assert.equal(splitMock.exports.requireSplit.mock.callCount(), 0);
@@ -353,4 +392,137 @@ await test("split metadata and members are fetched concurrently after authorizat
   });
   await createExpense(actorID, splitID, expense);
   assert.equal(save.mock.callCount(), 1);
+});
+
+const operation = () => ({ operationID: genOperationID(), expectedVersion: 1 });
+const edits = persistenceMock.exports;
+
+await test("edits preserve the recorded rate when currency is unchanged", async () => {
+  const original = await edits.getSplitExpense(splitID, expense.id);
+  assert.ok(original);
+  edits.getSplitExpense.mock.mockImplementation(() =>
+    Promise.resolve({ ...original, currency: "USD", conversionRate: 0.75 }),
+  );
+  await editExpense(actorID, splitID, expense.id, operation(), {
+    ...expense,
+    currency: "USD",
+    name: "Corrected",
+  });
+  assert.equal(rate.mock.callCount(), 0);
+  assert.equal(
+    edits.editSplitExpense.mock.calls[0].arguments[4].conversionRate,
+    0.75,
+  );
+  assert.equal(edits.editSplitExpense.mock.calls[0].arguments[2], actorID);
+});
+
+await test("changing currency obtains a rate and returning home removes it", async () => {
+  await editExpense(actorID, splitID, expense.id, operation(), {
+    ...expense,
+    currency: "USD",
+  });
+  assert.deepEqual(rate.mock.calls[0].arguments, ["USD", "EUR"]);
+  const original = await edits.getSplitExpense(splitID, expense.id);
+  assert.ok(original);
+  edits.getSplitExpense.mock.mockImplementation(() =>
+    Promise.resolve({ ...original, currency: "USD", conversionRate: 0.75 }),
+  );
+  await editExpense(actorID, splitID, expense.id, operation(), expense);
+  assert.equal(
+    edits.editSplitExpense.mock.calls[1].arguments[4].conversionRate,
+    undefined,
+  );
+});
+
+await test("edit retries bypass replacement payload validation and rate lookup", async () => {
+  edits.findExpenseOperation.mock.mockImplementation(() =>
+    Promise.resolve({ id: expense.id, version: 2 }),
+  );
+  assert.deepEqual(
+    await editExpense(actorID, splitID, expense.id, operation(), {
+      ...expense,
+      name: "",
+      amount: 0,
+    }),
+    { id: expense.id, version: 2 },
+  );
+  assert.equal(edits.editSplitExpense.mock.callCount(), 0);
+  assert.equal(rate.mock.callCount(), 0);
+  assert.equal(edits.getSplitExpense.mock.callCount(), 0);
+});
+
+await test("edits and history are unavailable to nonmembers", async () => {
+  splitMock.exports.requireMembership.mock.mockImplementation(() =>
+    Promise.reject(new ApplicationError("not_found", "Split not found.")),
+  );
+  await assert.rejects(
+    () => editExpense(outsiderID, splitID, expense.id, operation(), expense),
+    { code: "not_found" },
+  );
+  await assert.rejects(
+    () => getExpenseHistory(outsiderID, splitID, expense.id),
+    { code: "not_found" },
+  );
+  assert.equal(edits.findExpenseOperation.mock.callCount(), 0);
+  assert.equal(edits.getSplitExpense.mock.callCount(), 0);
+  assert.equal(edits.findExpenseRevisions.mock.callCount(), 0);
+});
+
+await test("stale edits and racing storage writes return conflicts", async () => {
+  await assert.rejects(
+    () =>
+      editExpense(
+        actorID,
+        splitID,
+        expense.id,
+        { ...operation(), expectedVersion: 2 },
+        expense,
+      ),
+    { code: "conflict" },
+  );
+  assert.equal(edits.editSplitExpense.mock.callCount(), 0);
+  edits.editSplitExpense.mock.mockImplementation(() =>
+    Promise.reject(new edits.ExpenseConflictError("Changed")),
+  );
+  await assert.rejects(
+    () => editExpense(actorID, splitID, expense.id, operation(), expense),
+    { code: "conflict" },
+  );
+});
+
+await test("edit validation rejects invalid allocation and invalid operation IDs", async () => {
+  await assert.rejects(
+    () =>
+      editExpense(actorID, splitID, expense.id, operation(), {
+        ...expense,
+        participants: new Map([[outsiderID, 10]]),
+      }),
+    { code: "invalid_input" },
+  );
+  for (const expectedVersion of [0, -1, 1.1, Infinity, Number.MAX_SAFE_INTEGER])
+    await assert.rejects(
+      () =>
+        editExpense(
+          actorID,
+          splitID,
+          expense.id,
+          { ...operation(), expectedVersion },
+          expense,
+        ),
+      { code: "invalid_input" },
+    );
+  const invalid = {
+    ...operation(),
+    operationID: "op_bad" as ReturnType<typeof genOperationID>,
+  };
+  await assert.rejects(
+    () => editExpense(actorID, splitID, expense.id, invalid, expense),
+    { code: "invalid_input" },
+  );
+  await assert.rejects(
+    () => deleteExpense(actorID, splitID, expense.id, invalid),
+    { code: "invalid_input" },
+  );
+  assert.equal(edits.editSplitExpense.mock.callCount(), 0);
+  assert.equal(remove.mock.callCount(), 0);
 });
