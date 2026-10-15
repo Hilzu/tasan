@@ -11,12 +11,13 @@ export function AppUpdate() {
     navigation.state !== "idle" ||
     fetchers.some((fetcher) => fetcher.state !== "idle");
   const dirty = useRef(false);
+  const reloadAllowed = useRef(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [canReload, setCanReload] = useState(false);
 
-  // Keep edited forms intact, including after a failed submission. A completed
-  // navigation to another page makes it safe to reload again. Submissions and
-  // query/hash changes can keep the same form, so do not clear it for those.
+  // Keep edited forms and submission results (such as invite links) intact.
+  // Only navigating to another page clears this guard; failed submissions and
+  // query/hash changes can keep the same form.
   useEffect(() => {
     dirty.current = false;
     const onEdit = (event: Event) => {
@@ -26,22 +27,31 @@ export function AppUpdate() {
     };
     document.addEventListener("input", onEdit, true);
     document.addEventListener("change", onEdit, true);
+    document.addEventListener("submit", onEdit, true);
     return () => {
       document.removeEventListener("input", onEdit, true);
       document.removeEventListener("change", onEdit, true);
+      document.removeEventListener("submit", onEdit, true);
     };
   }, [location.pathname]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let controller: AbortController | undefined;
     const checkVersion = async () => {
-      const isVisible = document.visibilityState === "visible";
-      setVisible(isVisible);
-      if (!isVisible || !import.meta.env.VITE_APP_VERSION) return;
+      controller?.abort();
+      reloadAllowed.current = false;
+      setCanReload(false);
+      if (
+        document.visibilityState !== "visible" ||
+        !import.meta.env.VITE_APP_VERSION
+      )
+        return;
+      const currentController = new AbortController();
+      controller = currentController;
       try {
         const response = await fetch("/version", {
           cache: "no-store",
-          signal: controller.signal,
+          signal: currentController.signal,
         });
         if (!response.ok) return;
         const result: unknown = await response.json();
@@ -51,9 +61,12 @@ export function AppUpdate() {
           "version" in result &&
           typeof result.version === "string" &&
           result.version !== "" &&
-          result.version !== import.meta.env.VITE_APP_VERSION
+          !currentController.signal.aborted
         ) {
-          setUpdateAvailable(true);
+          const outdated = result.version !== import.meta.env.VITE_APP_VERSION;
+          setUpdateAvailable(outdated);
+          reloadAllowed.current = outdated;
+          setCanReload(outdated);
         }
       } catch {
         // A failed update check must not interrupt offline or normal use.
@@ -65,24 +78,28 @@ export function AppUpdate() {
     onVisibilityChange();
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
-      controller.abort();
+      controller?.abort();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 
   useEffect(() => {
-    if (!updateAvailable || !visible || busy || dirty.current) return;
+    if (!canReload || busy || dirty.current) return;
     // Router state updates can be deferred by a React transition. Allow them to
     // settle, and recheck edits in case the user starts typing in the meantime.
     const timeout = window.setTimeout(() => {
-      if (!dirty.current && document.visibilityState === "visible") {
+      if (
+        reloadAllowed.current &&
+        !dirty.current &&
+        document.visibilityState === "visible"
+      ) {
         window.location.reload();
       }
     }, 1000);
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [updateAvailable, visible, busy, location.pathname]);
+  }, [canReload, busy, location.pathname]);
 
   if (!updateAvailable) return null;
   return (
