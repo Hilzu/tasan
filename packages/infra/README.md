@@ -41,7 +41,8 @@ Manage later role changes through `access:diff` and `access:deploy` using SSO; t
 
 ## Commands
 
-- `pnpm build` — compile the CDK and runtime sources.
+- `pnpm build` — compile the CDK and runtime sources and bundle the edge function.
+- `pnpm build:edge` — bundle the edge function.
 - `pnpm cdk:synth` — synthesize the CloudFormation templates.
 - `pnpm cdk:diff` — compare the local definition with deployed stacks.
 - `pnpm access:synth` — synthesize the separate deployment access stack.

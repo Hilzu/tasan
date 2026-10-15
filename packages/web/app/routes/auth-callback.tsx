@@ -1,3 +1,4 @@
+import { getLogger } from "@tasan/common/logging";
 import { cognitoIDSchema } from "@tasan/common/validation";
 import { redirect } from "react-router";
 import { z } from "zod";
@@ -40,7 +41,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   const authRedirect = session.get("authRedirect");
   session.unset("authRedirect");
 
+  const cookie = await commitSession(session);
+  getLogger().info("Login completed", {
+    action: "auth.login",
+    outcome: "success",
+    userId: userID,
+  });
   return redirect(toRelativePath(authRedirect ?? "/"), {
-    headers: { "set-cookie": await commitSession(session) },
+    headers: { "set-cookie": cookie },
   });
 }

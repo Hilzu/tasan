@@ -27,9 +27,6 @@ const getSecrets = captureAsync(
     const cmd = new GetParametersCommand({ Names, WithDecryption: true });
     const res = await client.send(cmd);
     if (res.InvalidParameters?.length) {
-      console.error("Failed to get secrets", {
-        InvalidParameters: res.InvalidParameters,
-      });
       throw new Error(`Secrets ${res.InvalidParameters.join(", ")} not found`);
     }
     return res.Parameters?.map((p) => p.Value).filter(isDefined) ?? [];

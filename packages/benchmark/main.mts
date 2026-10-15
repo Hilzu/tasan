@@ -23,10 +23,10 @@ const request = async () => {
     },
   });
   if (!res.ok) {
-    console.log("Error status:", res.status);
-    console.log("Error headers:", res.headers);
+    console.error("Error status:", res.status);
+    console.error("Error headers:", res.headers);
     const body = await res.text();
-    console.log("Error response:", body);
+    console.error("Error response:", body);
     throw new Error("Failed to fetch");
   }
   return Date.now() - start;

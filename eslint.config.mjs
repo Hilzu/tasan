@@ -80,6 +80,7 @@ export default tsEslint.config(
         },
       ],
       "n/prefer-node-protocol": "error",
+      "no-console": "error",
     },
   },
   {
@@ -102,6 +103,24 @@ export default tsEslint.config(
     files: ["packages/web/**"],
     rules: {
       "n/no-missing-import": "off",
+    },
+  },
+  {
+    files: ["packages/benchmark/**"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
+    files: [
+      "packages/web/app/**/*.tsx",
+      "**/*.client.ts",
+      "**/*.client.tsx",
+      "**/.client/**",
+    ],
+    ignores: ["**/*.server.tsx", "**/.server/**"],
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
     },
   },
   {

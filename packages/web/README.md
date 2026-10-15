@@ -23,6 +23,7 @@ Copy `example.env` to `.env` for local development. The main application setting
 - `AUTH_DISABLE` — optionally disable authentication when set to a non-empty value.
 - `APP_ENV` — application environment; defaults to `local`.
 - `TABLE_NAME` — DynamoDB table used by `@tasan/data`.
+- `POWERTOOLS_LOG_LEVEL` — logging verbosity (defaults to `INFO`); `POWERTOOLS_DEV=true` enables indented JSON for local debugging.
 
 The AWS SDK also reads its credential, region, and endpoint configuration from the environment. Do not commit `.env` or real credentials.
 

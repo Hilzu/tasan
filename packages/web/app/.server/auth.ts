@@ -1,3 +1,4 @@
+import { getLogger } from "@tasan/common/logging";
 import { getUser } from "@tasan/data";
 import { href, redirect } from "react-router";
 
@@ -12,6 +13,7 @@ export const getSessionOrRedirect = async (request: Request, url: URL) => {
     return redirect(`${href("/login")}?redirect=${redirectParam}`);
   }
 
+  getLogger().appendKeys({ userId: userID });
   return { userID };
 };
 
@@ -25,5 +27,6 @@ export const getUserOrRedirect = async (request: Request, url: URL) => {
   const user = await getUser(userID);
   if (!user) return redirect(`${href("/login")}?redirect=${redirectParam}`);
 
+  getLogger().appendKeys({ userId: userID });
   return user;
 };

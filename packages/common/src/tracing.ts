@@ -1,12 +1,18 @@
+import { getLogger } from "./logging.js";
+
 export const captureAsync = <T, Args extends unknown[]>(
   name: string,
   fn: (...args: Args) => Promise<T>,
 ): ((...args: Args) => Promise<T>) => {
   return async function _captureAsync(...args) {
-    const start = Date.now();
-    const res = await fn(...args);
-    const duration = Date.now() - start;
-    console.log("Captured async function done", { name, duration });
-    return res;
+    const start = performance.now();
+    try {
+      return await fn(...args);
+    } finally {
+      getLogger().debug("Operation finished", {
+        operation: name,
+        durationMs: Math.round(performance.now() - start),
+      });
+    }
   };
 };

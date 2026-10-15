@@ -1,5 +1,6 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import type { SplitID, UserID } from "@tasan/common/id";
+import { getLogger } from "@tasan/common/logging";
 import {
   createSplit as persistSplit,
   findUsersSplits,
@@ -10,6 +11,7 @@ import {
 } from "@tasan/data";
 
 import { ApplicationError } from "./errors";
+import { logAction } from "./logging";
 import { validateCurrency, validateName } from "./validation";
 
 export interface NewSplit {
@@ -31,9 +33,17 @@ export const requireSplit = async (splitID: SplitID) => {
 export const listSplits = (actorID: UserID) => findUsersSplits(actorID);
 
 export const createSplit = async (actorID: UserID, input: NewSplit) => {
-  validateName(input.name);
-  validateCurrency(input.currency);
-  return await persistSplit({ ...input, createdBy: actorID });
+  return logAction(
+    "split.create",
+    { userId: actorID, parameters: { currency: input.currency } },
+    async () => {
+      validateName(input.name);
+      validateCurrency(input.currency);
+      const result = await persistSplit({ ...input, createdBy: actorID });
+      getLogger().appendKeys({ splitId: result.id });
+      return result;
+    },
+  );
 };
 
 export const getSplit = async (actorID: UserID, splitID: SplitID) => {

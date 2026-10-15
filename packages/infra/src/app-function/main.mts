@@ -1,5 +1,6 @@
 import * as process from "node:process";
 
+import { getLogger, logError, withLogContext } from "@tasan/common/logging";
 import * as build from "@tasan/web";
 import type {
   APIGatewayProxyStructuredResultV2,
@@ -78,36 +79,15 @@ const responseToResult = async (
   };
 };
 
-export const handler: LambdaFunctionURLHandler = async (event) => {
-  const request = eventToRequest(event);
-  console.log("Received request", {
-    method: request.method,
-    url: request.url,
-    headers: {
-      accept: request.headers.get("accept"),
-      "accept-encoding": request.headers.get("accept-encoding"),
-      "accept-language": request.headers.get("accept-language"),
-      "cloudfront-viewer-country-name": request.headers.get(
-        "cloudfront-viewer-country-name",
-      ),
-      "content-length": request.headers.get("content-length"),
-      "content-type": request.headers.get("content-type"),
-      host: request.headers.get("host"),
-      origin: request.headers.get("origin"),
-      referer: request.headers.get("referer"),
-      "user-agent": request.headers.get("user-agent"),
-      "x-forwarded-for": request.headers.get("x-forwarded-for"),
-    },
+export const handler: LambdaFunctionURLHandler = async (event, context) =>
+  withLogContext({ requestId: context.awsRequestId }, async () => {
+    getLogger().addContext(context);
+    try {
+      const request = eventToRequest(event);
+      const response = await requestHandler(request);
+      return await responseToResult(response);
+    } catch (error) {
+      logError("Lambda request failed", error);
+      throw error;
+    }
   });
-
-  const response = await requestHandler(request);
-
-  const result = await responseToResult(response);
-
-  console.log("Responding with", {
-    status: result.statusCode,
-    headers: result.headers,
-  });
-
-  return result;
-};
