@@ -9,6 +9,7 @@ import type {
   getSplitUser,
   getSplitWithData,
   getUsers,
+  SplitWithData,
 } from "@tasan/data";
 
 const actorID = genUserID();
@@ -98,8 +99,35 @@ await test("split metadata is loaded from persistence", async () => {
   ]);
 });
 
-await test("reading a split rejects non-members before reading split data", async () => {
-  await assert.rejects(() => get(actorID, splitID), { code: "not_found" });
-  assert.equal(read.mock.callCount(), 0);
+const splitData: SplitWithData = {
+  id: splitID,
+  name: "Trip",
+  currency: "EUR",
+  createdBy: actorID,
+  createdAt: new Date(),
+  userIDs: new Set([actorID]),
+  expenses: [],
+};
+
+await test("reading a split authorizes against the loaded memberships without a separate read", async () => {
+  read.mock.mockImplementation(() => Promise.resolve(splitData));
+  users.mock.mockImplementation(() => Promise.resolve([]));
+  assert.deepEqual(await get(actorID, splitID), {
+    split: splitData,
+    users: [],
+  });
+  assert.equal(membership.mock.callCount(), 0);
+  assert.deepEqual(users.mock.calls[0].arguments, [splitData.userIDs]);
+});
+
+await test("reading a split rejects missing splits and non-members without loading users", async () => {
+  for (const value of [
+    undefined,
+    { ...splitData, userIDs: new Set<typeof actorID>() },
+  ]) {
+    read.mock.mockImplementation(() => Promise.resolve(value));
+    await assert.rejects(() => get(actorID, splitID), { code: "not_found" });
+  }
   assert.equal(users.mock.callCount(), 0);
+  assert.equal(membership.mock.callCount(), 0);
 });

@@ -47,9 +47,9 @@ export const createSplit = async (actorID: UserID, input: NewSplit) => {
 };
 
 export const getSplit = async (actorID: UserID, splitID: SplitID) => {
-  await requireMembership(actorID, splitID);
   const split = await getSplitWithData(splitID);
-  if (!split) throw new ApplicationError("not_found", "Split not found.");
+  if (!split?.userIDs.has(actorID))
+    throw new ApplicationError("not_found", "Split not found.");
   const users = await getUsers(split.userIDs);
   return { split, users };
 };
