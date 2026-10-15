@@ -78,6 +78,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
         action={
           <Link
             to={href("/splits/:splitID/new-expense", { splitID: split.id })}
+            prefetch="render"
             variant="plain"
           >
             <Button>New expense</Button>
