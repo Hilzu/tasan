@@ -5,6 +5,7 @@ import {
   asExpenseID,
   asOperationID,
   type ExpenseID,
+  type OperationID,
   type SplitID,
   type UserID,
 } from "@tasan/common/id";
@@ -16,7 +17,6 @@ import {
   ExpenseConflictError,
   ExpenseIDConflictError,
   ExpenseNotFoundError,
-  type ExpenseOperation,
   findExpenseCreation,
   findExpenseRevisions,
   findSplitUsers,
@@ -141,9 +141,9 @@ const validateExpense = (
   return { amount, participants };
 };
 
-const validateOperation = (operation: ExpenseOperation) => {
+const validateOperation = (operationID: OperationID) => {
   try {
-    asOperationID(operation.operationID);
+    asOperationID(operationID);
   } catch {
     invalidField("operationID", "Invalid operation ID.");
   }
@@ -185,7 +185,7 @@ export const editExpense = async (
   actorID: UserID,
   splitID: SplitID,
   expenseID: ExpenseID,
-  operation: ExpenseOperation,
+  operationID: OperationID,
   input: Omit<NewExpense, "id">,
 ) =>
   logAction(
@@ -194,7 +194,7 @@ export const editExpense = async (
       userId: actorID,
       splitId: splitID,
       expenseId: expenseID,
-      operationId: operation.operationID,
+      operationId: operationID,
       parameters: {
         currency: input.currency,
         amount: input.amount,
@@ -204,13 +204,13 @@ export const editExpense = async (
     },
     async () => {
       await requireMembership(actorID, splitID);
-      validateOperation(operation);
+      validateOperation(operationID);
       try {
         return await editSplitExpense(
           splitID,
           expenseID,
           actorID,
-          operation,
+          operationID,
           async (current) => {
             const [split, members] = await Promise.all([
               requireSplit(splitID),
@@ -250,7 +250,7 @@ export const deleteExpense = async (
   actorID: UserID,
   splitID: SplitID,
   expenseID: ExpenseID,
-  operation: ExpenseOperation,
+  operationID: OperationID,
 ) =>
   logAction(
     "expense.delete",
@@ -258,13 +258,18 @@ export const deleteExpense = async (
       userId: actorID,
       splitId: splitID,
       expenseId: expenseID,
-      operationId: operation.operationID,
+      operationId: operationID,
     },
     async () => {
       await requireMembership(actorID, splitID);
-      validateOperation(operation);
+      validateOperation(operationID);
       try {
-        return await deleteSplitExpense(splitID, expenseID, actorID, operation);
+        return await deleteSplitExpense(
+          splitID,
+          expenseID,
+          actorID,
+          operationID,
+        );
       } catch (error) {
         mutationError(error);
       }

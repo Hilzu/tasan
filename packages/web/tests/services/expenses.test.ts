@@ -172,10 +172,7 @@ await test("expense operations stop when membership is rejected", async () => {
     code: "not_found",
   });
   await assert.rejects(
-    () =>
-      deleteExpense(outsiderID, splitID, genExpenseID(), {
-        operationID: genOperationID(),
-      }),
+    () => deleteExpense(outsiderID, splitID, genExpenseID(), genOperationID()),
     { code: "not_found" },
   );
   assert.equal(splitMock.exports.requireSplit.mock.callCount(), 0);
@@ -398,7 +395,7 @@ await test("split metadata and members are fetched concurrently after authorizat
   assert.equal(save.mock.callCount(), 1);
 });
 
-const operation = () => ({ operationID: genOperationID() });
+const operation = genOperationID;
 const edits = persistenceMock.exports;
 
 await test("edits preserve the recorded rate when currency is unchanged", async () => {
@@ -486,10 +483,7 @@ await test("edit validation rejects invalid allocation and invalid operation IDs
       }),
     { code: "invalid_input" },
   );
-  const invalid = {
-    ...operation(),
-    operationID: "op_bad" as ReturnType<typeof genOperationID>,
-  };
+  const invalid = "op_bad" as ReturnType<typeof genOperationID>;
   await assert.rejects(
     () => editExpense(actorID, splitID, expense.id, invalid, expense),
     { code: "invalid_input" },

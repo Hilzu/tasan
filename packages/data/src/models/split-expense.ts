@@ -50,8 +50,7 @@ const expenseIDOf = (item: SplitExpenseItem) =>
 const operationIDOf = (item: SplitExpenseItem) =>
   item.sk.split("#")[1] as OperationID | undefined;
 
-export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
-  const item = Item as unknown as SplitExpenseItem;
+const fromItem = (item: SplitExpenseItem): SplitExpense => {
   const fractionDigits = currencies[item.currency].fractions;
   return {
     id: expenseIDOf(item),
@@ -78,10 +77,9 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
 
 // A tombstone always wins, regardless of its operation ID or arrival order.
 // Otherwise creation is the baseline and the greatest operation ID wins.
-const latestItems = (items: Record<string, unknown>[]) => {
+const latestItems = (items: SplitExpenseItem[]) => {
   const latest = new Map<ExpenseID, SplitExpenseItem>();
-  for (const raw of items) {
-    const item = raw as unknown as SplitExpenseItem;
+  for (const item of items) {
     const id = expenseIDOf(item);
     const current = latest.get(id);
     if (
@@ -95,9 +93,9 @@ const latestItems = (items: Record<string, unknown>[]) => {
 };
 
 export const expensesFromItems = (items: Record<string, unknown>[]) =>
-  latestItems(items)
+  latestItems(items as unknown as SplitExpenseItem[])
     .filter((item) => !item.deletedAt)
-    .map((item) => fromItem({ ...item }));
+    .map(fromItem);
 
 export class ExpenseIDConflictError extends Error {
   constructor() {
@@ -205,7 +203,7 @@ export const createSplitExpense = captureAsync(
 );
 
 const expenseItems = async (splitID: SplitID, expenseID: ExpenseID) => {
-  const items: Record<string, unknown>[] = [];
+  const items: SplitExpenseItem[] = [];
   for await (const page of paginateQuery(
     { client: documentClient() },
     {
@@ -215,16 +213,17 @@ const expenseItems = async (splitID: SplitID, expenseID: ExpenseID) => {
       ConsistentRead: true,
     },
   ))
-    items.push(...(page.Items ?? []));
+    items.push(...((page.Items ?? []) as SplitExpenseItem[]));
   return items;
 };
 
-export const getSplitExpense = async (splitID: SplitID, expenseID: ExpenseID) =>
-  expensesFromItems(await expenseItems(splitID, expenseID)).at(0);
-
-export interface ExpenseOperation {
-  operationID: OperationID;
-}
+export const getSplitExpense = async (
+  splitID: SplitID,
+  expenseID: ExpenseID,
+) => {
+  const current = latestItems(await expenseItems(splitID, expenseID)).at(0);
+  return current && !current.deletedAt ? fromItem(current) : undefined;
+};
 
 type RevisionAction = "created" | "edited" | "deleted";
 export interface ExpenseRevision {
@@ -260,29 +259,26 @@ export const findExpenseRevisions = async (
   splitID: SplitID,
   expenseID: ExpenseID,
 ): Promise<ExpenseRevision[]> =>
-  (await expenseItems(splitID, expenseID)).map((raw) => {
-    const item = raw as unknown as SplitExpenseItem;
-    return {
-      operationID: operationIDOf(item),
-      action: actionOf(item),
-      recordedAt: new Date(item.updatedAt ?? item.createdAt),
-      recordedBy: item.updatedBy ?? item.createdBy,
-      expense: fromItem(raw),
-    };
-  });
+  (await expenseItems(splitID, expenseID)).map((item) => ({
+    operationID: operationIDOf(item),
+    action: actionOf(item),
+    recordedAt: new Date(item.updatedAt ?? item.createdAt),
+    recordedBy: item.updatedBy ?? item.createdBy,
+    expense: fromItem(item),
+  }));
 
 const changeSplitExpense = async (
   splitID: SplitID,
   expenseID: ExpenseID,
   actorID: UserID,
-  operation: ExpenseOperation,
+  operationID: OperationID,
   prepareChanges?: (current: SplitExpense) => Promise<EditSplitExpense>,
 ): Promise<{ id: ExpenseID }> => {
   const action = prepareChanges ? "edited" : "deleted";
   const previous = await findExpenseOperation(
     splitID,
     expenseID,
-    operation.operationID,
+    operationID,
     actorID,
     action,
   );
@@ -293,14 +289,14 @@ const changeSplitExpense = async (
     const accepted = await findExpenseOperation(
       splitID,
       expenseID,
-      operation.operationID,
+      operationID,
       actorID,
       action,
     );
     if (accepted) return accepted;
     throw new ExpenseNotFoundError();
   }
-  const changes = await prepareChanges?.(fromItem({ ...current }));
+  const changes = await prepareChanges?.(fromItem(current));
   const now = new Date().toISOString();
   // Never replace the creation or another operation. A concurrent delete may
   // arrive after this read; the read reducer will still keep it terminal.
@@ -309,7 +305,7 @@ const changeSplitExpense = async (
     ...(changes ?
       storedChanges(changes)
     : { deletedAt: now, deletedBy: actorID }),
-    sk: `${expenseID}#${operation.operationID}`,
+    sk: `${expenseID}#${operationID}`,
     updatedAt: now,
     updatedBy: actorID,
   };
@@ -320,7 +316,7 @@ const changeSplitExpense = async (
     const accepted = await findExpenseOperation(
       splitID,
       expenseID,
-      operation.operationID,
+      operationID,
       actorID,
       action,
     );
@@ -336,10 +332,16 @@ export const editSplitExpense = captureAsync(
     splitID: SplitID,
     expenseID: ExpenseID,
     actorID: UserID,
-    operation: ExpenseOperation,
+    operationID: OperationID,
     prepareChanges: (current: SplitExpense) => Promise<EditSplitExpense>,
   ) =>
-    changeSplitExpense(splitID, expenseID, actorID, operation, prepareChanges),
+    changeSplitExpense(
+      splitID,
+      expenseID,
+      actorID,
+      operationID,
+      prepareChanges,
+    ),
 );
 
 export const deleteSplitExpense = captureAsync(
@@ -348,6 +350,6 @@ export const deleteSplitExpense = captureAsync(
     splitID: SplitID,
     expenseID: ExpenseID,
     actorID: UserID,
-    operation: ExpenseOperation,
-  ) => changeSplitExpense(splitID, expenseID, actorID, operation),
+    operationID: OperationID,
+  ) => changeSplitExpense(splitID, expenseID, actorID, operationID),
 );

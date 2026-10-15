@@ -39,9 +39,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
       context.get(authenticatedSessionContext).userID,
       splitID,
       expenseID,
-      {
-        operationID: input.operationID,
-      },
+      input.operationID,
       {
         name: input.expenseName,
         amount: input.amount,

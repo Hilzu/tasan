@@ -53,7 +53,12 @@ export async function action({ params, context, request }: Route.ActionArgs) {
   );
   if (result.response) return result.response;
   try {
-    await deleteExpense(session.userID, splitID, expenseID, result.data);
+    await deleteExpense(
+      session.userID,
+      splitID,
+      expenseID,
+      result.data.operationID,
+    );
     return redirect(href("/splits/:splitID", { splitID }));
   } catch (error) {
     if (error instanceof ApplicationError && error.code === "conflict")

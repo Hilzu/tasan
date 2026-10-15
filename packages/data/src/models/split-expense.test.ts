@@ -43,9 +43,9 @@ const expense = {
   payer: actorID,
   participants: new Map([[actorID, D.create(1000, 0)]]),
 };
-const operation = () => ({ operationID: genOperationID() });
-const low = { operationID: asOperationID("op_00000000000000000000000001") };
-const high = { operationID: asOperationID("op_00000000000000000000000002") };
+const operation = genOperationID;
+const low = asOperationID("op_00000000000000000000000001");
+const high = asOperationID("op_00000000000000000000000002");
 afterEach(() => {
   mock.restoreAll();
 });
@@ -180,7 +180,7 @@ await test("edits retain the original snapshot and creation metadata", async () 
     history.map((revision) => revision.action),
     ["created", "edited"],
   );
-  assert.equal(history[1].operationID, edit.operationID);
+  assert.equal(history[1].operationID, edit);
   assert.equal(db.writes, 2);
 });
 
@@ -209,7 +209,7 @@ await test("concurrent whole snapshots are both accepted and the greatest operat
   const history = await findExpenseRevisions(expense.splitID, expense.id);
   assert.deepEqual(
     history.map((revision) => revision.operationID),
-    [undefined, low.operationID, high.operationID],
+    [undefined, low, high],
   );
 });
 
@@ -366,7 +366,7 @@ await test("operation IDs cannot be reused by another actor or action", async ()
       findExpenseOperation(
         expense.splitID,
         expense.id,
-        edit.operationID,
+        edit,
         genUserID(),
         "edited",
       ),
