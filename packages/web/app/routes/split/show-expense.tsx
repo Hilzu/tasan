@@ -4,7 +4,7 @@ import { asExpenseID, asSplitID } from "@tasan/common/id";
 import { useState } from "react";
 import { href, redirect, useRouteLoaderData, useSubmit } from "react-router";
 
-import { getSessionOrRedirect } from "~/.server/auth";
+import { authenticatedSessionContext } from "~/.server/auth";
 import { deleteExpense } from "~/.server/services/expenses";
 import { errorResponse } from "~/.server/services/http";
 import { Button } from "~/components/button";
@@ -18,9 +18,8 @@ import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/show-expense";
 
-export async function action({ request, params, url }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export async function action({ params, context }: Route.ActionArgs) {
+  const session = context.get(authenticatedSessionContext);
 
   const splitID = asSplitID(params.splitID);
   const expenseID = asExpenseID(params.expenseID);

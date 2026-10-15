@@ -1,11 +1,13 @@
 import { getUser } from "@tasan/data";
 import { Outlet } from "react-router";
 
-import { getSession } from "~/.server/sessions";
+import { sessionContext, sessionMiddleware } from "~/.server/auth";
 import { Footer } from "~/components/footer";
 import { Header } from "~/components/header";
 
 import type { Route } from "./+types/layout";
+
+export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware];
 
 export function meta(_: Route.MetaArgs) {
   return [
@@ -17,8 +19,8 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await getSession(request.headers.get("cookie"));
+export async function loader({ context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext);
   const userID = session.get("userID");
   const user = userID ? await getUser(userID) : undefined;
   return { user };

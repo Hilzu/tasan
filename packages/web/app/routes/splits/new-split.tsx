@@ -3,7 +3,7 @@ import { currencySymbolSchema } from "@tasan/common/validation";
 import { Form, href, redirect } from "react-router";
 import { zfd } from "zod-form-data";
 
-import { getSessionOrRedirect } from "~/.server/auth";
+import { authenticatedSessionContext } from "~/.server/auth";
 import { formErrorResponse } from "~/.server/services/http";
 import { createSplit } from "~/.server/services/splits";
 import { Button } from "~/components/button";
@@ -22,9 +22,8 @@ const schema = zfd.formData({
   currency: zfd.text(currencySymbolSchema),
 });
 
-export async function action({ request, url }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(authenticatedSessionContext);
 
   const formData = await request.formData();
   const result = validateOrRespond(schema, formData);

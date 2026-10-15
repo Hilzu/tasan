@@ -1,7 +1,10 @@
 import { asInviteID } from "@tasan/common/id";
 import { Form, href, redirect } from "react-router";
 
-import { getSessionOrRedirect } from "~/.server/auth";
+import {
+  authenticatedSessionContext,
+  requireAuthentication,
+} from "~/.server/auth";
 import { errorResponse } from "~/.server/services/http";
 import { acceptInvite, previewInvite } from "~/.server/services/invites";
 import { Button } from "~/components/button";
@@ -9,10 +12,9 @@ import { MainHeading } from "~/components/heading";
 
 import type { Route } from "./+types/accept-invite";
 
-export async function loader({ params, request, url }: Route.LoaderArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export const middleware: Route.MiddlewareFunction[] = [requireAuthentication];
 
+export async function loader({ params }: Route.LoaderArgs) {
   const { inviteID } = params;
   try {
     return await previewInvite(asInviteID(inviteID));
@@ -21,9 +23,8 @@ export async function loader({ params, request, url }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ request, params, url }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export async function action({ params, context }: Route.ActionArgs) {
+  const session = context.get(authenticatedSessionContext);
 
   const { inviteID } = params;
   try {

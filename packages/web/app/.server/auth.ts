@@ -1,32 +1,36 @@
+import type { UserID } from "@tasan/common/id";
 import { getLogger } from "@tasan/common/logging";
-import { getUser } from "@tasan/data";
-import { href, redirect } from "react-router";
+import {
+  createContext,
+  href,
+  type MiddlewareFunction,
+  redirect,
+} from "react-router";
 
 import { getSession } from "~/.server/sessions";
 
-export const getSessionOrRedirect = async (request: Request, url: URL) => {
+export const sessionContext =
+  createContext<Awaited<ReturnType<typeof getSession>>>();
+export const authenticatedSessionContext = createContext<{ userID: UserID }>();
+
+export const sessionMiddleware: MiddlewareFunction<Response> = async ({
+  request,
+  context,
+}) => {
   const session = await getSession(request.headers.get("cookie"));
+  context.set(sessionContext, session);
   const userID = session.get("userID");
-
-  if (!userID) {
-    const redirectParam = encodeURIComponent(`${url.pathname}${url.search}`);
-    return redirect(`${href("/login")}?redirect=${redirectParam}`);
-  }
-
-  getLogger().appendKeys({ userId: userID });
-  return { userID };
+  if (userID) getLogger().appendKeys({ userId: userID });
 };
 
-export const getUserOrRedirect = async (request: Request, url: URL) => {
-  const session = await getSession(request.headers.get("cookie"));
-  const userID = session.get("userID");
-  const redirectParam = encodeURIComponent(`${url.pathname}${url.search}`);
-
-  if (!userID) return redirect(`${href("/login")}?redirect=${redirectParam}`);
-
-  const user = await getUser(userID);
-  if (!user) return redirect(`${href("/login")}?redirect=${redirectParam}`);
-
-  getLogger().appendKeys({ userId: userID });
-  return user;
+export const requireAuthentication: MiddlewareFunction<Response> = ({
+  context,
+  url,
+}) => {
+  const userID = context.get(sessionContext).get("userID");
+  if (!userID) {
+    const redirectParam = encodeURIComponent(`${url.pathname}${url.search}`);
+    throw redirect(`${href("/login")}?redirect=${redirectParam}`);
+  }
+  context.set(authenticatedSessionContext, { userID });
 };

@@ -1,7 +1,8 @@
 import { asUserID } from "@tasan/common/id";
 import { Form, href, redirect } from "react-router";
 
-import { commitSession, getSession } from "~/.server/sessions";
+import { sessionContext } from "~/.server/auth";
+import { commitSession } from "~/.server/sessions";
 import { Button } from "~/components/button";
 import { InputField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
@@ -9,11 +10,11 @@ import { appEnv, authDisable } from "~/config";
 
 import type { Route } from "./+types/create-session";
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ context, request }: Route.ActionArgs) {
   if (appEnv !== "local") throw new Error("Can't create session outside local");
   if (!authDisable) throw new Error("Auth is enabled");
 
-  const session = await getSession(request.headers.get("cookie"));
+  const session = context.get(sessionContext);
   const formData = await request.formData();
   const userID = formData.get("userID");
   if (!userID) throw new Error("No user ID in form data");

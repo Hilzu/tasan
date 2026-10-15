@@ -3,9 +3,10 @@ import { cognitoIDSchema } from "@tasan/common/validation";
 import { redirect } from "react-router";
 import { z } from "zod";
 
+import { sessionContext } from "~/.server/auth";
 import { getTokens } from "~/.server/openid";
 import { provisionAuthenticatedUser } from "~/.server/services/users";
-import { commitSession, getSession } from "~/.server/sessions";
+import { commitSession } from "~/.server/sessions";
 import { originURL } from "~/config";
 import { toRelativePath } from "~/url";
 
@@ -17,8 +18,8 @@ const claimsSchema = z.object({
   "cognito:username": z.string().min(1),
 });
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await getSession(request.headers.get("cookie"));
+export async function loader({ context, request }: Route.LoaderArgs) {
+  const session = context.get(sessionContext);
 
   const state = session.get("authState");
   const nonce = session.get("authNonce");

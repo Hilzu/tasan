@@ -1,16 +1,20 @@
 import { Outlet } from "react-router";
 
-import { getSessionOrRedirect } from "~/.server/auth";
+import {
+  authenticatedSessionContext,
+  requireAuthentication,
+} from "~/.server/auth";
 
 import type { Route } from "./+types/splits-parent";
+
+export const middleware: Route.MiddlewareFunction[] = [requireAuthentication];
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "Splits - Tasan.app" }];
 }
 
-export async function loader({ request, url }: Route.LoaderArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export function loader({ context }: Route.LoaderArgs) {
+  const session = context.get(authenticatedSessionContext);
   return { session };
 }
 

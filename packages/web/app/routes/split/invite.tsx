@@ -7,7 +7,7 @@ import {
   copyToClipboard,
   createShareHandler,
 } from "~/.client/client-utils";
-import { getSessionOrRedirect } from "~/.server/auth";
+import { authenticatedSessionContext } from "~/.server/auth";
 import { errorResponse } from "~/.server/services/http";
 import { createInvite } from "~/.server/services/invites";
 import { Button } from "~/components/button";
@@ -18,9 +18,8 @@ import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/invite";
 
-export async function action({ request, params, url }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export async function action({ params, context }: Route.ActionArgs) {
+  const session = context.get(authenticatedSessionContext);
 
   const { splitID } = params;
   try {

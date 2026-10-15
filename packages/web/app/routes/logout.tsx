@@ -1,13 +1,14 @@
 import { getLogger } from "@tasan/common/logging";
 import { redirect } from "react-router";
 
+import { sessionContext } from "~/.server/auth";
 import { buildLogoutURL } from "~/.server/openid";
-import { destroySession, getSession } from "~/.server/sessions";
+import { destroySession } from "~/.server/sessions";
 
 import type { Route } from "./+types/logout";
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await getSession(request.headers.get("cookie"));
+export async function loader({ context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext);
   const cookie = await destroySession(session);
   getLogger().info("Logout completed", {
     action: "auth.logout",

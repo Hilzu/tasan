@@ -10,7 +10,7 @@ import { currencySymbolSchema } from "@tasan/common/validation";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { href, redirect, useFetcher, useRouteLoaderData } from "react-router";
 
-import { getSessionOrRedirect } from "~/.server/auth";
+import { authenticatedSessionContext } from "~/.server/auth";
 import { createExpense } from "~/.server/services/expenses";
 import { formErrorResponse } from "~/.server/services/http";
 import { Button } from "~/components/button";
@@ -35,9 +35,8 @@ import { validateOrRespond } from "~/validation";
 
 import type { Route } from "./+types/new-expense";
 
-export async function action({ request, params, url }: Route.ActionArgs) {
-  const session = await getSessionOrRedirect(request, url);
-  if (session instanceof Response) return session;
+export async function action({ request, params, context }: Route.ActionArgs) {
+  const session = context.get(authenticatedSessionContext);
 
   const splitID = asSplitID(params.splitID);
   const formData = await request.formData();

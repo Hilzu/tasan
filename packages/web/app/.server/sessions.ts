@@ -10,7 +10,7 @@ import { type CookieOptions, createSessionStorage } from "react-router";
 import { cookieSignSecrets } from "~/.server/secrets";
 import { originURL } from "~/config";
 
-interface SessionData {
+export interface SessionData {
   userID: UserID;
   authState: string;
   authNonce: string;

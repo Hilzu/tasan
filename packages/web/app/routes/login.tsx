@@ -1,12 +1,13 @@
 import { redirect } from "react-router";
 
+import { sessionContext } from "~/.server/auth";
 import { buildAuthorizationURL } from "~/.server/openid";
-import { commitSession, getSession } from "~/.server/sessions";
+import { commitSession } from "~/.server/sessions";
 
 import type { Route } from "./+types/login";
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await getSession(request.headers.get("cookie"));
+export async function loader({ context, request }: Route.LoaderArgs) {
+  const session = context.get(sessionContext);
   if (session.get("userID")) return redirect("/");
 
   const url = new URL(request.url);
