@@ -70,7 +70,7 @@ const updateFunction = async (
   );
 };
 
-process.stdout.write("Arch\tMem\tInit\tMedian\tMin\tMax\n");
+console.log("Arch\tMem\tInit\tMedian\tMin\tMax");
 for (const architecture of architectures) {
   for (const memorySize of memorySizes) {
     await updateFunction(architecture, memorySize);
@@ -95,6 +95,6 @@ for (const architecture of architectures) {
       min.toString().padStart(4),
       max.toString().padStart(4),
     ].join("\t");
-    process.stdout.write(`${logRow}\n`);
+    console.log(logRow);
   }
 }
