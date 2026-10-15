@@ -1,15 +1,16 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 
-import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
+  PutCommand,
   QueryCommand,
-  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import * as D from "@tasan/common/decimal";
 import {
+  asOperationID,
   genExpenseID,
   genOperationID,
   genSplitID,
@@ -19,14 +20,18 @@ import {
 process.env.TABLE_NAME = "TestTable";
 const {
   createSplitExpense,
-  findExpenseCreation,
   deleteSplitExpense,
-  ExpenseIDConflictError,
   editSplitExpense,
   ExpenseConflictError,
+  ExpenseIDConflictError,
+  ExpenseNotFoundError,
+  expensesFromItems,
+  findExpenseCreation,
   findExpenseOperation,
   findExpenseRevisions,
+  getSplitExpense,
 } = await import("./split-expense.js");
+const { getSplitWithData } = await import("./split.js");
 const actorID = genUserID();
 const expense = {
   id: genExpenseID(),
@@ -38,212 +43,109 @@ const expense = {
   payer: actorID,
   participants: new Map([[actorID, D.create(1000, 0)]]),
 };
-const conditionFailure = () =>
-  new TransactionCanceledException({
-    $metadata: {},
-    message: "Exists",
-    CancellationReasons: [{ Code: "ConditionalCheckFailed" }],
-  });
+const operation = () => ({ operationID: genOperationID() });
+const low = { operationID: asOperationID("op_00000000000000000000000001") };
+const high = { operationID: asOperationID("op_00000000000000000000000002") };
 afterEach(() => {
   mock.restoreAll();
 });
 
-// This fake models the atomic condition, so overlapping requests exercise the loser path.
+// Conditional puts are local to this store. Separate stores below represent
+// Regions accepting distinct operations before replication.
 const storage = (missEventualReads = false) => {
-  const reads: boolean[] = [];
   const items = new Map<string, Record<string, unknown>>();
+  const reads: boolean[] = [];
   const key = (item: Record<string, unknown>) =>
     `${String(item.pk)}|${String(item.sk)}`;
   let writes = 0;
-  let conflicts = 0;
-  const transactions: TransactWriteCommand[] = [];
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
     if (command instanceof GetCommand) {
       const consistent = command.input.ConsistentRead === true;
       reads.push(consistent);
-      const item = items.get(key(command.input.Key ?? {}));
       return Promise.resolve({
         Item:
           missEventualReads && !consistent ? undefined : (
-            item && structuredClone(item)
+            structuredClone(items.get(key(command.input.Key ?? {})))
           ),
       });
     }
     if (command instanceof QueryCommand) {
+      assert.equal(
+        command.input.FilterExpression,
+        undefined,
+        "Do not filter tombstones before reducing snapshots",
+      );
       const values = command.input.ExpressionAttributeValues;
-      return Promise.resolve({
-        Items: [...items.values()].filter(
+      const all = [...items.values()]
+        .filter(
           (item) =>
             item.pk === values?.[":pk"] &&
-            String(item.sk).startsWith(String(values?.[":prefix"])),
-        ),
+            (!values?.[":prefix"] ||
+              String(item.sk).startsWith(String(values[":prefix"]))),
+        )
+        .sort((a, b) => String(a.sk).localeCompare(String(b.sk)));
+      // Exercise pagination, including tombstones on a different page.
+      const start =
+        command.input.ExclusiveStartKey ?
+          all.findIndex(
+            (item) => key(item) === key(command.input.ExclusiveStartKey ?? {}),
+          ) + 1
+        : 0;
+      const page = all.slice(start, start + 1);
+      return Promise.resolve({
+        Items: structuredClone(page),
+        LastEvaluatedKey:
+          start + 1 < all.length ?
+            { pk: page[0].pk, sk: page[0].sk }
+          : undefined,
       });
     }
-    assert.ok(command instanceof TransactWriteCommand);
-    transactions.push(command);
-    if (conflicts > 0) {
-      conflicts--;
-      return Promise.reject(transactionConflict());
-    }
-    const puts = (command.input.TransactItems ?? []).map((entry) => {
-      assert.ok(entry.Put);
-      return entry.Put;
-    });
-    for (const put of puts) {
-      const current = items.get(key(put.Item ?? {}));
-      const condition = put.ConditionExpression ?? "";
-      if (condition === "attribute_not_exists(pk)") {
-        if (current !== undefined) return Promise.reject(conditionFailure());
-      } else {
-        if (!current || typeof current.deletedAt === "string")
-          return Promise.reject(conditionFailure());
-        const expected: unknown = put.ExpressionAttributeValues?.[":version"];
-        if (
-          condition.includes("attribute_not_exists(#version)") ?
-            current.version !== undefined
-          : current.version !== expected
-        )
-          return Promise.reject(conditionFailure());
-      }
-    }
-    for (const put of puts) {
-      const item = structuredClone(put.Item ?? {});
-      items.set(key(item), item);
-      if (item.pk === expense.splitID && item.sk === expense.id) writes++;
-    }
+    assert.ok(command instanceof PutCommand);
+    assert.equal(command.input.ConditionExpression, "attribute_not_exists(pk)");
+    const item = structuredClone(command.input.Item ?? {});
+    if (items.has(key(item)))
+      throw new ConditionalCheckFailedException({
+        $metadata: {},
+        message: "Exists",
+      });
+    items.set(key(item), item);
+    writes++;
     return Promise.resolve({});
   });
   return {
-    reads,
     items,
-    transactions,
-    contendNext(count: number) {
-      conflicts = count;
-    },
-    get item() {
-      return items.get(`${expense.splitID}|${expense.id}`);
-    },
+    reads,
     get writes() {
       return writes;
+    },
+    get baseline() {
+      const item = items.get(`${expense.splitID}|${expense.id}`);
+      assert.ok(item);
+      return item;
     },
   };
 };
 
-await test("sequential and concurrent retries create exactly one expense", async () => {
+await test("concurrent and sequential creation retries insert only one baseline", async () => {
   const db = storage();
-  const results = await Promise.all([
-    createSplitExpense(expense),
-    createSplitExpense(expense),
-  ]);
-  assert.deepEqual(results, [{ id: expense.id }, { id: expense.id }]);
-  assert.deepEqual(await createSplitExpense(expense), { id: expense.id });
-  assert.equal(db.writes, 1);
-  assert.equal(db.item?.sk, expense.id);
-  assert.deepEqual(db.reads, [true, true]);
-});
-
-await test("a lost response after commit can safely be retried", async () => {
-  let item: Record<string, unknown> | undefined;
-  let writes = 0;
-  const lostResponse = new Error("Connection lost after commit");
-  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
-    if (command instanceof GetCommand) return Promise.resolve({ Item: item });
-    assert.ok(command instanceof TransactWriteCommand);
-    if (item) return Promise.reject(conditionFailure());
-    item = command.input.TransactItems?.[0].Put?.Item;
-    writes++;
-    return Promise.reject(lostResponse);
-  });
-  await assert.rejects(
-    () => createSplitExpense(expense),
-    (error: unknown) => error === lostResponse,
-  );
-  assert.deepEqual(await createSplitExpense(expense), { id: expense.id });
-  assert.equal(writes, 1);
-});
-
-await test("the first creation wins when the same actor reuses an ID with changed input", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
   assert.deepEqual(
-    await createSplitExpense({
-      ...expense,
-      name: "Lunch",
-      amount: D.create(2000, 0),
-    }),
-    { id: expense.id },
+    await Promise.all([
+      createSplitExpense(expense),
+      createSplitExpense(expense),
+    ]),
+    [{ id: expense.id }, { id: expense.id }],
   );
+  await createSplitExpense({ ...expense, name: "Changed retry" });
   assert.equal(db.writes, 1);
-  assert.equal(db.item?.name, "Dinner");
-  assert.equal(db.item.amount, 1000);
-});
-
-await test("different actors cannot reuse an existing expense ID", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
+  assert.equal(db.baseline.name, "Dinner");
+  assert.equal(db.baseline.conversionRate, undefined);
   await assert.rejects(
     () => createSplitExpense({ ...expense, createdBy: genUserID() }),
     ExpenseIDConflictError,
   );
-  assert.equal(db.writes, 1);
 });
 
-await test("creation retries preserve original rates and soft deletion", async () => {
-  const db = storage();
-  await createSplitExpense({ ...expense, conversionRate: 0.006 });
-  await deleteSplitExpense(expense.splitID, expense.id, actorID, {
-    operationID: genOperationID(),
-    expectedVersion: 1,
-  });
-  const deletedAt = db.item?.deletedAt;
-  assert.ok(deletedAt);
-  assert.deepEqual(
-    await createSplitExpense({ ...expense, conversionRate: 0.007 }),
-    { id: expense.id },
-  );
-  assert.equal(db.item.conversionRate, 0.006);
-  assert.equal(db.item.deletedAt, deletedAt);
-  assert.equal(db.writes, 2);
-});
-
-await test("existing expenses are recognized without creation metadata", async () => {
-  mock.method(DynamoDBDocumentClient.prototype, "send", () =>
-    Promise.resolve({ Item: { createdBy: actorID } }),
-  );
-  assert.deepEqual(
-    await findExpenseCreation(expense.splitID, expense.id, actorID),
-    { id: expense.id },
-  );
-});
-
-await test("unrelated storage failures propagate unchanged", async () => {
-  const error = new Error("Storage unavailable");
-  mock.method(DynamoDBDocumentClient.prototype, "send", () =>
-    Promise.reject(error),
-  );
-  await assert.rejects(
-    () => createSplitExpense(expense),
-    (failure: unknown) => failure === error,
-  );
-});
-
-await test("creation lookups default to eventual consistency and allow opting into strong reads", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
-  assert.deepEqual(
-    await findExpenseCreation(expense.splitID, expense.id, actorID),
-    { id: expense.id },
-  );
-  assert.deepEqual(
-    await findExpenseCreation(expense.splitID, expense.id, actorID, {
-      consistentRead: true,
-    }),
-    { id: expense.id },
-  );
-  assert.deepEqual(db.reads, [false, true]);
-});
-
-await test("an eventual lookup miss is resolved by a strong read after the failed insert", async () => {
+await test("eventual creation lookup misses are resolved by a strong read after the conditional put", async () => {
   const db = storage(true);
   await createSplitExpense(expense);
   assert.equal(
@@ -252,106 +154,204 @@ await test("an eventual lookup miss is resolved by a strong read after the faile
   );
   assert.deepEqual(await createSplitExpense(expense), { id: expense.id });
   assert.deepEqual(db.reads, [false, true]);
-  assert.equal(db.writes, 1);
 });
 
-const operation = (expectedVersion = 1) => ({
-  operationID: genOperationID(),
-  expectedVersion,
-});
-
-await test("edits atomically preserve snapshots and original creation metadata", async () => {
+await test("edits retain the original snapshot and creation metadata", async () => {
   const db = storage();
   await createSplitExpense(expense);
-  const original = structuredClone(db.item);
+  const baseline = structuredClone(db.baseline);
   const edit = operation();
-  const result = await editSplitExpense(
-    expense.splitID,
-    expense.id,
-    actorID,
-    edit,
-    () => Promise.resolve({ ...expense, name: "Lunch" }),
+  await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
+    Promise.resolve({ ...expense, name: "Lunch" }),
   );
-  assert.deepEqual(result, { id: expense.id, version: 2 });
-  assert.equal(db.item?.createdAt, original?.createdAt);
-  assert.equal(db.item?.createdBy, actorID);
-  assert.equal(db.item.updatedBy, actorID);
-  assert.equal(db.item.name, "Lunch");
-  const snapshots = [...db.items.values()].filter((item) => item.state);
-  assert.equal(snapshots.length, 2);
-  assert.equal((snapshots[0].state as Record<string, unknown>).name, "Dinner");
-  assert.equal((snapshots[1].state as Record<string, unknown>).name, "Lunch");
+  assert.deepEqual(db.baseline, baseline);
+  const current = await getSplitExpense(expense.splitID, expense.id);
+  assert.ok(current);
+  assert.equal(current.name, "Lunch");
+  assert.equal(current.id, expense.id);
+  assert.equal(current.createdAt.toISOString(), baseline.createdAt);
+  assert.equal(current.updatedBy, actorID);
+  const history = await findExpenseRevisions(expense.splitID, expense.id);
+  assert.deepEqual(
+    history.map((revision) => revision.expense.name),
+    ["Dinner", "Lunch"],
+  );
+  assert.deepEqual(
+    history.map((revision) => revision.action),
+    ["created", "edited"],
+  );
+  assert.equal(history[1].operationID, edit.operationID);
+  assert.equal(db.writes, 2);
 });
 
-await test("concurrent edits from the same version accept only one revision", async () => {
+await test("concurrent whole snapshots are both accepted and the greatest operation ID wins", async () => {
   const db = storage();
   await createSplitExpense(expense);
-  const results = await Promise.allSettled(
-    ["Lunch", "Breakfast"].map((name) =>
-      editSplitExpense(expense.splitID, expense.id, actorID, operation(), () =>
-        Promise.resolve({
-          ...expense,
-          name,
-        }),
-      ),
+  await Promise.all([
+    editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
+      Promise.resolve({
+        ...expense,
+        name: "Higher ID",
+      }),
     ),
+    editSplitExpense(expense.splitID, expense.id, actorID, low, () =>
+      Promise.resolve({
+        ...expense,
+        name: "Lower ID",
+      }),
+    ),
+  ]);
+  assert.equal(
+    (await getSplitExpense(expense.splitID, expense.id))?.name,
+    "Higher ID",
+  );
+  assert.equal(db.items.size, 3);
+  const history = await findExpenseRevisions(expense.splitID, expense.id);
+  assert.deepEqual(
+    history.map((revision) => revision.operationID),
+    [undefined, low.operationID, high.operationID],
+  );
+});
+
+await test("a later-arriving older operation does not replace the latest snapshot", async () => {
+  storage();
+  await createSplitExpense(expense);
+  await editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
+    Promise.resolve({ ...expense, name: "Latest" }),
+  );
+  await editSplitExpense(expense.splitID, expense.id, actorID, low, () =>
+    Promise.resolve({ ...expense, name: "Offline" }),
   );
   assert.equal(
-    results.filter((result) => result.status === "fulfilled").length,
-    1,
+    (await getSplitExpense(expense.splitID, expense.id))?.name,
+    "Latest",
   );
-  const failure = results.find((result) => result.status === "rejected");
-  assert.ok(failure?.reason instanceof ExpenseConflictError);
-  assert.equal(db.writes, 2);
-  assert.equal(db.items.size, 3);
 });
 
-await test("edit retries return their original result even after later edits and deletion", async () => {
+await test("edit retries preserve their snapshot even after later edits and deletion", async () => {
   const db = storage();
   await createSplitExpense(expense);
   const edit = operation();
-  const first = await editSplitExpense(
-    expense.splitID,
-    expense.id,
-    actorID,
-    edit,
-    () => Promise.resolve(expense),
+  await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
+    Promise.resolve(expense),
   );
   await editSplitExpense(
     expense.splitID,
     expense.id,
     actorID,
-    operation(2),
-    () =>
-      Promise.resolve({
-        ...expense,
-        name: "Later",
-      }),
+    operation(),
+    () => Promise.resolve({ ...expense, name: "Later" }),
   );
-  const deletion = operation(3);
+  const deletion = operation();
   await deleteSplitExpense(expense.splitID, expense.id, actorID, deletion);
+  const before = structuredClone([...db.items.values()]);
   assert.deepEqual(
-    await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
-      Promise.resolve({
-        ...expense,
-        name: "Retry changed",
-      }),
-    ),
-    first,
+    await editSplitExpense(expense.splitID, expense.id, actorID, edit, () => {
+      assert.fail("A retry must not prepare a new payload");
+    }),
+    { id: expense.id },
   );
-  assert.deepEqual(
-    await deleteSplitExpense(expense.splitID, expense.id, actorID, deletion),
-    { id: expense.id, version: 4 },
-  );
-  assert.equal(db.writes, 4);
-  assert.equal(db.item?.name, "Later");
+  await deleteSplitExpense(expense.splitID, expense.id, actorID, deletion);
+  await createSplitExpense(expense);
+  assert.deepEqual([...db.items.values()], before);
+  assert.equal(await getSplitExpense(expense.splitID, expense.id), undefined);
   await assert.rejects(
     () =>
-      editSplitExpense(expense.splitID, expense.id, actorID, operation(4), () =>
+      editSplitExpense(expense.splitID, expense.id, actorID, operation(), () =>
         Promise.resolve(expense),
       ),
-    ExpenseConflictError,
+    ExpenseNotFoundError,
   );
+});
+
+await test("concurrent edit and deletion both persist while deletion is terminal", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  await Promise.all([
+    editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
+      Promise.resolve(expense),
+    ),
+    deleteSplitExpense(expense.splitID, expense.id, actorID, low),
+  ]);
+  assert.equal(db.items.size, 3);
+  assert.equal(await getSplitExpense(expense.splitID, expense.id), undefined);
+  assert.deepEqual(expensesFromItems([...db.items.values()].reverse()), []);
+  assert.ok([...db.items.values()].some((item) => item.deletedAt));
+});
+
+await test("independently accepted regional snapshots converge in any replication order", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  const baseline = structuredClone(db.baseline);
+  await editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
+    Promise.resolve({ ...expense, name: "Region A" }),
+  );
+  const edit = [...db.items.values()].find((item) => item.sk !== expense.id);
+  assert.ok(edit);
+  // Region B has not seen A's edit.
+  db.items.clear();
+  db.items.set("baseline", baseline);
+  await deleteSplitExpense(expense.splitID, expense.id, actorID, low);
+  const tombstone = [...db.items.values()].find((item) => item.deletedAt);
+  assert.ok(tombstone);
+  for (const items of [
+    [baseline, edit, tombstone],
+    [tombstone, baseline, edit],
+    [edit, tombstone, baseline],
+  ]) {
+    assert.deepEqual(expensesFromItems(items), []);
+    assert.deepEqual(
+      expensesFromItems(items.filter((item) => !item.deletedAt)).map(
+        (item) => item.name,
+      ),
+      ["Region A"],
+    );
+  }
+});
+
+await test("split reads reduce snapshots across pages and exclude terminal deletions", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  db.items.set("metadata", {
+    pk: expense.splitID,
+    sk: expense.splitID,
+    name: "Trip",
+    currency: "JPY",
+    createdAt: db.baseline.createdAt,
+    createdBy: actorID,
+  });
+  db.items.set("member", { pk: expense.splitID, sk: actorID });
+  const second = { ...expense, id: genExpenseID(), name: "Train" };
+  await createSplitExpense(second);
+  await editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
+    Promise.resolve({ ...expense, name: "Latest" }),
+  );
+  let split = await getSplitWithData(expense.splitID);
+  assert.ok(split);
+  assert.equal(split.expenses.length, 2);
+  assert.equal(
+    split.expenses.find((item) => item.id === expense.id)?.name,
+    "Latest",
+  );
+  assert.ok(split.userIDs.has(actorID));
+  await deleteSplitExpense(expense.splitID, expense.id, actorID, low);
+  split = await getSplitWithData(expense.splitID);
+  assert.ok(split);
+  assert.deepEqual(
+    split.expenses.map((item) => item.id),
+    [second.id],
+  );
+});
+
+await test("existing soft-deleted baselines remain terminal against replicated edits", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  const edit = operation();
+  await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
+    Promise.resolve(expense),
+  );
+  db.baseline.deletedAt = new Date().toISOString();
+  assert.equal(await getSplitExpense(expense.splitID, expense.id), undefined);
 });
 
 await test("operation IDs cannot be reused by another actor or action", async () => {
@@ -378,35 +378,7 @@ await test("operation IDs cannot be reused by another actor or action", async ()
   );
 });
 
-await test("the first legacy edit atomically adds the original revision", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
-  delete db.item?.version;
-  for (const [key, item] of db.items) if (item.state) db.items.delete(key);
-  await editSplitExpense(
-    expense.splitID,
-    expense.id,
-    actorID,
-    operation(),
-    () =>
-      Promise.resolve({
-        ...expense,
-        name: "Edited legacy",
-      }),
-  );
-  const snapshots = [...db.items.values()].filter((item) => item.state);
-  assert.equal(snapshots.length, 2);
-  assert.ok(
-    snapshots.some(
-      (item) =>
-        (item.state as Record<string, unknown>).name === "Dinner" &&
-        item.action === "created",
-    ),
-  );
-  assert.equal(db.item?.version, 2);
-});
-
-await test("returning to the split currency removes the old conversion rate", async () => {
+await test("returning to the split currency removes the previous rate only from the new snapshot", async () => {
   const db = storage();
   await createSplitExpense({ ...expense, conversionRate: 0.006 });
   await editSplitExpense(
@@ -421,155 +393,108 @@ await test("returning to the split currency removes the old conversion rate", as
         conversionRate: undefined,
       }),
   );
-  assert.equal(db.item?.conversionRate, undefined);
-});
-
-await test("an edit and deletion from the same version cannot both commit", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
-  const results = await Promise.allSettled([
-    editSplitExpense(expense.splitID, expense.id, actorID, operation(), () =>
-      Promise.resolve(expense),
-    ),
-    deleteSplitExpense(expense.splitID, expense.id, actorID, operation()),
-  ]);
   assert.equal(
-    results.filter((result) => result.status === "fulfilled").length,
-    1,
+    (await getSplitExpense(expense.splitID, expense.id))?.conversionRate,
+    undefined,
   );
+  assert.equal(db.baseline.conversionRate, 0.006);
+});
+
+await test("concurrent retries prepare independently but insert only one snapshot", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  const edit = operation();
+  const change = () =>
+    editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
+      Promise.resolve(expense),
+    );
+  assert.deepEqual(await Promise.all([change(), change()]), [
+    { id: expense.id },
+    { id: expense.id },
+  ]);
   assert.equal(db.writes, 2);
 });
 
-const transactionConflict = () =>
-  new TransactionCanceledException({
-    $metadata: {},
-    message: "Contention",
-    CancellationReasons: [{ Code: "TransactionConflict" }, { Code: "None" }],
+await test("history queries isolate expenses and splits", async () => {
+  storage();
+  await createSplitExpense(expense);
+  await createSplitExpense({
+    ...expense,
+    id: genExpenseID(),
+    name: "Other expense",
   });
-
-await test("creation contention retries the same transaction and commits once", async () => {
-  const db = storage();
-  db.contendNext(2);
-  await createSplitExpense(expense);
-  assert.equal(db.writes, 1);
-  assert.equal(db.transactions.length, 3);
-  assert.ok(db.transactions.every((command) => command === db.transactions[0]));
-});
-
-await test("edit contention retries without preparing changes again or changing the base version", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
-  db.contendNext(2);
-  const prepare = mock.fn(() =>
-    Promise.resolve({ ...expense, name: "Correction" }),
-  );
-  await editSplitExpense(
-    expense.splitID,
-    expense.id,
-    actorID,
-    operation(),
-    prepare,
-  );
-  assert.equal(prepare.mock.callCount(), 1);
-  assert.equal(db.item?.version, 2);
-  assert.equal(db.writes, 2);
-  assert.equal(db.reads.length, 2);
-  assert.ok(
-    db.transactions.slice(1).every((command) => command === db.transactions[1]),
+  await createSplitExpense({
+    ...expense,
+    splitID: genSplitID(),
+    name: "Other split",
+  });
+  assert.deepEqual(
+    (await findExpenseRevisions(expense.splitID, expense.id)).map(
+      (revision) => revision.expense.name,
+    ),
+    ["Dinner"],
   );
 });
 
-await test("persistent contention produces recoverable conflicts with no extra writes", async () => {
-  const db = storage();
-  db.contendNext(3);
-  await assert.rejects(() => createSplitExpense(expense), ExpenseConflictError);
-  assert.equal(db.writes, 0);
-  await createSplitExpense(expense);
-  db.contendNext(3);
+await test("a lost write response can be retried without replacing the committed snapshot", async () => {
+  const items = new Map<string, Record<string, unknown>>();
+  let loseResponse = true;
+  const lost = new Error("Connection lost after commit");
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof GetCommand)
+      return Promise.resolve({
+        Item: items.get(String(command.input.Key?.sk)),
+      });
+    assert.ok(command instanceof PutCommand);
+    const item = command.input.Item;
+    assert.ok(item);
+    const key = String(item.sk);
+    if (items.has(key))
+      throw new ConditionalCheckFailedException({
+        $metadata: {},
+        message: "Exists",
+      });
+    items.set(key, structuredClone(item));
+    if (loseResponse) {
+      loseResponse = false;
+      throw lost;
+    }
+    return Promise.resolve({});
+  });
   await assert.rejects(
-    () =>
-      editSplitExpense(expense.splitID, expense.id, actorID, operation(), () =>
-        Promise.resolve(expense),
-      ),
-    ExpenseConflictError,
+    () => createSplitExpense(expense),
+    (error) => error === lost,
   );
-  db.contendNext(3);
+  await createSplitExpense({ ...expense, name: "Changed retry" });
+  assert.equal(items.size, 1);
+  assert.equal(items.get(expense.id)?.name, "Dinner");
+});
+
+await test("concurrent copies of a deletion are idempotent", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  const deletion = operation();
+  const remove = () =>
+    deleteSplitExpense(expense.splitID, expense.id, actorID, deletion);
+  assert.deepEqual(await Promise.all([remove(), remove()]), [
+    { id: expense.id },
+    { id: expense.id },
+  ]);
+  assert.equal(db.writes, 2);
+});
+
+await test("missing expenses and unrelated storage failures propagate", async () => {
+  storage();
   await assert.rejects(
     () => deleteSplitExpense(expense.splitID, expense.id, actorID, operation()),
-    ExpenseConflictError,
+    ExpenseNotFoundError,
   );
-  assert.equal(db.writes, 1);
-  assert.equal(db.item?.version, 1);
-});
-
-await test("successful deletion contention retries commit one deletion revision", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
-  db.contendNext(2);
-  await deleteSplitExpense(expense.splitID, expense.id, actorID, operation());
-  assert.equal(db.writes, 2);
-  assert.ok(db.item?.deletedAt);
-});
-
-await test("conditional failures do not retry or prepare stale changes", async () => {
-  const db = storage();
-  await createSplitExpense(expense);
-  await editSplitExpense(
-    expense.splitID,
-    expense.id,
-    actorID,
-    operation(),
-    () => Promise.resolve(expense),
-  );
-  const prepare = mock.fn(() => Promise.resolve(expense));
+  const error = new Error("Storage unavailable");
+  mock.method(DynamoDBDocumentClient.prototype, "send", () => {
+    throw error;
+  });
   await assert.rejects(
-    () =>
-      editSplitExpense(
-        expense.splitID,
-        expense.id,
-        actorID,
-        operation(),
-        prepare,
-      ),
-    ExpenseConflictError,
+    () => createSplitExpense(expense),
+    (caught) => caught === error,
   );
-  assert.equal(prepare.mock.callCount(), 0);
-  assert.equal(db.transactions.length, 2);
-});
-
-await test("split history partitions support isolated expense histories and direct operation lookups", async () => {
-  const db = storage();
-  const other = { ...expense, id: genExpenseID() };
-  await createSplitExpense(expense);
-  await createSplitExpense(other);
-  const edit = operation();
-  await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
-    Promise.resolve(expense),
-  );
-  // Idempotency is scoped to an expense, so even the same operation ID cannot collide across expenses.
-  await editSplitExpense(other.splitID, other.id, actorID, edit, () =>
-    Promise.resolve(other),
-  );
-  for (const current of [expense, other]) {
-    const history = await findExpenseRevisions(current.splitID, current.id);
-    assert.deepEqual(
-      history.map((revision) => revision.expense.version),
-      [1, 2],
-    );
-    assert.ok(history.every((revision) => revision.expense.id === current.id));
-    assert.equal(history[1].operationID, edit.operationID);
-    assert.deepEqual(
-      await findExpenseOperation(
-        current.splitID,
-        current.id,
-        edit.operationID,
-        actorID,
-        "edited",
-      ),
-      { id: current.id, version: 2 },
-    );
-  }
-  const historyItems = [...db.items.values()].filter((item) => item.state);
-  assert.equal(new Set(historyItems.map((item) => item.pk)).size, 1);
-  assert.equal(historyItems[0].pk, `history#${expense.splitID}`);
 });

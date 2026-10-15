@@ -36,7 +36,6 @@ const createTestExpense = ({
     amount,
     createdBy: genTestUserID("createdBy"),
     createdAt: new Date(),
-    version: 1,
     currency: "EUR",
     conversionRate,
     payer: payer,

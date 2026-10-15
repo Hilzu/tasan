@@ -69,25 +69,16 @@ await test("expense transport discards client ownership and timestamp fields", (
   assert.equal("createdAt" in parsed, false);
 });
 
-await test("edit and delete forms require a valid operation ID and base version", () => {
+await test("edit and delete forms require a valid operation ID without a base version", () => {
   const data = form();
   const operationID = genOperationID();
   data.set("operationID", operationID);
-  data.set("expectedVersion", "3");
   const parsed = editExpenseFormSchema.parse(data);
   assert.equal(parsed.operationID, operationID);
-  assert.equal(parsed.expectedVersion, 3);
   assert.equal("expenseID" in parsed, false);
   assert.deepEqual(deleteExpenseFormSchema.parse(data), {
     operationID,
-    expectedVersion: 3,
   });
-  for (const version of ["", "0", "-1", "1.5", "NaN", "9007199254740991"]) {
-    data.set("expectedVersion", version);
-    assert.equal(editExpenseFormSchema.safeParse(data).success, false);
-    assert.equal(deleteExpenseFormSchema.safeParse(data).success, false);
-  }
-  data.set("expectedVersion", "3");
   data.set("operationID", genExpenseID());
   assert.equal(editExpenseFormSchema.safeParse(data).success, false);
   assert.equal(deleteExpenseFormSchema.safeParse(data).success, false);

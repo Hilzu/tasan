@@ -81,7 +81,6 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
   if (!parentData) throw new Error("Parent data not found");
   const { split, users } = parentData;
   const { expense } = loaderData;
-  const [expectedVersion] = useState(expense.version);
   const exchangeRate =
     expense.conversionRate ? (1 / expense.conversionRate).toFixed(5) : "-";
   return (
@@ -154,9 +153,9 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
           <summary>Expense history</summary>
           <ol className="mt-2 space-y-3">
             {[...loaderData.history].reverse().map((revision) => (
-              <li key={revision.expense.version}>
+              <li key={revision.operationID ?? revision.expense.id}>
                 <p>
-                  Version {revision.expense.version}: {revision.action} by{" "}
+                  {revision.action} by{" "}
                   {users.find((u) => u.id === revision.recordedBy)?.name} —{" "}
                   <DateRender date={revision.recordedAt} />
                 </p>
@@ -189,7 +188,6 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
             .submit(
               {
                 operationID,
-                expectedVersion,
               },
               { method: "post" },
             )

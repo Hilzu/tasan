@@ -74,10 +74,7 @@ export const createExpense = async (
           return existing;
         }
       } catch (error) {
-        if (
-          error instanceof ExpenseIDConflictError ||
-          error instanceof ExpenseConflictError
-        )
+        if (error instanceof ExpenseIDConflictError)
           throw new ApplicationError("conflict", error.message);
         throw error;
       }
@@ -109,10 +106,7 @@ export const createExpense = async (
           createdBy: actorID,
         });
       } catch (error) {
-        if (
-          error instanceof ExpenseIDConflictError ||
-          error instanceof ExpenseConflictError
-        )
+        if (error instanceof ExpenseIDConflictError)
           throw new ApplicationError("conflict", error.message);
         throw error;
       }
@@ -153,12 +147,6 @@ const validateOperation = (operation: ExpenseOperation) => {
   } catch {
     invalidField("operationID", "Invalid operation ID.");
   }
-  if (
-    !Number.isSafeInteger(operation.expectedVersion) ||
-    operation.expectedVersion < 1 ||
-    operation.expectedVersion >= Number.MAX_SAFE_INTEGER
-  )
-    invalidField("expectedVersion", "Invalid expense version.");
 };
 
 const mutationError = (error: unknown): never => {
@@ -185,8 +173,11 @@ export const getExpenseHistory = async (
   splitID: SplitID,
   expenseID: ExpenseID,
 ) => {
-  const expense = await requireExpense(actorID, splitID, expenseID);
+  await requireMembership(actorID, splitID);
   const revisions = await findExpenseRevisions(splitID, expenseID);
+  const expense = revisions.at(-1)?.expense;
+  if (!expense || revisions.some((revision) => revision.action === "deleted"))
+    throw new ApplicationError("not_found", "Expense not found.");
   return { expense, history: revisions };
 };
 
@@ -204,7 +195,6 @@ export const editExpense = async (
       splitId: splitID,
       expenseId: expenseID,
       operationId: operation.operationID,
-      expectedVersion: operation.expectedVersion,
       parameters: {
         currency: input.currency,
         amount: input.amount,
@@ -269,7 +259,6 @@ export const deleteExpense = async (
       splitId: splitID,
       expenseId: expenseID,
       operationId: operation.operationID,
-      expectedVersion: operation.expectedVersion,
     },
     async () => {
       await requireMembership(actorID, splitID);

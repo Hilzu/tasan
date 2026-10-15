@@ -22,13 +22,6 @@ export const newExpenseFormSchema = zfd.formData({
 });
 const operationFields = {
   operationID: zfd.text(operationIDSchema),
-  expectedVersion: zfd.numeric(
-    z
-      .number()
-      .int()
-      .positive()
-      .max(Number.MAX_SAFE_INTEGER - 1),
-  ),
 };
 export const editExpenseFormSchema = zfd.formData({
   ...operationFields,

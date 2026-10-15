@@ -61,7 +61,7 @@ const persistenceMock = {
         );
         assert.ok(current);
         savedChanges.push(await prepare(current));
-        return { id: _expenseID, version: 2 };
+        return { id: _expenseID };
       },
     ),
     getSplitExpense: mock.fn<typeof getSplitExpense>(() =>
@@ -70,7 +70,6 @@ const persistenceMock = {
         splitID,
         createdBy: actorID,
         createdAt: new Date(),
-        version: 1,
         amount: { value: 10, fractions: 2 },
         participants: new Map([[actorID, { value: 10, fractions: 2 }]]),
       }),
@@ -85,7 +84,7 @@ const persistenceMock = {
       Promise.resolve({ id: genExpenseID() }),
     ),
     deleteSplitExpense: mock.fn<typeof deleteSplitExpense>(() =>
-      Promise.resolve({ id: expense.id, version: 2 }),
+      Promise.resolve({ id: expense.id }),
     ),
     findSplitUsers: mock.fn<typeof findSplitUsers>(() =>
       Promise.resolve(
@@ -176,7 +175,6 @@ await test("expense operations stop when membership is rejected", async () => {
     () =>
       deleteExpense(outsiderID, splitID, genExpenseID(), {
         operationID: genOperationID(),
-        expectedVersion: 1,
       }),
     { code: "not_found" },
   );
@@ -400,7 +398,7 @@ await test("split metadata and members are fetched concurrently after authorizat
   assert.equal(save.mock.callCount(), 1);
 });
 
-const operation = () => ({ operationID: genOperationID(), expectedVersion: 1 });
+const operation = () => ({ operationID: genOperationID() });
 const edits = persistenceMock.exports;
 
 await test("edits preserve the recorded rate when currency is unchanged", async () => {
@@ -436,7 +434,7 @@ await test("changing currency obtains a rate and returning home removes it", asy
 
 await test("edit retries bypass replacement payload validation and rate lookup", async () => {
   edits.editSplitExpense.mock.mockImplementation(() =>
-    Promise.resolve({ id: expense.id, version: 2 }),
+    Promise.resolve({ id: expense.id }),
   );
   assert.deepEqual(
     await editExpense(actorID, splitID, expense.id, operation(), {
@@ -444,7 +442,7 @@ await test("edit retries bypass replacement payload validation and rate lookup",
       name: "",
       amount: 0,
     }),
-    { id: expense.id, version: 2 },
+    { id: expense.id },
   );
   assert.equal(edits.editSplitExpense.mock.callCount(), 1);
   assert.equal(savedChanges.length, 0);
@@ -488,18 +486,6 @@ await test("edit validation rejects invalid allocation and invalid operation IDs
       }),
     { code: "invalid_input" },
   );
-  for (const expectedVersion of [0, -1, 1.1, Infinity, Number.MAX_SAFE_INTEGER])
-    await assert.rejects(
-      () =>
-        editExpense(
-          actorID,
-          splitID,
-          expense.id,
-          { ...operation(), expectedVersion },
-          expense,
-        ),
-      { code: "invalid_input" },
-    );
   const invalid = {
     ...operation(),
     operationID: "op_bad" as ReturnType<typeof genOperationID>,
@@ -516,19 +502,59 @@ await test("edit validation rejects invalid allocation and invalid operation IDs
   assert.equal(remove.mock.callCount(), 0);
 });
 
-await test("persistent creation contention becomes an application conflict", async () => {
-  save.mock.mockImplementation(() =>
-    Promise.reject(
-      new persistenceMock.exports.ExpenseConflictError("Please try again."),
-    ),
+await test("expense details derive the latest snapshot from one history query", async () => {
+  const original = await edits.getSplitExpense(splitID, expense.id);
+  assert.ok(original);
+  edits.getSplitExpense.mock.resetCalls();
+  edits.findExpenseRevisions.mock.mockImplementation(() =>
+    Promise.resolve([
+      {
+        action: "created",
+        recordedAt: original.createdAt,
+        recordedBy: actorID,
+        expense: original,
+      },
+      {
+        operationID: genOperationID(),
+        action: "edited",
+        recordedAt: new Date(),
+        recordedBy: actorID,
+        expense: { ...original, name: "Corrected" },
+      },
+    ]),
   );
-  await assert.rejects(() => createExpense(actorID, splitID, expense), {
-    code: "conflict",
-  });
+  const result = await getExpenseHistory(actorID, splitID, expense.id);
+  assert.equal(result.expense.name, "Corrected");
+  assert.equal(result.history.length, 2);
+  assert.equal(edits.getSplitExpense.mock.callCount(), 0);
+  assert.equal(edits.findExpenseRevisions.mock.callCount(), 1);
 });
 
-await test("expense details use the current record even when legacy history is empty", async () => {
-  const result = await getExpenseHistory(actorID, splitID, expense.id);
-  assert.equal(result.expense.name, expense.name);
-  assert.deepEqual(result.history, []);
+await test("expense details reject missing expenses and any deletion regardless of ordering", async () => {
+  await assert.rejects(() => getExpenseHistory(actorID, splitID, expense.id), {
+    code: "not_found",
+  });
+  const original = await edits.getSplitExpense(splitID, expense.id);
+  assert.ok(original);
+  edits.findExpenseRevisions.mock.mockImplementation(() =>
+    Promise.resolve([
+      {
+        operationID: genOperationID(),
+        action: "deleted",
+        recordedAt: new Date(),
+        recordedBy: actorID,
+        expense: original,
+      },
+      {
+        operationID: genOperationID(),
+        action: "edited",
+        recordedAt: new Date(),
+        recordedBy: actorID,
+        expense: original,
+      },
+    ]),
+  );
+  await assert.rejects(() => getExpenseHistory(actorID, splitID, expense.id), {
+    code: "not_found",
+  });
 });

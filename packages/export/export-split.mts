@@ -14,20 +14,19 @@ const { values } = parseArgs({
 
 const splitID = asSplitID(values["split-id"] ?? "");
 const client = new DynamoDBClient();
+const paginator = paginateQuery(
+  { client },
+  {
+    TableName,
+    KeyConditionExpression: "pk = :pk",
+    ExpressionAttributeValues: { ":pk": { S: splitID } },
+  },
+);
+
 const items = [];
-// Current split data and its audit history live in separate item collections.
-for (const pk of [splitID, `history#${splitID}`]) {
-  const paginator = paginateQuery(
-    { client },
-    {
-      TableName,
-      KeyConditionExpression: "pk = :pk",
-      ExpressionAttributeValues: { ":pk": { S: pk } },
-    },
-  );
-  for await (const page of paginator) {
-    if (page.Items?.length) items.push(...page.Items);
-  }
+for await (const page of paginator) {
+  if (!page.Items?.length) continue;
+  items.push(...page.Items);
 }
 
 const date = new Date()

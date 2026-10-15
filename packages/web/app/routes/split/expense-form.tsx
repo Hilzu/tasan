@@ -34,7 +34,6 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   }>();
   const actionData = fetcher.data;
   const [submissionID, setSubmissionID] = useState("");
-  const [expectedVersion] = useState(expense?.version);
   useEffect(() => {
     setSubmissionID(expense ? genOperationID() : genExpenseID());
   }, [split.id, session.userID, expense?.id]);
@@ -102,14 +101,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         }}
       >
         {expense ?
-          <>
-            <input type="hidden" name="operationID" value={submissionID} />
-            <input
-              type="hidden"
-              name="expectedVersion"
-              value={expectedVersion}
-            />
-          </>
+          <input type="hidden" name="operationID" value={submissionID} />
         : <input type="hidden" name="expenseID" value={submissionID} />}
         <InputField
           label="Name"

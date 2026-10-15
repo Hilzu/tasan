@@ -41,7 +41,6 @@ export async function action({ params, request, context }: Route.ActionArgs) {
       expenseID,
       {
         operationID: input.operationID,
-        expectedVersion: input.expectedVersion,
       },
       {
         name: input.expenseName,
