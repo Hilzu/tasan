@@ -10,6 +10,7 @@ import {
   useNavigation,
 } from "react-router";
 
+import { AppUpdate } from "~/components/app-update";
 import { NonceContext } from "~/context";
 
 import type { Route } from "./+types/root";
@@ -78,6 +79,7 @@ export default function App() {
   const isNavigating = Boolean(navigation.location);
   return (
     <>
+      <AppUpdate />
       {isNavigating && <GlobalLoadingIndicator />}
       <Outlet />
     </>
