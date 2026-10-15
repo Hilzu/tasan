@@ -10,7 +10,32 @@ const convertResponseSchema = z.looseObject({
   rates: z.record(currencySymbolSchema, z.number().positive()),
 });
 
-export const fetchCurrencyConversionRate = captureAsync(
+const cacheTTL = 60 * 60 * 1000;
+const rates = new Map<string, { rate: number; expiresAt: number }>();
+const pendingRates = new Map<string, Promise<number>>();
+
+export const fetchCurrencyConversionRate = async (
+  from: CurrencySymbol,
+  to: CurrencySymbol,
+): Promise<number> => {
+  const key = `${from}:${to}`;
+  const cached = rates.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.rate;
+  const pending = pendingRates.get(key);
+  if (pending) return pending;
+
+  const promise = fetchRate(from, to);
+  pendingRates.set(key, promise);
+  try {
+    const rate = await promise;
+    rates.set(key, { rate, expiresAt: Date.now() + cacheTTL });
+    return rate;
+  } finally {
+    pendingRates.delete(key);
+  }
+};
+
+const fetchRate = captureAsync(
   "fetchCurrencyConversionRate",
   async (from: CurrencySymbol, to: CurrencySymbol): Promise<number> => {
     const res = await fetch(
