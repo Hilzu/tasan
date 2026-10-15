@@ -8,7 +8,7 @@
     "access:deploy": "cdk deploy --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access TasanDeploymentAccessStack",
     "access:diff": "cdk diff --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access --method template TasanDeploymentAccessStack",
     "access:synth": "cdk synth --app 'node --enable-source-maps dist/access-app.js' --output cdk.out/access",
-    "build": "tsc",
+    "build": "tsc && esbuild src/app-origin-request/main.mts --bundle --platform=node --target=node24.16 --format=esm --outfile=dist/app-origin-request/main.mjs",
     "cdk:diff": "cdk diff",
     "cdk:synth": "cdk synth",
     "clean": "rm -rf cdk.out dist",
@@ -28,6 +28,7 @@
     "typescript": "catalog:"
   },
   "dependencies": {
+    "@tasan/common": "workspace:*",
     "@tasan/web": "workspace:*",
     "aws-cdk-lib": "^2.260.0",
     "constructs": "^10.6.0",

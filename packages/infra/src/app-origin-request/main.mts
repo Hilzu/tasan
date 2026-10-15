@@ -1,5 +1,6 @@
 import { hash } from "node:crypto";
 
+import { getLogger, withLogContext } from "@tasan/common/logging";
 import type {
   CloudFrontRequestHandler,
   CloudFrontResultResponse,
@@ -29,60 +30,68 @@ const singaporeLambdaFunctionDomain =
 // Edge caches to serve from: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
 
 // eslint-disable-next-line @typescript-eslint/require-await
-export const handler: CloudFrontRequestHandler = async (event) => {
+export const handler: CloudFrontRequestHandler = async (event, context) => {
   const request = event.Records[0].cf.request;
-  console.log("Handling request", {
-    method: request.method,
-    uri: request.uri,
-    querystring: request.querystring,
-  });
+  return withLogContext(
+    {
+      requestId: context.awsRequestId,
+      method: request.method,
+      path: request.uri.replace(/(\/accept-invite\/)[^/]+/, "$1[redacted]"),
+    },
+    () => {
+      getLogger().addContext(context);
+      getLogger().debug("Edge request received");
 
-  if (probePrefixes.some((p) => request.uri.startsWith(p))) {
-    console.log("Blocking probe request");
-    return {
-      status: "404",
-      headers: {
-        "cache-control": [{ value: "public, max-age=31536000" }],
-      },
-    } satisfies CloudFrontResultResponse;
-  }
+      if (probePrefixes.some((p) => request.uri.startsWith(p))) {
+        getLogger().info("Probe request blocked", { status: 404 });
+        return {
+          status: "404",
+          headers: {
+            "cache-control": [{ value: "public, max-age=31536000" }],
+          },
+        } satisfies CloudFrontResultResponse;
+      }
 
-  const region = process.env.AWS_REGION;
-  const forceSingapore = Boolean(request.headers["x-force-singapore"]);
-  if (regionsServedFromSingapore.includes(region ?? "") || forceSingapore) {
-    console.log("Writing origin to Singapore");
-    request.origin = {
-      custom: {
-        protocol: "https",
-        domainName: singaporeLambdaFunctionDomain,
-        port: 443,
-        path: "",
-        sslProtocols: ["TLSv1.2"],
-        readTimeout: 30,
-        keepaliveTimeout: 5,
-        customHeaders: {},
-      },
-    };
-    request.headers.host = [{ value: singaporeLambdaFunctionDomain }];
-  }
+      const region = process.env.AWS_REGION;
+      const forceSingapore = Boolean(request.headers["x-force-singapore"]);
+      if (regionsServedFromSingapore.includes(region ?? "") || forceSingapore) {
+        getLogger().debug("Origin selected", {
+          originRegion: "ap-southeast-1",
+        });
+        request.origin = {
+          custom: {
+            protocol: "https",
+            domainName: singaporeLambdaFunctionDomain,
+            port: 443,
+            path: "",
+            sslProtocols: ["TLSv1.2"],
+            readTimeout: 30,
+            keepaliveTimeout: 5,
+            customHeaders: {},
+          },
+        };
+        request.headers.host = [{ value: singaporeLambdaFunctionDomain }];
+      }
 
-  // Calculate body hash for lambda auth
-  // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html#create-oac-overview-lambda
-  if (!request.body?.data) return request;
-  if (request.body.inputTruncated) {
-    console.log("Request body too large");
-    return {
-      body: "Request body too large",
-      bodyEncoding: "text",
-      status: "413",
-    } satisfies CloudFrontResultResponse;
-  }
+      // Calculate body hash for lambda auth
+      // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html#create-oac-overview-lambda
+      if (!request.body?.data) return request;
+      if (request.body.inputTruncated) {
+        getLogger().info("Request body rejected", { status: 413 });
+        return {
+          body: "Request body too large",
+          bodyEncoding: "text",
+          status: "413",
+        } satisfies CloudFrontResultResponse;
+      }
 
-  const encoding = request.body.encoding === "base64" ? "base64" : "utf8";
-  const buffer = Buffer.from(request.body.data, encoding);
-  const digest = hash("sha256", buffer);
+      const encoding = request.body.encoding === "base64" ? "base64" : "utf8";
+      const buffer = Buffer.from(request.body.data, encoding);
+      const digest = hash("sha256", buffer);
 
-  request.headers["x-amz-content-sha256"] = [{ value: digest }];
+      request.headers["x-amz-content-sha256"] = [{ value: digest }];
 
-  return request;
+      return request;
+    },
+  );
 };

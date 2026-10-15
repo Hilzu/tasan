@@ -2,10 +2,11 @@ import crypto from "node:crypto";
 import { PassThrough } from "node:stream";
 
 import { createReadableStreamFromReadable } from "@react-router/node";
+import { logError } from "@tasan/common/logging";
 import { isbot } from "isbot";
 import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
-import type { EntryContext } from "react-router";
+import type { EntryContext, HandleErrorFunction } from "react-router";
 import { ServerRouter } from "react-router";
 
 import { parseAcceptLanguage } from "~/.server/accept-language";
@@ -92,7 +93,7 @@ export default function handleRequest(
           // errors encountered during initial shell rendering since they'll
           // reject and get logged in handleDocumentRequest.
           if (shellRendered) {
-            console.error(error);
+            logError("Streaming render failed", error);
           }
         },
       },
@@ -103,3 +104,7 @@ export default function handleRequest(
     setTimeout(abort, streamTimeout + 1000);
   });
 }
+
+export const handleError: HandleErrorFunction = (error, { request }) => {
+  if (!request.signal.aborted) logError("Request failed", error);
+};

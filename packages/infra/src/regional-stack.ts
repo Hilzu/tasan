@@ -42,6 +42,8 @@ export class RegionalStack extends Stack {
       memorySize: 512,
       architecture: lambda.Architecture.X86_64,
       tracing: lambda.Tracing.ACTIVE,
+      loggingFormat: lambda.LoggingFormat.JSON,
+      applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
       environment: {
         APP_ENV: "production",
         NODE_OPTIONS: "--enable-source-maps",

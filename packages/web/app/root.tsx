@@ -10,11 +10,14 @@ import {
   useNavigation,
 } from "react-router";
 
+import { requestLogging } from "~/.server/request-logging";
 import { AppUpdate } from "~/components/app-update";
 import { NonceContext } from "~/context";
 
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
+
+export const middleware: Route.MiddlewareFunction[] = [requestLogging];
 
 export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },

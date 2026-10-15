@@ -298,3 +298,37 @@ await test("malformed and oversized IDs never reach persistence", async () => {
   assert.equal(persistenceMock.exports.findExpenseCreation.mock.callCount(), 0);
   assert.equal(save.mock.callCount(), 0);
 });
+
+await test("expense logs include action parameters and persisted ID without free-text names", async () => {
+  const entries: {
+    action: string;
+    outcome: string;
+    expenseId: string;
+    parameters: unknown;
+  }[] = [];
+  const write = mock.method(process.stdout, "write", (chunk: unknown) => {
+    entries.push(JSON.parse(String(chunk)) as (typeof entries)[number]);
+    return true;
+  });
+  try {
+    await createExpense(actorID, splitID, expense);
+    assert.equal(entries.length, 2);
+    assert.deepEqual(
+      entries.map((entry) => entry.outcome),
+      ["attempted", "success"],
+    );
+    for (const entry of entries) {
+      assert.equal(entry.action, "expense.create");
+      assert.equal(entry.expenseId, expense.id);
+      assert.deepEqual(entry.parameters, {
+        amount: expense.amount,
+        currency: expense.currency,
+        payer: expense.payer,
+        participants: Object.fromEntries(expense.participants),
+      });
+    }
+    assert.ok(!JSON.stringify(entries).includes(expense.name));
+  } finally {
+    write.mock.restore();
+  }
+});

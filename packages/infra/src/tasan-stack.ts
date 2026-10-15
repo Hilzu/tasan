@@ -130,6 +130,8 @@ export class TasanStack extends Stack {
       entry: "./src/app-function/main.mts",
       architecture: lambda.Architecture.X86_64,
       tracing: lambda.Tracing.ACTIVE,
+      loggingFormat: lambda.LoggingFormat.JSON,
+      applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
       bundling: {
         charset: nodejs.Charset.UTF8,
         minify: true,
