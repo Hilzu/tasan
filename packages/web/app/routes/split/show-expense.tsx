@@ -94,6 +94,7 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
       action={
         <div className="flex items-center gap-4">
           <Link
+            replace
             to={href("/splits/:splitID/:expenseID/edit", {
               splitID: split.id,
               expenseID: expense.id,

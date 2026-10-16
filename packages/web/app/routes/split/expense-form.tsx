@@ -244,31 +244,33 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
           <FieldError errors={["Select at least one participant."]} />
         )}
 
-        <Button
-          type="submit"
-          className="mt-2"
-          disabled={
-            fetcher.state !== "idle" || !submissionID || !calculated.valid
-          }
-        >
-          {fetcher.state === "submitting" ?
-            "Saving..."
-          : expense ?
-            "Save changes"
-          : "Create"}
-        </Button>
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <Button
+            type="submit"
+            disabled={
+              fetcher.state !== "idle" || !submissionID || !calculated.valid
+            }
+          >
+            {fetcher.state === "submitting" ?
+              "Saving..."
+            : expense ?
+              "Save changes"
+            : "Create"}
+          </Button>
+          {expense && (
+            <Link
+              replace
+              to={href("/splits/:splitID/:expenseID", {
+                splitID: split.id,
+                expenseID: expense.id,
+              })}
+            >
+              Back to expense
+            </Link>
+          )}
+        </div>
         {actionData?.errors.formErrors && (
           <FieldError errors={actionData.errors.formErrors} />
-        )}
-        {expense && (
-          <Link
-            to={href("/splits/:splitID/:expenseID", {
-              splitID: split.id,
-              expenseID: expense.id,
-            })}
-          >
-            Back to expense
-          </Link>
         )}
       </fetcher.Form>
     </div>
