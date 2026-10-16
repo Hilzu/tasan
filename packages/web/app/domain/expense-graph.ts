@@ -1,6 +1,7 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import * as G from "@tasan/common/graph";
+import type { UserID } from "@tasan/common/id";
 import type { SplitExpense, SplitWithData } from "@tasan/data";
 
 export const cancelMutual = (graph: G.Graph): G.Graph => {
@@ -53,4 +54,34 @@ export const createGraphWithCurrency = (
 
 export const calculateExpenseGraph = (split: SplitWithData) => {
   return cancelMutual(createGraphWithCurrency(split.currency, split.expenses));
+};
+
+export interface Balance {
+  userID: UserID;
+  balance: D.Decimal;
+}
+
+/**
+ * Net balance per user: positive when others owe the user, negative when
+ * the user owes others. Sorted so the user most in the red comes first.
+ */
+export const calculateBalances = (
+  graph: G.Graph,
+  userIDs: UserID[],
+  currency: CurrencySymbol,
+): Balance[] => {
+  const zero = D.create(0, currencies[currency].fractions);
+  const balances = new Map<UserID, D.Decimal>(userIDs.map((id) => [id, zero]));
+  for (const [from, edges] of graph) {
+    for (const { to, amount } of edges) {
+      balances.set(from, D.sub(balances.get(from) ?? zero, amount));
+      balances.set(to, D.add(balances.get(to) ?? zero, amount));
+    }
+  }
+  return [...balances]
+    .map(([userID, balance]) => ({ userID, balance }))
+    .sort(
+      (a, b) =>
+        a.balance.value - b.balance.value || a.userID.localeCompare(b.userID),
+    );
 };

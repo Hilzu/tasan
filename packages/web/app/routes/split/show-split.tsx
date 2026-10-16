@@ -1,5 +1,6 @@
-import { compareById, compareByKey, compareByTo } from "@tasan/common/compare";
+import { compareByKey, compareByTo } from "@tasan/common/compare";
 import * as D from "@tasan/common/decimal";
+import classNames from "classnames";
 import { href, useRouteLoaderData } from "react-router";
 
 import { Button } from "~/components/button";
@@ -8,7 +9,10 @@ import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { Link } from "~/components/link";
-import { calculateExpenseGraph } from "~/domain/expense-graph";
+import {
+  calculateBalances,
+  calculateExpenseGraph,
+} from "~/domain/expense-graph";
 import ExpenseListItem from "~/routes/split/components/expense-list-item";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
@@ -19,6 +23,11 @@ export default function ShowSplit(_: Route.ComponentProps) {
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
   const expenseGraph = calculateExpenseGraph(split);
+  const balances = calculateBalances(
+    expenseGraph,
+    users.map((u) => u.id),
+    split.currency,
+  );
   return (
     <div>
       <MainHeading>Split - {split.name}</MainHeading>
@@ -42,16 +51,29 @@ export default function ShowSplit(_: Route.ComponentProps) {
           </Link>
         }
       >
-        <ul>
-          {users.sort(compareById).map((u) => {
-            const isYou = session.userID === u.id;
+        <ol className="clear-both">
+          {balances.map(({ userID, balance }) => {
+            const isYou = session.userID === userID;
             return (
-              <li key={u.id}>
-                {u.name} {isYou ? " (you!)" : ""}
+              <li key={userID} className="flex justify-between gap-2">
+                <span>
+                  {users.find((u) => u.id === userID)?.name}
+                  {isYou ? " (you!)" : ""}
+                </span>
+                <span
+                  className={classNames(
+                    "tabular-nums",
+                    D.gt(balance, 0) && "text-green-700 dark:text-green-400",
+                    balance.value < 0 && "text-red-700 dark:text-red-400",
+                  )}
+                >
+                  {split.currency} {D.gt(balance, 0) ? "+" : ""}
+                  {D.toString(balance)}
+                </span>
               </li>
             );
           })}
-        </ul>
+        </ol>
       </Card>
 
       <Card heading={<SubHeading>Debts</SubHeading>}>
