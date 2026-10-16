@@ -14,15 +14,14 @@ import { authenticatedSessionContext } from "~/.server/auth";
 import { ApplicationError } from "~/.server/services/errors";
 import { deleteExpense, getExpenseHistory } from "~/.server/services/expenses";
 import { errorResponse } from "~/.server/services/http";
-import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
 import { FieldError } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
-import { Link } from "~/components/link";
 import { showInCurrency } from "~/domain/show-in-currency";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
+import { ExpenseActions } from "~/routes/split/components/expense-actions";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
 
@@ -92,25 +91,16 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
     <Card
       heading={<MainHeading>Expense - {expense.name}</MainHeading>}
       action={
-        <div className="flex items-center gap-4">
-          <Link
-            to={href("/splits/:splitID/:expenseID/edit", {
-              splitID: split.id,
-              expenseID: expense.id,
-            })}
-          >
-            Edit
-          </Link>
-          <Button
-            variant="danger"
-            disabled={fetcher.state !== "idle" || !operationID}
-            onClick={() => {
-              setDeleteOpen(true);
-            }}
-          >
-            Delete
-          </Button>
-        </div>
+        <ExpenseActions
+          editHref={href("/splits/:splitID/:expenseID/edit", {
+            splitID: split.id,
+            expenseID: expense.id,
+          })}
+          deleteDisabled={fetcher.state !== "idle" || !operationID}
+          onDelete={() => {
+            setDeleteOpen(true);
+          }}
+        />
       }
     >
       <DescriptionList
