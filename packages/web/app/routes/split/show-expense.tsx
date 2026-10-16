@@ -14,6 +14,7 @@ import { authenticatedSessionContext } from "~/.server/auth";
 import { ApplicationError } from "~/.server/services/errors";
 import { deleteExpense, getExpenseHistory } from "~/.server/services/expenses";
 import { errorResponse } from "~/.server/services/http";
+import { ActionsDropdown } from "~/components/actions-dropdown";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
@@ -21,7 +22,6 @@ import { FieldError } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { showInCurrency } from "~/domain/show-in-currency";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
-import { ExpenseActions } from "~/routes/split/components/expense-actions";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
 
@@ -91,15 +91,25 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
     <Card
       heading={<MainHeading>Expense - {expense.name}</MainHeading>}
       action={
-        <ExpenseActions
-          editHref={href("/splits/:splitID/:expenseID/edit", {
-            splitID: split.id,
-            expenseID: expense.id,
-          })}
-          deleteDisabled={fetcher.state !== "idle" || !operationID}
-          onDelete={() => {
-            setDeleteOpen(true);
-          }}
+        <ActionsDropdown
+          label="Expense actions"
+          items={[
+            {
+              label: "Edit",
+              to: href("/splits/:splitID/:expenseID/edit", {
+                splitID: split.id,
+                expenseID: expense.id,
+              }),
+            },
+            {
+              label: "Delete",
+              destructive: true,
+              disabled: fetcher.state !== "idle" || !operationID,
+              onSelect: () => {
+                setDeleteOpen(true);
+              },
+            },
+          ]}
         />
       }
     >
