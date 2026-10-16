@@ -1,4 +1,4 @@
-import type { User } from "@tasan/data";
+import type { Split, User } from "@tasan/data";
 import classNames from "classnames";
 import { href } from "react-router";
 
@@ -9,9 +9,10 @@ import logo from "../marketing/logo.svg";
 export interface HeaderProps {
   className?: string;
   user?: User;
+  split?: Pick<Split, "id" | "name">;
 }
 
-export function Header({ className, user }: HeaderProps) {
+export function Header({ className, user, split }: HeaderProps) {
   return (
     <header
       className={classNames(
@@ -19,14 +20,23 @@ export function Header({ className, user }: HeaderProps) {
         "border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900",
       )}
     >
-      <div className="container flex py-4">
-        <Link to={href("/")} variant="plain">
+      <div className="container flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
+        <Link to={href("/")} variant="plain" className="shrink-0">
           <img src={logo} alt="Tasan.app" className="h-6 w-6" />
         </Link>
-        <NavLink to={href("/splits")} className="ml-4">
+        <NavLink to={href("/splits")} className="shrink-0">
           Splits
         </NavLink>
-        <div className="ml-auto">
+        {split && (
+          <NavLink
+            to={href("/splits/:splitID", { splitID: split.id })}
+            title={split.name}
+            className="order-last w-full truncate sm:order-none sm:w-auto sm:min-w-0 sm:flex-1"
+          >
+            {split.name}
+          </NavLink>
+        )}
+        <div className="ml-auto shrink-0">
           {user ?
             <div className="flex gap-1">
               <p className="text-right">Hello, {user.name}!</p>

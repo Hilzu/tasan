@@ -4,7 +4,7 @@ import { genExpenseID, genOperationID, type UserID } from "@tasan/common/id";
 import { currencySymbolSchema } from "@tasan/common/validation";
 import type { SplitExpense } from "@tasan/data";
 import { useEffect, useLayoutEffect, useState } from "react";
-import { href, useFetcher, useRouteLoaderData } from "react-router";
+import { useFetcher, useRouteLoaderData } from "react-router";
 
 import { Button } from "~/components/button";
 import {
@@ -20,7 +20,6 @@ import {
   SelectField,
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
-import { Link } from "~/components/link";
 import { useStorage } from "~/hooks";
 import { calculateExpenseAmounts } from "~/routes/split/expense-amounts";
 import type { SplitLoader } from "~/routes/split/split-parent";
@@ -246,7 +245,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
 
         <Button
           type="submit"
-          className="mt-2"
+          className="mt-4"
           disabled={
             fetcher.state !== "idle" || !submissionID || !calculated.valid
           }
@@ -259,16 +258,6 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         </Button>
         {actionData?.errors.formErrors && (
           <FieldError errors={actionData.errors.formErrors} />
-        )}
-        {expense && (
-          <Link
-            to={href("/splits/:splitID/:expenseID", {
-              splitID: split.id,
-              expenseID: expense.id,
-            })}
-          >
-            Back to expense
-          </Link>
         )}
       </fetcher.Form>
     </div>

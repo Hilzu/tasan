@@ -1,5 +1,5 @@
 import { asExpenseID, asSplitID, asUserID } from "@tasan/common/id";
-import { data, href, redirect } from "react-router";
+import { data, href, replace } from "react-router";
 
 import { authenticatedSessionContext } from "~/.server/auth";
 import { ApplicationError } from "~/.server/services/errors";
@@ -53,9 +53,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
         ),
       },
     );
-    return redirect(
-      href("/splits/:splitID/:expenseID", { splitID, expenseID }),
-    );
+    return replace(href("/splits/:splitID/:expenseID", { splitID, expenseID }));
   } catch (error) {
     // Keep the draft mounted so a conflict never discards the user's input.
     if (
