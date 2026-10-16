@@ -2,7 +2,7 @@ import { type RefinementCtx, z } from "zod";
 
 import { currencies, type CurrencySymbol } from "./currency.js";
 import * as Decimal from "./decimal.js";
-import { asCognitoUserID, asExpenseID, asUserID } from "./id.js";
+import { asCognitoUserID, asExpenseID, asOperationID, asUserID } from "./id.js";
 
 export const currencySymbolSchema = z
   .string()
@@ -38,3 +38,7 @@ export const cognitoIDSchema = z
 export const userIDSchema = z.string().transform(validateID(asUserID));
 
 export const expenseIDSchema = z.string().transform(validateID(asExpenseID));
+
+export const operationIDSchema = z
+  .string()
+  .transform(validateID(asOperationID));

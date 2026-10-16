@@ -16,10 +16,7 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import {
-  fromItem as fromExpenseItem,
-  type SplitExpense,
-} from "./split-expense.js";
+import { expensesFromItems, type SplitExpense } from "./split-expense.js";
 import { findUserSplitIDs } from "./split-user.js";
 
 export interface Split {
@@ -138,7 +135,6 @@ export const getSplitWithData = captureAsync(
         TableName,
         KeyConditionExpression: "pk = :pk",
         ExpressionAttributeValues: { ":pk": splitID },
-        FilterExpression: "attribute_not_exists(deletedAt)",
       },
     );
     const Items: Record<string, unknown>[] = [];
@@ -150,14 +146,17 @@ export const getSplitWithData = captureAsync(
 
     let split: Split | undefined;
     const userIDs = new Set<UserID>();
-    const expenses: SplitExpense[] = [];
+    const expenseItems: Record<string, unknown>[] = [];
     for (const Item of Items) {
       if (typeof Item.sk !== "string") continue;
-      if (Item.sk === splitID) split = fromItem(Item);
-      else if (Item.sk.startsWith("usr_")) userIDs.add(asUserID(Item.sk));
-      else if (Item.sk.startsWith("exp_")) expenses.push(fromExpenseItem(Item));
+      if (Item.sk === splitID && !Item.deletedAt) split = fromItem(Item);
+      else if (Item.sk.startsWith("usr_") && !Item.deletedAt)
+        userIDs.add(asUserID(Item.sk));
+      else if (Item.sk.startsWith("exp_")) expenseItems.push(Item);
     }
-    expenses.reverse();
+    const expenses = expensesFromItems(expenseItems)
+      .sort(compareById)
+      .reverse();
 
     return split ? { ...split, userIDs, expenses } : undefined;
   },
