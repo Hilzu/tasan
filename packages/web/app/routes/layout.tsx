@@ -1,9 +1,10 @@
 import { getUser } from "@tasan/data";
-import { Outlet } from "react-router";
+import { Outlet, useRouteLoaderData } from "react-router";
 
 import { sessionContext, sessionMiddleware } from "~/.server/auth";
 import { Footer } from "~/components/footer";
 import { Header } from "~/components/header";
+import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/layout";
 
@@ -28,9 +29,10 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export default function Layout({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData;
+  const splitData = useRouteLoaderData<SplitLoader>("split-parent");
   return (
     <div className="flex min-h-screen flex-col">
-      <Header user={user} />
+      <Header user={user} split={splitData?.split} />
       <main className="container mt-4 mb-16">
         <Outlet />
       </main>
