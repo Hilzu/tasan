@@ -91,6 +91,8 @@ type CurrencyInputFieldProps = Omit<
   onValueChange: (value: AmountInput) => void;
   value: AmountInput;
   automaticAmount?: Decimal.Decimal;
+  // Shows a sign toggle, since mobile decimal keypads may lack a minus key.
+  allowNegative?: boolean;
 };
 
 export interface AmountInput {
@@ -109,7 +111,8 @@ export const parseNumber = (valueParam: string) => {
   if (commaIndex !== -1)
     value = value.slice(0, commaIndex) + "." + value.slice(commaIndex + 1);
 
-  return Number(value.replace(/[^0-9.]/g, ""));
+  const number = Number(value.replace(/[^0-9.]/g, ""));
+  return value.trim().startsWith("-") ? -number : number;
 };
 
 // Evaluates simple arithmetic like "12,50 + 3*2"; undefined if invalid.
@@ -176,9 +179,10 @@ export const resolveAmount = (
 export const normalizeAmountInput = (
   input: AmountInput,
   fractions: number,
+  allowNegative = false,
 ): AmountInput => {
   const amount = resolveAmount(input.text, input.expressionMode, fractions);
-  return amount && amount.value >= 0 ?
+  return amount && (allowNegative || amount.value >= 0) ?
       { ...input, text: Decimal.toString(amount) }
     : input;
 };
@@ -188,6 +192,7 @@ export function CurrencyInputField({
   onValueChange,
   value,
   automaticAmount,
+  allowNegative = false,
   name,
   errors,
   ...rest
@@ -200,7 +205,8 @@ export function CurrencyInputField({
   const empty = text.trim() === "";
   const validationError =
     !empty && resolved === undefined ? invalidExpressionError
-    : resolved && resolved.value < 0 ? "Amount must not be negative."
+    : !allowNegative && resolved && resolved.value < 0 ?
+      "Amount must not be negative."
     : "";
   const invalid = validationError !== "";
   const submittedAmount = empty ? automaticAmount : resolved;
@@ -233,7 +239,12 @@ export function CurrencyInputField({
         ref={inputRef}
         type="text"
         inputMode={expressionMode ? "text" : "decimal"}
-        pattern={expressionMode ? undefined : "\\d+([.,]\\d{0,2})?"}
+        pattern={
+          expressionMode ? undefined
+          : allowNegative ?
+            "-?\\d+([.,]\\d{0,2})?"
+          : "\\d+([.,]\\d{0,2})?"
+        }
         leadingAddon={currencySymbol}
         errors={allErrors.length ? allErrors : undefined}
         trailingAddon={
@@ -245,6 +256,25 @@ export function CurrencyInputField({
                   = {Decimal.toString(resolved)}
                 </span>
               )}
+            {allowNegative && (
+              <button
+                type="button"
+                title="Toggle negative amount"
+                className="mr-1 rounded-sm px-1.5 text-sm text-gray-500"
+                onClick={() => {
+                  onValueChange({
+                    ...value,
+                    text:
+                      resolved ? Decimal.toString(Decimal.mul(resolved, -1))
+                      : empty ? "-"
+                      : text,
+                  });
+                  inputRef.current?.focus();
+                }}
+              >
+                ±
+              </button>
+            )}
             <button
               type="button"
               title="Enter a calculation"

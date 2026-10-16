@@ -4,7 +4,13 @@ import { test } from "node:test";
 import * as D from "@tasan/common/decimal";
 import { genUserID } from "@tasan/common/id";
 
-import { calculateExpenseAmounts } from "./expense-amounts";
+import {
+  calculateExpenseAmounts,
+  calculateShareAmounts,
+  parseShares,
+  type ShareInput,
+  stepShares,
+} from "./expense-amounts";
 
 const ids = Array.from({ length: 4 }, () => genUserID());
 const [payer, second, third, fourth] = ids;
@@ -186,4 +192,170 @@ await test("explicit amounts must be positive at the currency precision", () => 
     assert.deepEqual([...result.invalidAmounts], [payer]);
     assert.equal(result.valid, false);
   }
+});
+
+const shareInputs = (
+  values: [number | undefined, number?][],
+  fractions = 0,
+): Map<(typeof ids)[number], ShareInput> =>
+  new Map(
+    values.map(([shares, adjustment], i) => [
+      ids[i],
+      {
+        shares,
+        adjustment:
+          adjustment === undefined ? undefined : (
+            D.create(adjustment, fractions)
+          ),
+      },
+    ]),
+  );
+const shareValues = (result: ReturnType<typeof calculateShareAmounts>) =>
+  [...result.participants.values()].map((value) => value.value);
+
+await test("shares default to zero and leave the total unallocated", () => {
+  const result = calculateShareAmounts(
+    D.create(3000, 0),
+    shareInputs([[0], [0], [0]]),
+    0,
+    payer,
+  );
+  assert.deepEqual(shareValues(result), [0, 0, 0]);
+  assert.equal(result.difference.value, 3000);
+  assert.equal(result.invalidAmounts.size, 3);
+  assert.equal(result.valid, false);
+});
+
+await test("shares split the total proportionally", () => {
+  const even = calculateShareAmounts(
+    D.create(3000, 0),
+    shareInputs([[1], [1], [1]]),
+    0,
+    payer,
+  );
+  assert.deepEqual(shareValues(even), [1000, 1000, 1000]);
+  assert.equal(even.valid, true);
+  assert.deepEqual(
+    shareValues(
+      calculateShareAmounts(
+        D.create(3000, 0),
+        shareInputs([[2], [1], [0, 500]]),
+        0,
+        payer,
+      ),
+    ),
+    [1667, 833, 500],
+  );
+});
+
+await test("negative adjustments lower one share and raise the others", () => {
+  const result = calculateShareAmounts(
+    D.create(3000, 0),
+    shareInputs([[1], [1, -100], [1]]),
+    0,
+    payer,
+  );
+  assert.deepEqual(shareValues(result), [1034, 933, 1033]);
+  assert.equal(result.difference.value, 0);
+  assert.equal(result.valid, true);
+});
+
+await test("positive adjustments raise one share and lower the others", () => {
+  const result = calculateShareAmounts(
+    D.create(4000, 0),
+    shareInputs([[1], [1], [1, 1000]]),
+    0,
+    payer,
+  );
+  assert.deepEqual(shareValues(result), [1000, 1000, 2000]);
+  assert.equal(result.valid, true);
+});
+
+await test("adjustments alone can allocate the total without shares", () => {
+  const result = calculateShareAmounts(
+    D.create(1500, 0),
+    shareInputs([
+      [0, 1000],
+      [0, 500],
+    ]),
+    0,
+    payer,
+  );
+  assert.deepEqual(shareValues(result), [1000, 500]);
+  assert.equal(result.valid, true);
+});
+
+await test("share mode requires a total and valid shares", () => {
+  assert.equal(
+    calculateShareAmounts(undefined, shareInputs([[1], [1]]), 0, payer).valid,
+    false,
+  );
+  for (const shares of [undefined, -1, NaN]) {
+    const result = calculateShareAmounts(
+      D.create(100, 0),
+      shareInputs([[shares], [1]]),
+      0,
+      payer,
+    );
+    assert.deepEqual([...result.invalidShares], [payer]);
+    assert.equal(result.valid, false);
+  }
+});
+
+await test("adjustments that leave someone owing nothing are invalid", () => {
+  const result = calculateShareAmounts(
+    D.create(1000, 0),
+    shareInputs([[1], [1, -600]]),
+    0,
+    payer,
+  );
+  assert.deepEqual(shareValues(result), [800, 200]);
+  assert.equal(result.valid, true);
+  const invalid = calculateShareAmounts(
+    D.create(1000, 0),
+    shareInputs([[1], [1, -1000]]),
+    0,
+    payer,
+  );
+  assert.deepEqual(shareValues(invalid), [1000, 0]);
+  assert.deepEqual([...invalid.invalidAmounts], [second]);
+  assert.equal(invalid.valid, false);
+});
+
+await test("share rounding sums to the total and favors the payer on ties", () => {
+  assert.deepEqual(
+    shareValues(
+      calculateShareAmounts(
+        D.create(100, 0),
+        shareInputs([[1], [1], [1]]),
+        0,
+        third,
+      ),
+    ),
+    [33, 33, 34],
+  );
+  for (const fractions of [0, 2]) {
+    for (let units = 10; units <= 200; units++) {
+      const total = D.create(units / 10 ** fractions, fractions);
+      for (const selected of [
+        shareInputs([[1], [2], [0.5]], fractions),
+        shareInputs([[1], [1, -0.03], [1], [3, 0.07]], fractions),
+      ]) {
+        const result = calculateShareAmounts(total, selected, fractions, payer);
+        assert.equal(result.difference.value, 0);
+      }
+    }
+  }
+});
+
+await test("share inputs parse and step without going negative", () => {
+  assert.equal(parseShares(""), 0);
+  assert.equal(parseShares("1,5"), 1.5);
+  assert.equal(parseShares("-1"), undefined);
+  assert.equal(parseShares("abc"), undefined);
+  assert.equal(stepShares("0", 1), "1");
+  assert.equal(stepShares("0,1", 1), "1.1");
+  assert.equal(stepShares("0.5", -1), "0");
+  assert.equal(stepShares("0", -1), "0");
+  assert.equal(stepShares("abc", 1), "1");
 });

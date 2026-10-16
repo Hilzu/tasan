@@ -32,6 +32,12 @@ await test("currency normalization preserves blank and invalid input", () => {
   }
 });
 
+await test("currency normalization can keep negative adjustments", () => {
+  const input = { text: "-100.50", expressionMode: false };
+  assert.strictEqual(normalizeAmountInput(input, 0), input);
+  assert.equal(normalizeAmountInput(input, 0, true).text, "-101");
+});
+
 await test("empty amounts stay automatic", () => {
   for (const expressionMode of [false, true]) {
     assert.equal(resolveAmount("", expressionMode, 2), undefined);
@@ -43,6 +49,8 @@ await test("parseNumber leniently parses numbers", () => {
   assert.equal(parseNumber("12,5"), 12.5);
   assert.equal(parseNumber("€ 1 234,5"), 1234.5);
   assert.equal(parseNumber("abc"), 0);
+  assert.equal(parseNumber("-12,5"), -12.5);
+  assert.equal(parseNumber(" -100 "), -100);
 });
 
 await test("evaluateExpression evaluates arithmetic expressions", () => {
