@@ -5,7 +5,11 @@ import * as D from "@tasan/common/decimal";
 import { genExpenseID, genSplitID, type UserID } from "@tasan/common/id";
 import type { SplitExpense } from "@tasan/data";
 
-import { cancelMutual, createGraphWithCurrency } from "~/domain/expense-graph";
+import {
+  calculateBalances,
+  cancelMutual,
+  createGraphWithCurrency,
+} from "~/domain/expense-graph";
 
 const numberGen = function* () {
   let i = 0;
@@ -163,6 +167,43 @@ await test("cancelMutual", async (t) => {
           ],
         ],
       ]),
+    );
+  });
+});
+
+await test("calculateBalances", async (t) => {
+  await t.test("gives everyone a zero balance with no debts", () => {
+    const userA = genTestUserID("a");
+    const userB = genTestUserID("b");
+    assert.deepEqual(calculateBalances(new Map(), [userB, userA], "EUR"), [
+      { userID: userA, balance: D.create(0) },
+      { userID: userB, balance: D.create(0) },
+    ]);
+  });
+
+  await t.test("sorts the user most in the red first", () => {
+    const userA = genTestUserID("a");
+    const userB = genTestUserID("b");
+    const userC = genTestUserID("c");
+    const userD = genTestUserID("d");
+    const graph = new Map([
+      [userA, [{ to: userC, amount: D.create(5) }]],
+      [
+        userB,
+        [
+          { to: userC, amount: D.create(10) },
+          { to: userA, amount: D.create(2) },
+        ],
+      ],
+    ]);
+    assert.deepEqual(
+      calculateBalances(graph, [userA, userB, userC, userD], "EUR"),
+      [
+        { userID: userB, balance: D.create(-12) },
+        { userID: userA, balance: D.create(-3) },
+        { userID: userD, balance: D.create(0) },
+        { userID: userC, balance: D.create(15) },
+      ],
     );
   });
 });
