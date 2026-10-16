@@ -6,8 +6,9 @@ import {
   data,
   href,
   redirect,
-  useFetcher,
+  useNavigation,
   useRouteLoaderData,
+  useSubmit,
 } from "react-router";
 
 import { authenticatedSessionContext } from "~/.server/auth";
@@ -18,7 +19,6 @@ import { ActionsDropdown } from "~/components/actions-dropdown";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
-import { FieldError } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { showInCurrency } from "~/domain/show-in-currency";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
@@ -76,7 +76,8 @@ export default function ShowExpense(props: Route.ComponentProps) {
 function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
   const { expenseID } = params;
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const fetcher = useFetcher<typeof action>();
+  const submit = useSubmit();
+  const navigation = useNavigation();
   const [operationID, setOperationID] = useState("");
   useEffect(() => {
     setOperationID(genOperationID());
@@ -104,7 +105,7 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
             {
               label: "Delete",
               destructive: true,
-              disabled: fetcher.state !== "idle" || !operationID,
+              disabled: navigation.state !== "idle" || !operationID,
               onSelect: () => {
                 setDeleteOpen(true);
               },
@@ -144,9 +145,6 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
           ],
         ]}
       />
-      {fetcher.data?.errors && (
-        <FieldError errors={fetcher.data.errors.formErrors} />
-      )}
       {expense.updatedAt && (
         <p>
           Last updated <DateRender date={expense.updatedAt} /> by{" "}
@@ -189,16 +187,7 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
         }}
         onDelete={() => {
           setDeleteOpen(false);
-          fetcher
-            .submit(
-              {
-                operationID,
-              },
-              { method: "post" },
-            )
-            .catch((err: unknown) => {
-              console.error("Failed to submit!", err);
-            });
+          submit({ operationID }, { method: "post" });
         }}
       />
     </Card>
