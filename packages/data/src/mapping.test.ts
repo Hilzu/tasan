@@ -8,6 +8,7 @@ import {
   PutCommand,
   QueryCommand,
   TransactWriteCommand,
+  UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import {
   asCognitoUserID,
@@ -47,6 +48,18 @@ afterEach(() => {
 await test("public operations round-trip domain objects without exposing storage attributes", async () => {
   const records: Record<string, unknown>[] = [];
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof UpdateCommand) {
+      const { Key, ExpressionAttributeValues: values } = command.input;
+      assert.ok(Key);
+      assert.ok(values);
+      records.push({
+        ...Key,
+        name: values[":name"],
+        email: values[":email"],
+        createdAt: values[":now"],
+      });
+      return Promise.resolve({});
+    }
     if (command instanceof PutCommand) {
       assert.ok(command.input.Item);
       records.push(structuredClone(command.input.Item));

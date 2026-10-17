@@ -1,4 +1,8 @@
-import { BatchGetCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  BatchGetCommand,
+  GetCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import type { UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
@@ -33,8 +37,20 @@ const toItem = (user: User): UserItem => ({
 export const putUser = captureAsync(
   "putUser",
   async (user: User): Promise<void> => {
-    const Item = toItem(user);
-    const cmd = new PutCommand({ TableName, Item });
+    const item = toItem(user);
+    const Key: PrimaryKey = { pk: item.pk, sk: item.sk };
+    const cmd = new UpdateCommand({
+      TableName,
+      Key,
+      UpdateExpression:
+        "SET #name = :name, email = :email, createdAt = if_not_exists(createdAt, :now)",
+      ExpressionAttributeNames: { "#name": "name" },
+      ExpressionAttributeValues: {
+        ":name": item.name,
+        ":email": item.email,
+        ":now": item.createdAt,
+      },
+    });
     await documentClient().send(cmd);
   },
 );
