@@ -61,7 +61,7 @@ export function InputField({
   const id = useId();
   return (
     <FormField id={id} label={label} description={description} errors={errors}>
-      <div className="outline-brand-700 flex items-center rounded-sm border border-gray-500 has-[input:focus-within]:outline-2">
+      <div className="outline-brand-700 dark:outline-brand-300 flex items-center rounded-sm border border-gray-500 has-[input:focus-within]:outline-2">
         {leadingAddon && <div className="pl-2">{leadingAddon}</div>}
         <input
           {...rest}
@@ -328,7 +328,7 @@ export function TextField({
         rows={rest.rows ?? 3}
         cols={rest.cols ?? 40}
         autoCapitalize={rest.autoCapitalize ?? "sentences"}
-        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
+        className="outline-brand-700 dark:outline-brand-300 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
       />
     </FormField>
   );
@@ -349,7 +349,7 @@ export function SelectField({
       <select
         {...rest}
         id={id}
-        className="outline-brand-700 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
+        className="outline-brand-700 dark:outline-brand-300 rounded-sm border border-gray-500 px-2 py-1 focus:outline-2"
       >
         {children}
       </select>

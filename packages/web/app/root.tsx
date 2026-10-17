@@ -16,11 +16,18 @@ import { NonceContext } from "~/context";
 
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
+import appleTouchIcon from "./marketing/apple-touch-icon.png?no-inline";
+import favicon from "./marketing/favicon.svg?no-inline";
+import faviconPNG from "./marketing/favicon-32.png?no-inline";
 
 export const middleware: Route.MiddlewareFunction[] = [requestLogging];
 
 export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
+  { rel: "icon", href: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+  { rel: "icon", href: faviconPNG, type: "image/png", sizes: "32x32" },
+  { rel: "icon", href: favicon, type: "image/svg+xml", sizes: "any" },
+  { rel: "apple-touch-icon", href: appleTouchIcon, sizes: "180x180" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -33,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links nonce={nonce} />
       </head>
-      <body className="min-h-full bg-white text-gray-800 antialiased dark:bg-gray-950 dark:text-gray-100">
+      <body className="bg-brand-canvas min-h-full text-gray-800 antialiased dark:bg-gray-950 dark:text-gray-100">
         {children}
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />

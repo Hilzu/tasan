@@ -4,7 +4,7 @@ import { href } from "react-router";
 
 import { Link, NavLink } from "~/components/link";
 
-import logo from "../marketing/logo.svg";
+import logo from "../marketing/logo.svg?no-inline";
 
 export interface HeaderProps {
   className?: string;
@@ -22,7 +22,13 @@ export function Header({ className, user, split }: HeaderProps) {
     >
       <div className="container flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
         <Link to={href("/")} variant="plain" className="shrink-0">
-          <img src={logo} alt="Tasan.app" className="h-6 w-6" />
+          <img
+            src={logo}
+            alt="Tasan"
+            width={212}
+            height={48}
+            className="h-6 w-auto dark:brightness-0 dark:invert"
+          />
         </Link>
         <NavLink to={href("/splits")} className="shrink-0">
           Splits

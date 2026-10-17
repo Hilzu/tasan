@@ -2,17 +2,22 @@ import { href } from "react-router";
 
 import { Link } from "~/components/link";
 
-import logo from "./logo.svg";
+import logo from "./logo.svg?no-inline";
 
 export const LandingPage = () => {
   return (
     <div className="flex flex-col px-4">
       <div className="mx-auto pt-8 text-center">
-        <img src={logo} alt="Tasan.app" className="mx-auto h-24 w-24" />
-        <h1 className="pt-1 text-4xl font-extrabold text-slate-800 dark:text-slate-300">
-          Tasan.app
+        <h1>
+          <img
+            src={logo}
+            alt="Tasan"
+            width={212}
+            height={48}
+            className="mx-auto h-auto w-64 max-w-full dark:brightness-0 dark:invert"
+          />
         </h1>
-        <p>Split bills with your friends</p>
+        <p className="mt-4">Split bills with your friends</p>
       </div>
       <div className="mx-auto pt-4">
         <Link to={href("/splits")}>View your splits</Link>

@@ -54,7 +54,7 @@ export function ActionsDropdown({ label, items }: ActionsDropdownProps) {
     <details ref={ref} className="relative">
       <summary
         aria-label={label}
-        className="outline-brand-700 flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded hover:bg-gray-100 focus-visible:outline-2 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
+        className="outline-brand-700 dark:outline-brand-300 flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded hover:bg-gray-100 focus-visible:outline-2 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
       >
         <svg
           width="20"
