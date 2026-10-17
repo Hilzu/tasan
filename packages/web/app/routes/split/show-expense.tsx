@@ -19,6 +19,7 @@ import { ActionsDropdown } from "~/components/actions-dropdown";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
+import { FieldError } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { showInCurrency } from "~/domain/show-in-currency";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
@@ -73,7 +74,11 @@ export default function ShowExpense(props: Route.ComponentProps) {
   return <ExpenseDetails key={props.params.expenseID} {...props} />;
 }
 
-function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
+function ExpenseDetails({
+  params,
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
   const { expenseID } = params;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const submit = useSubmit();
@@ -145,6 +150,17 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
           ],
         ]}
       />
+      {actionData?.errors && (
+        <FieldError
+          errors={
+            actionData.errors.formErrors.length ?
+              actionData.errors.formErrors
+            : [
+                "Unable to delete expense. Please refresh the page and try again.",
+              ]
+          }
+        />
+      )}
       {expense.updatedAt && (
         <p>
           Last updated <DateRender date={expense.updatedAt} /> by{" "}
@@ -187,7 +203,7 @@ function ExpenseDetails({ params, loaderData }: Route.ComponentProps) {
         }}
         onDelete={() => {
           setDeleteOpen(false);
-          submit({ operationID }, { method: "post" });
+          void submit({ operationID }, { method: "post" });
         }}
       />
     </Card>
