@@ -4,6 +4,11 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
+import {
+  type CognitoUserItem,
+  cognitoUserItemSchema,
+  parseItem,
+} from "../items.js";
 
 export interface CognitoUser {
   cognitoID: CognitoUserID;
@@ -11,14 +16,7 @@ export interface CognitoUser {
   createdAt: Date;
 }
 
-interface CognitoUserItem {
-  pk: CognitoUserID;
-  sk: UserID;
-  createdAt: string;
-}
-
-const fromItem = (Item: Record<string, unknown>): CognitoUser => {
-  const item = Item as unknown as CognitoUserItem;
+const fromItem = (item: CognitoUserItem): CognitoUser => {
   return {
     cognitoID: item.pk,
     userID: item.sk,
@@ -26,9 +24,15 @@ const fromItem = (Item: Record<string, unknown>): CognitoUser => {
   };
 };
 
+const toItem = (user: CognitoUser): CognitoUserItem => ({
+  pk: user.cognitoID,
+  sk: user.userID,
+  createdAt: user.createdAt.toISOString(),
+});
+
 export const getCognitoUser = captureAsync(
   "getCognitoUser",
-  async (cognitoID: string): Promise<CognitoUser | undefined> => {
+  async (cognitoID: CognitoUserID): Promise<CognitoUser | undefined> => {
     const cmd = new QueryCommand({
       TableName,
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
@@ -40,7 +44,7 @@ export const getCognitoUser = captureAsync(
     });
     const { Items } = await documentClient().send(cmd);
     if (!Items?.length) return;
-    return fromItem(Items[0]);
+    return fromItem(parseItem(cognitoUserItemSchema, Items[0], "cognito-user"));
   },
 );
 
@@ -55,11 +59,7 @@ export const ensureCognitoUser = captureAsync(
     const userID = genUserID();
     const cmd = new PutCommand({
       TableName,
-      Item: {
-        pk: cognitoID,
-        sk: userID,
-        createdAt: new Date().toISOString(),
-      },
+      Item: toItem({ cognitoID, userID, createdAt: new Date() }),
     });
     await documentClient().send(cmd);
     return { userID };

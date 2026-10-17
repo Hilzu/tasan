@@ -3,11 +3,25 @@ import { GetCommand, paginateQuery, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
-import type { ExpenseID, OperationID, SplitID, UserID } from "@tasan/common/id";
+import {
+  asUserID,
+  type ExpenseID,
+  type OperationID,
+  type SplitID,
+  type UserID,
+} from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
+import {
+  expenseIDOf,
+  expenseOperationKey,
+  operationIDOf,
+  parseItem,
+  type SplitExpenseItem,
+  splitExpenseItemSchema,
+} from "../items.js";
 
 export interface SplitExpense {
   id: ExpenseID;
@@ -24,34 +38,11 @@ export interface SplitExpense {
   participants: Map<UserID, D.Decimal>;
 }
 
-interface SplitExpenseItem {
-  pk: SplitID;
-  sk: string;
-  name: string;
-  createdAt: string;
-  createdBy: UserID;
-  amount: number;
-  currency: CurrencySymbol;
-  conversionRate?: number;
-  payer: UserID;
-  participants: Record<UserID, number>;
-  updatedAt?: string;
-  updatedBy?: UserID;
-  deletedAt?: string;
-  deletedBy?: UserID;
-}
-
 interface ExpenseReadOptions {
   consistentRead?: boolean;
 }
 
-const expenseIDOf = (item: SplitExpenseItem) =>
-  item.sk.split("#")[0] as ExpenseID;
-const operationIDOf = (item: SplitExpenseItem) =>
-  item.sk.split("#")[1] as OperationID | undefined;
-
-export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
-  const item = Item as unknown as SplitExpenseItem;
+const fromItem = (item: SplitExpenseItem): SplitExpense => {
   const fractionDigits = currencies[item.currency].fractions;
   return {
     id: expenseIDOf(item),
@@ -69,7 +60,7 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
       Object.entries(item.participants)
         .sort(compareByKey)
         .map(([id, amount]) => [
-          id as UserID,
+          asUserID(id),
           D.create(amount, fractionDigits),
         ]),
     ),
@@ -78,10 +69,9 @@ export const fromItem = (Item: Record<string, unknown>): SplitExpense => {
 
 // A tombstone always wins, regardless of its operation ID or arrival order.
 // Otherwise creation is the baseline and the greatest operation ID wins.
-const latestItems = (items: Record<string, unknown>[]) => {
+const latestItems = (items: SplitExpenseItem[]) => {
   const latest = new Map<ExpenseID, SplitExpenseItem>();
-  for (const raw of items) {
-    const item = raw as unknown as SplitExpenseItem;
+  for (const item of items) {
     const id = expenseIDOf(item);
     const current = latest.get(id);
     if (
@@ -95,9 +85,13 @@ const latestItems = (items: Record<string, unknown>[]) => {
 };
 
 export const expensesFromItems = (items: Record<string, unknown>[]) =>
-  latestItems(items)
+  latestItems(
+    items.map((item) =>
+      parseItem(splitExpenseItemSchema, item, "split-expense"),
+    ),
+  )
     .filter((item) => !item.deletedAt)
-    .map((item) => fromItem({ ...item }));
+    .map(fromItem);
 
 export class ExpenseIDConflictError extends Error {
   constructor() {
@@ -132,10 +126,12 @@ const getItem = async (
       ConsistentRead: options.consistentRead ?? false,
     }),
   );
-  return Item as SplitExpenseItem | undefined;
+  return Item ?
+      parseItem(splitExpenseItemSchema, Item, "split-expense")
+    : undefined;
 };
 
-export const findExpenseCreation = async (
+const lookupExpenseCreation = async (
   splitID: SplitID,
   id: ExpenseID,
   actorID: UserID,
@@ -146,6 +142,12 @@ export const findExpenseCreation = async (
   if (item.createdBy !== actorID) throw new ExpenseIDConflictError();
   return { id };
 };
+
+export const findExpenseCreation = (
+  splitID: SplitID,
+  id: ExpenseID,
+  actorID: UserID,
+) => lookupExpenseCreation(splitID, id, actorID);
 
 export type CreateSplitExpense = Omit<
   SplitExpense,
@@ -168,11 +170,10 @@ const storedChanges = (expense: EditSplitExpense) => ({
 });
 
 const insertItem = (Item: SplitExpenseItem) => {
-  if (Item.conversionRate === undefined) delete Item.conversionRate;
   return documentClient().send(
     new PutCommand({
       TableName,
-      Item,
+      Item: parseItem(splitExpenseItemSchema, Item, "split-expense"),
       ConditionExpression: "attribute_not_exists(pk)",
     }),
   );
@@ -191,7 +192,7 @@ export const createSplitExpense = captureAsync(
       });
     } catch (error) {
       if (!(error instanceof ConditionalCheckFailedException)) throw error;
-      const existing = await findExpenseCreation(
+      const existing = await lookupExpenseCreation(
         expense.splitID,
         expense.id,
         expense.createdBy,
@@ -205,7 +206,7 @@ export const createSplitExpense = captureAsync(
 );
 
 const expenseItems = async (splitID: SplitID, expenseID: ExpenseID) => {
-  const items: Record<string, unknown>[] = [];
+  const items: SplitExpenseItem[] = [];
   for await (const page of paginateQuery(
     { client: documentClient() },
     {
@@ -215,12 +216,19 @@ const expenseItems = async (splitID: SplitID, expenseID: ExpenseID) => {
       ConsistentRead: true,
     },
   ))
-    items.push(...(page.Items ?? []));
+    items.push(
+      ...(page.Items ?? []).map((item) =>
+        parseItem(splitExpenseItemSchema, item, "split-expense"),
+      ),
+    );
   return items;
 };
 
 export const getSplitExpense = async (splitID: SplitID, expenseID: ExpenseID) =>
-  expensesFromItems(await expenseItems(splitID, expenseID)).at(0);
+  latestItems(await expenseItems(splitID, expenseID))
+    .filter((item) => !item.deletedAt)
+    .map(fromItem)
+    .at(0);
 
 type RevisionAction = "created" | "edited" | "deleted";
 export interface ExpenseRevision {
@@ -243,9 +251,13 @@ export const findExpenseOperation = async (
   actorID: UserID,
   action: "edited" | "deleted",
 ): Promise<{ id: ExpenseID } | undefined> => {
-  const item = await getItem(splitID, `${expenseID}#${operationID}`, {
-    consistentRead: true,
-  });
+  const item = await getItem(
+    splitID,
+    expenseOperationKey(expenseID, operationID),
+    {
+      consistentRead: true,
+    },
+  );
   if (!item) return;
   if (item.updatedBy !== actorID || actionOf(item) !== action)
     throw new ExpenseConflictError();
@@ -256,14 +268,13 @@ export const findExpenseRevisions = async (
   splitID: SplitID,
   expenseID: ExpenseID,
 ): Promise<ExpenseRevision[]> =>
-  (await expenseItems(splitID, expenseID)).map((raw) => {
-    const item = raw as unknown as SplitExpenseItem;
+  (await expenseItems(splitID, expenseID)).map((item) => {
     return {
       operationID: operationIDOf(item),
       action: actionOf(item),
       recordedAt: new Date(item.updatedAt ?? item.createdAt),
       recordedBy: item.updatedBy ?? item.createdBy,
-      expense: fromItem(raw),
+      expense: fromItem(item),
     };
   });
 
@@ -296,7 +307,7 @@ const changeSplitExpense = async (
     if (accepted) return accepted;
     throw new ExpenseNotFoundError();
   }
-  const changes = await prepareChanges?.(fromItem({ ...current }));
+  const changes = await prepareChanges?.(fromItem(current));
   const now = new Date().toISOString();
   // Never replace the creation or another operation. A concurrent delete may
   // arrive after this read; the read reducer will still keep it terminal.
@@ -305,7 +316,7 @@ const changeSplitExpense = async (
     ...(changes ?
       storedChanges(changes)
     : { deletedAt: now, deletedBy: actorID }),
-    sk: `${expenseID}#${operationID}`,
+    sk: expenseOperationKey(expenseID, operationID),
     updatedAt: now,
     updatedBy: actorID,
   };

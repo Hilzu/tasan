@@ -21,6 +21,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1073.0",
     "@aws-sdk/lib-dynamodb": "^3.1073.0",
-    "@tasan/common": "workspace:*"
+    "@tasan/common": "workspace:*",
+    "zod": "^4.4.3"
   }
 }

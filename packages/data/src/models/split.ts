@@ -6,18 +6,19 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { compareById } from "@tasan/common/compare";
 import type { CurrencySymbol } from "@tasan/common/currency";
-import {
-  asUserID,
-  genSplitID,
-  type SplitID,
-  type UserID,
-} from "@tasan/common/id";
+import { genSplitID, type SplitID, type UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
+import {
+  parseItem,
+  type SplitItem,
+  splitItemSchema,
+  splitUserItemSchema,
+} from "../items.js";
 import { expensesFromItems, type SplitExpense } from "./split-expense.js";
-import { findUserSplitIDs } from "./split-user.js";
+import { findUserSplitIDs, toItem as splitUserToItem } from "./split-user.js";
 
 export interface Split {
   id: SplitID;
@@ -27,19 +28,9 @@ export interface Split {
   currency: CurrencySymbol;
 }
 
-interface SplitItem {
-  pk: SplitID;
-  sk: SplitID;
-  createdAt: string;
-  createdBy: UserID;
-  name: string;
-  currency: CurrencySymbol;
-}
-
 type PrimaryKey = Pick<SplitItem, "pk" | "sk">;
 
-const fromItem = (Item: Record<string, unknown>): Split => {
-  const item = Item as unknown as SplitItem;
+const fromItem = (item: SplitItem): Split => {
   return {
     id: item.pk,
     name: item.name,
@@ -49,6 +40,15 @@ const fromItem = (Item: Record<string, unknown>): Split => {
   };
 };
 
+const toItem = (split: Split): SplitItem => ({
+  pk: split.id,
+  sk: split.id,
+  name: split.name,
+  currency: split.currency,
+  createdBy: split.createdBy,
+  createdAt: split.createdAt.toISOString(),
+});
+
 export type CreateSplit = Omit<Split, "id" | "createdAt">;
 
 /** Creates the split and its owner membership in a single transaction. */
@@ -56,26 +56,21 @@ export const createSplit = captureAsync(
   "createSplit",
   async (split: CreateSplit): Promise<{ id: SplitID }> => {
     const id = genSplitID();
-    const Item: SplitItem = {
-      pk: id,
-      sk: id,
-      createdAt: new Date().toISOString(),
-      createdBy: split.createdBy,
-      name: split.name,
-      currency: split.currency,
-    };
+    const Item = toItem({ ...split, id, createdAt: new Date() });
     const cmd = new TransactWriteCommand({
       TransactItems: [
         { Put: { TableName, Item } },
         {
           Put: {
             TableName,
-            Item: {
-              pk: id,
-              sk: split.createdBy,
-              createdAt: Item.createdAt,
-              createdBy: split.createdBy,
-            },
+            Item: splitUserToItem(
+              {
+                splitID: id,
+                userID: split.createdBy,
+                createdBy: split.createdBy,
+              },
+              Item.createdAt,
+            ),
           },
         },
       ],
@@ -94,7 +89,9 @@ export const getSplit = captureAsync(
     const { Item } = await documentClient().send(
       new GetCommand({ TableName, Key, ConsistentRead: true }),
     );
-    return Item ? fromItem(Item) : undefined;
+    return Item ?
+        fromItem(parseItem(splitItemSchema, Item, "split"))
+      : undefined;
   },
 );
 
@@ -116,7 +113,11 @@ export const findUsersSplits = captureAsync(
     const Items = Responses?.[TableName];
     if (!Items?.length) return [];
 
-    return Items.map(fromItem).sort(compareById).reverse();
+    return Items.map((item) =>
+      fromItem(parseItem(splitItemSchema, item, "split")),
+    )
+      .sort(compareById)
+      .reverse();
   },
 );
 
@@ -149,9 +150,10 @@ export const getSplitWithData = captureAsync(
     const expenseItems: Record<string, unknown>[] = [];
     for (const Item of Items) {
       if (typeof Item.sk !== "string") continue;
-      if (Item.sk === splitID && !Item.deletedAt) split = fromItem(Item);
+      if (Item.sk === splitID && !Item.deletedAt)
+        split = fromItem(parseItem(splitItemSchema, Item, "split"));
       else if (Item.sk.startsWith("usr_") && !Item.deletedAt)
-        userIDs.add(asUserID(Item.sk));
+        userIDs.add(parseItem(splitUserItemSchema, Item, "split-user").sk);
       else if (Item.sk.startsWith("exp_")) expenseItems.push(Item);
     }
     const expenses = expensesFromItems(expenseItems)

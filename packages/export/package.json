@@ -18,7 +18,7 @@
     "typescript": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1073.0",
-    "@tasan/common": "workspace:*"
+    "@tasan/common": "workspace:*",
+    "@tasan/data": "workspace:*"
   }
 }

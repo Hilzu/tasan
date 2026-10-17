@@ -9,6 +9,8 @@ export const dynamoClient = () => {
 
 let _documentClient: DynamoDBDocumentClient | undefined;
 export const documentClient = () => {
-  _documentClient ??= DynamoDBDocumentClient.from(dynamoClient());
+  _documentClient ??= DynamoDBDocumentClient.from(dynamoClient(), {
+    marshallOptions: { removeUndefinedValues: true },
+  });
   return _documentClient;
 };
