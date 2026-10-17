@@ -33,7 +33,7 @@ export const links: Route.LinksFunction = () => [
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useContext(NonceContext);
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="bg-brand-700 dark:bg-brand-950 h-full">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
