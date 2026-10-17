@@ -320,7 +320,12 @@ await test("split reads reduce snapshots across pages and exclude terminal delet
     createdAt: db.baseline.createdAt,
     createdBy: actorID,
   });
-  db.items.set("member", { pk: expense.splitID, sk: actorID });
+  db.items.set("member", {
+    pk: expense.splitID,
+    sk: actorID,
+    createdAt: db.baseline.createdAt,
+    createdBy: actorID,
+  });
   const second = { ...expense, id: genExpenseID(), name: "Train" };
   await createSplitExpense(second);
   await editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
@@ -497,4 +502,28 @@ await test("missing expenses and unrelated storage failures propagate", async ()
     () => createSplitExpense(expense),
     (caught) => caught === error,
   );
+});
+
+await test("decimal amounts and participant maps round-trip in currencies with fractional units", async () => {
+  storage();
+  const otherUser = genUserID();
+  const value = {
+    ...expense,
+    currency: "EUR" as const,
+    amount: D.create(12.34, 2),
+    conversionRate: 163.25,
+    participants: new Map([
+      [actorID, D.create(6.17, 2)],
+      [otherUser, D.create(6.17, 2)],
+    ]),
+  };
+  await createSplitExpense(value);
+  const restored = await getSplitExpense(value.splitID, value.id);
+  assert.ok(restored);
+  assert.deepEqual(restored.amount, value.amount);
+  assert.deepEqual(restored.participants, value.participants);
+  assert.equal(restored.conversionRate, value.conversionRate);
+  assert.ok(restored.createdAt instanceof Date);
+  assert.equal("pk" in restored, false);
+  assert.equal("sk" in restored, false);
 });

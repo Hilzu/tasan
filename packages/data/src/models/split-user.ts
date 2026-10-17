@@ -4,6 +4,11 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { reversedKeyIndexName, TableName } from "../config.js";
+import {
+  parseItem,
+  type SplitUserItem,
+  splitUserItemSchema,
+} from "../items.js";
 
 export interface SplitUser {
   userID: UserID;
@@ -11,17 +16,12 @@ export interface SplitUser {
   createdBy: UserID;
 }
 
-interface SplitUserItem {
-  pk: SplitID;
-  sk: UserID;
-  createdAt: string;
-  createdBy: UserID;
-}
-
 type PrimaryKey = Pick<SplitUserItem, "pk" | "sk">;
 
-const fromItem = (Item: Record<string, unknown>): SplitUser => {
-  const item = Item as unknown as SplitUserItem;
+// The reverse index projects keys only, not membership metadata.
+const keySchema = splitUserItemSchema.pick({ pk: true, sk: true });
+
+const fromItem = (item: SplitUserItem): SplitUser => {
   return {
     userID: item.sk,
     splitID: item.pk,
@@ -29,15 +29,20 @@ const fromItem = (Item: Record<string, unknown>): SplitUser => {
   };
 };
 
+export const toItem = (
+  splitUser: SplitUser,
+  createdAt = new Date().toISOString(),
+): SplitUserItem => ({
+  pk: splitUser.splitID,
+  sk: splitUser.userID,
+  createdAt,
+  createdBy: splitUser.createdBy,
+});
+
 export const createSplitUser = captureAsync(
   "createSplitUser",
   async (splitUser: SplitUser): Promise<void> => {
-    const Item: SplitUserItem = {
-      pk: splitUser.splitID,
-      sk: splitUser.userID,
-      createdAt: new Date().toISOString(),
-      createdBy: splitUser.createdBy,
-    };
+    const Item = toItem(splitUser);
 
     const cmd = new PutCommand({ TableName, Item });
     await documentClient().send(cmd);
@@ -57,7 +62,9 @@ export const findUserSplitIDs = captureAsync(
     const { Items } = await documentClient().send(cmd);
     if (!Items?.length) return [];
 
-    return Items.map((item) => (item as SplitUserItem).pk);
+    return Items.map(
+      (item) => parseItem(keySchema, item, "split membership key").pk,
+    );
   },
 );
 
@@ -68,7 +75,7 @@ export const getSplitUser = captureAsync(
     const cmd = new GetCommand({ TableName, Key });
     const { Item } = await documentClient().send(cmd);
     if (!Item) return;
-    return fromItem(Item);
+    return fromItem(parseItem(splitUserItemSchema, Item, "split-user"));
   },
 );
 
@@ -84,6 +91,8 @@ export const findSplitUsers = captureAsync(
     const { Items } = await documentClient().send(cmd);
     if (!Items?.length) return [];
 
-    return Items.map((item) => fromItem(item));
+    return Items.map((item) =>
+      fromItem(parseItem(splitUserItemSchema, item, "split-user")),
+    );
   },
 );

@@ -16,24 +16,36 @@ import { captureAsync } from "@tasan/common/tracing";
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { fromUnixTime, toUnixTime } from "../date.js";
+import {
+  type InviteSplitItem,
+  inviteSplitItemSchema,
+  parseItem,
+} from "../items.js";
 
 export interface InviteForSplit {
   id: InviteID;
   splitID: SplitID;
   createdBy: UserID;
-  /** Check expiry before use; DynamoDB TTL cleanup is asynchronous. */
+  /** Check expiry before use; expired invitations may still exist. */
   expiresAt: Date;
 }
 
-export interface InviteSplitItem {
-  pk: InviteID;
-  sk: SplitID;
-  createdAt: string;
-  createdBy: UserID;
-  expiresAt: number;
-}
-
 type PrimaryKey = Pick<InviteSplitItem, "pk" | "sk">;
+
+const toItem = (invite: InviteForSplit): InviteSplitItem => ({
+  pk: invite.id,
+  sk: invite.splitID,
+  createdAt: new Date().toISOString(),
+  createdBy: invite.createdBy,
+  expiresAt: toUnixTime(invite.expiresAt),
+});
+
+const fromItem = (item: InviteSplitItem): InviteForSplit => ({
+  id: item.pk,
+  splitID: item.sk,
+  createdBy: item.createdBy,
+  expiresAt: fromUnixTime(item.expiresAt),
+});
 
 export type CreateInviteForSplit = Omit<InviteForSplit, "id" | "expiresAt">;
 
@@ -46,13 +58,7 @@ export const createInviteForSplit = captureAsync(
     const id = genInviteID();
     const fiveDaysFromNow = new Date();
     fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
-    const Item: InviteSplitItem = {
-      pk: id,
-      sk: splitID,
-      createdAt: new Date().toISOString(),
-      createdBy,
-      expiresAt: toUnixTime(fiveDaysFromNow),
-    };
+    const Item = toItem({ id, splitID, createdBy, expiresAt: fiveDaysFromNow });
     const cmd = new PutCommand({ TableName, Item });
     await documentClient().send(cmd);
     return { id };
@@ -72,13 +78,8 @@ export const findInviteForSplit = captureAsync(
     });
     const { Items } = await documentClient().send(cmd);
     if (!Items?.length) return;
-    const [item] = Items as InviteSplitItem[];
-    return {
-      id: item.pk,
-      splitID: item.sk,
-      createdBy: item.createdBy,
-      expiresAt: fromUnixTime(item.expiresAt),
-    };
+    const item = parseItem(inviteSplitItemSchema, Items[0], "invite-split");
+    return fromItem(item);
   },
 );
 

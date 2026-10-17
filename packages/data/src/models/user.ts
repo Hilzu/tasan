@@ -4,6 +4,7 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
+import { parseItem, type UserItem, userItemSchema } from "../items.js";
 
 export interface User {
   id: UserID;
@@ -11,18 +12,9 @@ export interface User {
   email: string;
 }
 
-interface UserItem {
-  pk: UserID;
-  sk: UserID;
-  name: string;
-  createdAt: string;
-  email: string;
-}
-
 type PrimaryKey = Pick<UserItem, "pk" | "sk">;
 
-const fromItem = (Item: Record<string, unknown>): User => {
-  const item = Item as unknown as UserItem;
+const fromItem = (item: UserItem): User => {
   return {
     id: item.pk,
     name: item.name,
@@ -30,16 +22,18 @@ const fromItem = (Item: Record<string, unknown>): User => {
   };
 };
 
+const toItem = (user: User): UserItem => ({
+  pk: user.id,
+  sk: user.id,
+  name: user.name,
+  createdAt: new Date().toISOString(),
+  email: user.email,
+});
+
 export const putUser = captureAsync(
   "putUser",
   async (user: User): Promise<void> => {
-    const Item: UserItem = {
-      pk: user.id,
-      sk: user.id,
-      name: user.name,
-      createdAt: new Date().toISOString(),
-      email: user.email,
-    };
+    const Item = toItem(user);
     const cmd = new PutCommand({ TableName, Item });
     await documentClient().send(cmd);
   },
@@ -52,7 +46,7 @@ export const getUser = captureAsync(
     const cmd = new GetCommand({ TableName, Key });
     const { Item } = await documentClient().send(cmd);
     if (!Item) return;
-    return fromItem(Item);
+    return fromItem(parseItem(userItemSchema, Item, "user"));
   },
 );
 
@@ -73,6 +67,8 @@ export const getUsers = captureAsync(
     const { Responses } = await documentClient().send(cmd);
     const items = Responses?.[TableName];
     if (!items?.length) return [];
-    return items.map(fromItem);
+    return items.map((item) =>
+      fromItem(parseItem(userItemSchema, item, "user")),
+    );
   },
 );
