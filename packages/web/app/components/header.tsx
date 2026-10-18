@@ -2,6 +2,7 @@ import type { Split, User } from "@tasan/data";
 import classNames from "classnames";
 import { href } from "react-router";
 
+import { ActionsDropdown } from "~/components/actions-dropdown";
 import { Link, NavLink } from "~/components/link";
 
 import logo from "../marketing/logo.svg?no-inline";
@@ -44,11 +45,20 @@ export function Header({ className, user, split }: HeaderProps) {
         )}
         <div className="ml-auto shrink-0">
           {user ?
-            <div className="flex gap-1">
-              <p className="text-right">Hello, {user.name}!</p>
-              <Link to={href("/logout")}>Logout</Link>
-            </div>
-          : <Link to={href("/login")}>Log in / Sign up</Link>}
+            <ActionsDropdown
+              label={`Account menu for ${user.name}`}
+              heading={user.name}
+              trigger={
+                <span
+                  aria-hidden="true"
+                  className="bg-brand-100 text-brand-800 dark:bg-brand-800 dark:text-brand-100 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
+                >
+                  {Array.from(user.name.trim())[0]?.toUpperCase() || "?"}
+                </span>
+              }
+              items={[{ label: "Log out", to: href("/logout") }]}
+            />
+          : <Link to={href("/login")}>Log in</Link>}
         </div>
       </div>
     </header>
