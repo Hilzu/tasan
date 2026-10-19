@@ -7,6 +7,7 @@ import {
 
 export default [
   route("version", "routes/version.ts"),
+  route("error-report", "routes/error-report.ts"),
   layout("routes/layout.tsx", [
     index("routes/index.tsx"),
     route("login", "routes/login.tsx"),

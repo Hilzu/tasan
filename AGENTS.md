@@ -28,6 +28,13 @@ Workspace packages:
 
 Prefer the narrowest relevant check while iterating, then run `pnpm test` before handing off when practical.
 
+## Frontend verification
+
+- Test frontend changes in a browser against the running application. Exercise the affected interactions and relevant success and error states; automated tests and type checking do not replace browser testing.
+- For visual changes, capture and inspect screenshots of the affected views in all four combinations: mobile light mode, mobile dark mode, desktop light mode, and desktop dark mode.
+- Include these screenshots in the review handoff, with links or attachments, and identify the viewport sizes and color modes used. Capture relevant expanded, collapsed, or feedback states when the change affects them.
+- If browser testing or screenshot capture is blocked, report the specific blocker and which verification remains incomplete; do not claim it passed.
+
 ## Code conventions
 
 - Keep TypeScript strict and ESM-native. Use `import`/`export` and Node built-ins with the `node:` prefix.
@@ -50,6 +57,6 @@ Prefer the narrowest relevant check while iterating, then run `pnpm test` before
 - Keep changes scoped to the request and preserve unrelated working-tree modifications.
 - Do not add dependencies unless the existing platform cannot reasonably support the change. If one is needed, add it to the package that uses it with the appropriate `pnpm` command.
 - Never edit `pnpm-lock.yaml` manually. It may only be updated by `pnpm` commands.
-- Update documentation when commands, package responsibilities, configuration, or user-visible behavior change.
-- Keep READMEs focused on the most important information and setup instructions. Put implementation details in code or pull request descriptions.
+- Update relevant documentation when commands, package responsibilities, configuration, or user-visible behavior change; this does not mean every change needs a README update.
+- Limit READMEs to essential project information and setup instructions. Do not add feature-by-feature descriptions, implementation details, or routine usage documentation for individual UI features. Put implementation details in code comments or pull request descriptions instead.
 - In the handoff, summarize changed files and report the exact validation commands run, including any failures or checks that could not be run.
