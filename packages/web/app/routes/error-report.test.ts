@@ -70,7 +70,8 @@ await test("session check is private and does not submit a report", async () => 
   info.mock.resetCalls();
   for (const authenticated of [true, false]) {
     const response = loader(args({ authenticated, method: "GET" }));
-    assert.deepEqual(await response.json(), { authenticated });
+    assert.equal(response.status, authenticated ? 204 : 401);
+    assert.equal(await response.text(), "");
     assert.equal(response.headers.get("cache-control"), "no-store");
   }
   assert.equal(info.mock.callCount(), 0);
