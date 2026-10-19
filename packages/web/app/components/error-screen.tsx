@@ -175,10 +175,10 @@ export function ErrorScreen({ error }: { error: unknown }) {
                   />
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Sends your description, the technical details above, and the
-                  app version to Tasan’s diagnostic logs in AWS. The report is
-                  linked to your signed-in account. Please don’t include
-                  passwords or sensitive information.
+                  Sends your description, technical error details, and app
+                  version to help fix the problem. The report is linked to your
+                  account. Please don’t include passwords or sensitive
+                  information.
                 </p>
                 {failure && (
                   <p
