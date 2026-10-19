@@ -18,7 +18,7 @@ export function Header({ className, user, split }: HeaderProps) {
     <header
       className={classNames(
         className,
-        "border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900",
+        "border-b border-gray-200 bg-gray-50 pt-[env(safe-area-inset-top)] dark:border-gray-700 dark:bg-gray-900",
       )}
     >
       <div className="container flex flex-wrap items-center gap-x-4 gap-y-2 py-4">

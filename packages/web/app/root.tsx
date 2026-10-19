@@ -36,22 +36,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" className="bg-brand-700 dark:bg-brand-950 h-full">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
         <meta
           name="theme-color"
-          content="#faf8f2"
+          content="#155b52"
           media="(prefers-color-scheme: light)"
         />
         <meta
           name="theme-color"
-          content="#252727"
+          content="#082621"
           media="(prefers-color-scheme: dark)"
         />
         <Meta />
         <Links nonce={nonce} />
       </head>
-      <body className="bg-brand-canvas min-h-full text-gray-800 antialiased dark:bg-gray-950 dark:text-gray-100">
-        {children}
+      <body className="bg-brand-700 dark:bg-brand-950 min-h-full text-gray-800 antialiased dark:text-gray-100">
+        <div className="bg-brand-canvas min-h-screen dark:bg-gray-950">
+          {children}
+        </div>
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
       </body>
