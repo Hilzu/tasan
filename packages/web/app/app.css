@@ -49,7 +49,8 @@
 
 @utility container {
   margin-inline: auto;
-  padding-inline: 2rem;
+  padding-left: max(2rem, env(safe-area-inset-left));
+  padding-right: max(2rem, env(safe-area-inset-right));
   max-width: var(--container-6xl);
 }
 

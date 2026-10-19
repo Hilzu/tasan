@@ -11,7 +11,7 @@ export function Footer({ className }: FooterProps) {
     <footer
       className={classNames(
         className,
-        "bg-brand-700 dark:bg-brand-950 py-8 text-white",
+        "bg-brand-700 dark:bg-brand-950 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] text-white",
       )}
     >
       <div className="container space-y-2">
