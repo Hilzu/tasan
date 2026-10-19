@@ -38,14 +38,14 @@ afterEach(() => {
   mock.restoreAll();
 });
 
-await test("existing fixed-key mappings use a strong read without querying or writing", async () => {
+await test("existing fixed-key mappings use an eventual read without querying or writing", async () => {
   const send = mock.method(
     DynamoDBDocumentClient.prototype,
     "send",
     (command: unknown) => {
       assert.ok(command instanceof GetCommand);
       assert.deepEqual(command.input.Key, { pk: cognitoID, sk: cognitoID });
-      assert.equal(command.input.ConsistentRead, true);
+      assert.equal(command.input.ConsistentRead, false);
       return Promise.resolve({ Item: canonical });
     },
   );
@@ -117,8 +117,8 @@ await test("a migration between the initial get and legacy query is found by a s
   let reads = 0;
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
     if (command instanceof GetCommand) {
-      assert.equal(command.input.ConsistentRead, true);
       reads++;
+      assert.equal(command.input.ConsistentRead, reads > 1);
       return Promise.resolve({ Item: migrated ? canonical : undefined });
     }
     assert.ok(command instanceof QueryCommand);
@@ -151,7 +151,7 @@ await test("concurrent legacy migrations in one replica preserve one mapping and
     "send",
     async (command: unknown) => {
       if (command instanceof GetCommand) {
-        assert.equal(command.input.ConsistentRead, true);
+        assert.equal(command.input.ConsistentRead, persisted !== undefined);
         return { Item: persisted };
       }
       if (command instanceof QueryCommand) {
@@ -200,7 +200,7 @@ await test("a mapping created during legacy lookup wins over the migration candi
   let reads = 0;
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
     if (command instanceof GetCommand) {
-      assert.equal(command.input.ConsistentRead, true);
+      assert.equal(command.input.ConsistentRead, reads > 0);
       return Promise.resolve(++reads === 1 ? {} : { Item: winner });
     }
     if (command instanceof QueryCommand)
@@ -244,6 +244,185 @@ await test("migration failures propagate without allocating a different user", a
   }
 });
 
+await test("migration retries transaction conflicts on either item and preserves the original identity", async () => {
+  mock.method(Math, "random", () => 0);
+  for (const reasons of [
+    [{ Code: "TransactionConflict" }, { Code: "None" }],
+    [{ Code: "None" }, { Code: "TransactionConflict" }],
+    [{ Code: "TransactionConflict" }, { Code: "TransactionConflict" }],
+  ]) {
+    let attempts = 0;
+    const reads: (boolean | undefined)[] = [];
+    const error = new TransactionCanceledException({
+      $metadata: {},
+      message: "Another migration is in progress",
+      CancellationReasons: reasons,
+    });
+    const send = mock.method(
+      DynamoDBDocumentClient.prototype,
+      "send",
+      (command: unknown) => {
+        if (command instanceof GetCommand) {
+          reads.push(command.input.ConsistentRead);
+          return Promise.resolve({});
+        }
+        if (command instanceof QueryCommand) {
+          assert.equal(command.input.ConsistentRead, true);
+          return Promise.resolve({
+            Items: [{ pk: cognitoID, sk: userID, createdAt }],
+          });
+        }
+        assert.ok(command instanceof TransactWriteCommand);
+        assert.deepEqual(
+          command.input.TransactItems?.[0]?.Put?.Item,
+          canonical,
+        );
+        assert.deepEqual(command.input.TransactItems[1]?.Delete?.Key, {
+          pk: cognitoID,
+          sk: userID,
+        });
+        return ++attempts === 1 ? Promise.reject(error) : Promise.resolve({});
+      },
+    );
+    assert.deepEqual(await ensureCognitoUser({ cognitoID }), { userID });
+    assert.equal(attempts, 2);
+    assert.deepEqual(reads, [false, true]);
+    send.mock.restore();
+  }
+});
+
+await test("a committed competing migration is returned after an in-flight conflict", async () => {
+  mock.method(Math, "random", () => 0);
+  const winner = { ...canonical, userID: genUserID() };
+  let committed = false;
+  let attempts = 0;
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof GetCommand) {
+      assert.equal(command.input.ConsistentRead, committed);
+      return Promise.resolve({ Item: committed ? winner : undefined });
+    }
+    if (command instanceof QueryCommand)
+      return Promise.resolve({
+        Items: [{ pk: cognitoID, sk: userID, createdAt }],
+      });
+    assert.ok(command instanceof TransactWriteCommand);
+    attempts++;
+    committed = true;
+    return Promise.reject(
+      new TransactionCanceledException({
+        $metadata: {},
+        message: "Competing migration",
+        CancellationReasons: [
+          { Code: "TransactionConflict" },
+          { Code: "None" },
+        ],
+      }),
+    );
+  });
+  assert.deepEqual(await ensureCognitoUser({ cognitoID }), {
+    userID: winner.userID,
+  });
+  assert.equal(attempts, 1);
+});
+
+await test("migration retries are bounded and never fall through to new-user creation", async () => {
+  mock.method(Math, "random", () => 0);
+  const error = new TransactionCanceledException({
+    $metadata: {},
+    message: "Persistent conflict",
+    CancellationReasons: [{ Code: "TransactionConflict" }, { Code: "None" }],
+  });
+  let attempts = 0;
+  const reads: (boolean | undefined)[] = [];
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof GetCommand) {
+      reads.push(command.input.ConsistentRead);
+      return Promise.resolve({});
+    }
+    if (command instanceof QueryCommand)
+      return Promise.resolve({
+        Items: [{ pk: cognitoID, sk: userID, createdAt }],
+      });
+    assert.ok(command instanceof TransactWriteCommand);
+    attempts++;
+    return Promise.reject(error);
+  });
+  await assert.rejects(ensureCognitoUser({ cognitoID }), (e) => e === error);
+  assert.equal(attempts, 6);
+  assert.deepEqual(reads, [false, ...Array<boolean>(6).fill(true)]);
+});
+
+await test("a migration winner committed at the retry limit is still returned", async () => {
+  mock.method(Math, "random", () => 0);
+  let attempts = 0;
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof GetCommand) {
+      if (attempts > 0) assert.equal(command.input.ConsistentRead, true);
+      return Promise.resolve({ Item: attempts === 6 ? canonical : undefined });
+    }
+    if (command instanceof QueryCommand)
+      return Promise.resolve({
+        Items: [{ pk: cognitoID, sk: userID, createdAt }],
+      });
+    assert.ok(command instanceof TransactWriteCommand);
+    attempts++;
+    return Promise.reject(
+      new TransactionCanceledException({
+        $metadata: {},
+        message: "Migration in progress",
+        CancellationReasons: [
+          { Code: "TransactionConflict" },
+          { Code: "None" },
+        ],
+      }),
+    );
+  });
+  assert.deepEqual(await ensureCognitoUser({ cognitoID }), { userID });
+  assert.equal(attempts, 6);
+});
+
+await test("a stale initial lookup is recovered before an existing identity can be recreated", async () => {
+  const reads: (boolean | undefined)[] = [];
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof GetCommand) {
+      reads.push(command.input.ConsistentRead);
+      return Promise.resolve({
+        Item: command.input.ConsistentRead ? canonical : undefined,
+      });
+    }
+    assert.ok(command instanceof QueryCommand);
+    assert.equal(command.input.ConsistentRead, true);
+    return Promise.resolve({ Items: [] });
+  });
+  assert.deepEqual(await ensureCognitoUser({ cognitoID }), { userID });
+  assert.deepEqual(reads, [false, true]);
+});
+
+await test("creation conflicts strongly read the winning mapping directly", async () => {
+  const winner = { ...canonical, userID: genUserID() };
+  let committed = false;
+  const reads: (boolean | undefined)[] = [];
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof GetCommand) {
+      reads.push(command.input.ConsistentRead);
+      return Promise.resolve({
+        Item: committed && command.input.ConsistentRead ? winner : undefined,
+      });
+    }
+    if (command instanceof QueryCommand) {
+      assert.equal(committed, false);
+      return Promise.resolve({ Items: [] });
+    }
+    assert.ok(command instanceof PutCommand);
+    committed = true;
+    return Promise.reject(conditionalFailure());
+  });
+  assert.deepEqual(await ensureCognitoUser({ cognitoID }), {
+    userID: winner.userID,
+  });
+  assert.deepEqual(reads, [false, true, true]);
+});
+
 await test("a lost migration response can be retried without rewriting the mapping", async () => {
   const error = new Error("Response lost");
   let persisted: Record<string, unknown> | undefined;
@@ -281,7 +460,6 @@ await test("concurrent first logins in one replica all return the single persist
     "send",
     async (command: unknown) => {
       if (command instanceof GetCommand) {
-        assert.equal(command.input.ConsistentRead, true);
         return { Item: records[0] };
       }
       if (command instanceof QueryCommand) {
@@ -377,9 +555,9 @@ await test("a conditional conflict with no readable winner propagates the confli
   await assert.rejects(ensureCognitoUser({ cognitoID }), (e) => e === error);
 });
 
-await test("migration transaction conflicts, source conflicts and missing cancellation reasons propagate", async () => {
+await test("non-retryable migration failures propagate without retrying", async () => {
   for (const reasons of [
-    [{ Code: "TransactionConflict" }, { Code: "None" }],
+    [{ Code: "TransactionConflict" }, { Code: "ValidationError" }],
     [{ Code: "None" }, { Code: "ConditionalCheckFailed" }],
     [],
   ]) {
