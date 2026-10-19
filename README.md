@@ -81,6 +81,19 @@ To run a command for one package, use a pnpm filter. For example:
 pnpm --filter @tasan/web test
 ```
 
+## Error reports
+
+Signed-in users can send a report from the error screen, optionally describing
+what they were doing. Technical details are collapsed by default. Nothing is
+reported automatically. Reports include the displayed error details, route
+identifier, app version, and description, and are linked to the signed-in account.
+Server exception details remain in server logs when production error sanitization
+prevents the browser from seeing them.
+
+Reports use the existing application logs in CloudWatch; filter for
+`event = "frontend_error_report"` or search for the report reference shown after
+submission. No additional service or infrastructure is required.
+
 ## Infrastructure
 
 Infrastructure is managed from `packages/infra`. See the [infrastructure README](./packages/infra/README.md) for AWS authentication and deployment setup. Deployments modify live AWS resources and should only be run intentionally.
