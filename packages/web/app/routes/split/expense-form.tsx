@@ -63,18 +63,26 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   }>();
   const actionData = fetcher.data;
   const pending = fetcher.state !== "idle";
-  const [submissionAttempt, setSubmissionAttempt] = useState(0);
-  const [timedOutAttempt, setTimedOutAttempt] = useState<number>();
-  const timedOut = pending && timedOutAttempt === submissionAttempt;
+  const [timedOut, setTimedOut] = useState(false);
+  const resetFetcher = fetcher.reset;
   useEffect(() => {
     if (expense || !pending) return;
     const timeout = setTimeout(() => {
-      setTimedOutAttempt(submissionAttempt);
+      // Reset aborts the request and returns the fetcher to idle. Keep the
+      // expense ID so a retry deduplicates any write that already committed.
+      resetFetcher();
+      setTimedOut(true);
     }, creationTimeoutMs);
     return () => {
       clearTimeout(timeout);
     };
-  }, [expense, pending, submissionAttempt]);
+  }, [expense, pending, resetFetcher]);
+  const formErrors =
+    timedOut ?
+      [
+        "Saving timed out. You can retry safely; the expense will only be created once.",
+      ]
+    : actionData?.errors.formErrors;
   const [submissionID, setSubmissionID] = useState("");
   useEffect(() => {
     setSubmissionID(expense ? genOperationID() : genExpenseID());
@@ -179,13 +187,11 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         method="post"
         className="max-w-md space-y-2"
         onSubmit={(event) => {
-          if (!valid || !submissionID || (pending && !timedOut)) {
+          if (!valid || !submissionID || pending) {
             event.preventDefault();
             return;
           }
-          // Retrying with the same ID deduplicates a save whose response was lost.
-          // A new fetcher submission supersedes the previous pending request.
-          setSubmissionAttempt((attempt) => attempt + 1);
+          setTimedOut(false);
         }}
       >
         {expense ?
@@ -486,27 +492,20 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         <Button
           type="submit"
           className="mt-4"
-          disabled={(pending && !timedOut) || !submissionID || !valid}
+          disabled={pending || !submissionID || !valid}
         >
-          {timedOut ?
-            "Retry"
-          : pending ?
+          {pending ?
             "Saving..."
+          : timedOut ?
+            "Retry"
           : expense ?
             "Save changes"
           : "Create"}
         </Button>
-        {timedOut && (
+        {formErrors && (
           <div role="alert">
-            <FieldError
-              errors={[
-                "Saving is taking longer than expected. You can retry safely; the expense will only be created once.",
-              ]}
-            />
+            <FieldError errors={formErrors} />
           </div>
-        )}
-        {actionData?.errors.formErrors && (
-          <FieldError errors={actionData.errors.formErrors} />
         )}
       </fetcher.Form>
     </div>
