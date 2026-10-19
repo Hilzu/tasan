@@ -48,11 +48,22 @@ export const userItemSchema = z
   .refine((item) => item.pk === item.sk);
 export type UserItem = z.infer<typeof userItemSchema>;
 
-export const cognitoUserItemSchema = z.object({
-  pk: cognitoIDSchema,
-  sk: userIDSchema,
-  createdAt: timestamp,
-});
+export const cognitoUserItemSchema = z.union([
+  z
+    .object({
+      pk: cognitoIDSchema,
+      sk: cognitoIDSchema,
+      userID: userIDSchema,
+      createdAt: timestamp,
+    })
+    .refine((item) => item.pk === item.sk),
+  // Existing mappings keep their original user ID and creation timestamp.
+  z.object({
+    pk: cognitoIDSchema,
+    sk: userIDSchema,
+    createdAt: timestamp,
+  }),
+]);
 export type CognitoUserItem = z.infer<typeof cognitoUserItemSchema>;
 
 export const sessionItemSchema = z

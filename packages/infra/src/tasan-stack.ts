@@ -146,6 +146,7 @@ export class TasanStack extends Stack {
         NODE_OPTIONS: "--enable-source-maps",
         NODE_ENV: "production",
         TABLE_NAME: appTable.tableName,
+        COGNITO_MAPPING_REGION: this.region,
         ORIGIN_URL: "https://tasan.app",
         AUTH_SERVER_URL: userPool.userPoolProviderUrl,
         AUTH_CLIENT_ID: userPoolWebClient.userPoolClientId,

@@ -14,6 +14,17 @@ The package requires `TABLE_NAME` to contain the DynamoDB table name. AWS creden
 
 Local setup is documented in the [root README](../../README.md).
 
+Cognito identity mappings use a fixed key and conditional creation so concurrent
+first logins resolve to the same user. Existing mappings remain readable without
+a migration. For multi-region deployments, set `COGNITO_MAPPING_REGION` to the
+same table region in every application replica: conditional writes only arbitrate
+within a region. CDK configures Frankfurt as this authority; other persistence
+operations continue using their local replica. Local development can leave this
+variable unset to use the default client and endpoint.
+
+New mappings atomically include a legacy-format pointer so older application
+versions can still resolve these users during deployments or rollbacks.
+
 ## Commands
 
 - `pnpm build` — compile the package.
