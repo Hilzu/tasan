@@ -8,7 +8,11 @@ import { TableName } from "./config.js";
 const batchSize = 100;
 const maxRetries = 5;
 
-/** Read every requested key, or fail rather than return a throttled partial result. */
+/**
+ * Reads at most 100 keys per request and retries unprocessed keys up to five times
+ * with exponential backoff and jitter. Exhausted retries fail the operation
+ * instead of returning incomplete data; records that do not exist remain omitted.
+ */
 export const batchGetItems = async (
   keys: readonly { pk: string; sk: string }[],
 ): Promise<Record<string, unknown>[]> => {
