@@ -42,6 +42,8 @@ const allocationModes: { value: AllocationMode; label: string }[] = [
   { value: "shares", label: "Shares and adjustments" },
 ];
 
+const saveTimeoutMs = 30_000;
+
 interface ShareFormInput {
   shares: string;
   adjustment: AmountInput;
@@ -60,6 +62,25 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
     errors: { formErrors: string[]; fieldErrors: Record<string, string[]> };
   }>();
   const actionData = fetcher.data;
+  const pending = fetcher.state !== "idle";
+  const [timedOut, setTimedOut] = useState(false);
+  const resetFetcher = fetcher.reset;
+  useEffect(() => {
+    if (!pending) return;
+    const timeout = setTimeout(() => {
+      // Reset aborts the request and returns the fetcher to idle. Keep the
+      // submission ID so a retry deduplicates any write that already committed.
+      resetFetcher();
+      setTimedOut(true);
+    }, saveTimeoutMs);
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [pending, resetFetcher]);
+  const formErrors =
+    timedOut ?
+      ["Saving timed out. You can safely retry."]
+    : actionData?.errors.formErrors;
   const [submissionID, setSubmissionID] = useState("");
   useEffect(() => {
     setSubmissionID(expense ? genOperationID() : genExpenseID());
@@ -164,7 +185,11 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         method="post"
         className="max-w-md space-y-2"
         onSubmit={(event) => {
-          if (!valid) event.preventDefault();
+          if (!valid || !submissionID || pending) {
+            event.preventDefault();
+            return;
+          }
+          setTimedOut(false);
         }}
       >
         {expense ?
@@ -465,16 +490,20 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         <Button
           type="submit"
           className="mt-4"
-          disabled={fetcher.state !== "idle" || !submissionID || !valid}
+          disabled={pending || !submissionID || !valid}
         >
-          {fetcher.state === "submitting" ?
+          {pending ?
             "Saving..."
+          : timedOut ?
+            "Retry"
           : expense ?
             "Save changes"
           : "Create"}
         </Button>
-        {actionData?.errors.formErrors && (
-          <FieldError errors={actionData.errors.formErrors} />
+        {formErrors && (
+          <div role="alert">
+            <FieldError errors={formErrors} />
+          </div>
         )}
       </fetcher.Form>
     </div>
