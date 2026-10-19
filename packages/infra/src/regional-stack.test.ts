@@ -36,7 +36,12 @@ await test("Singapore pins identity mapping to Frankfurt with permissions limite
         Statement: Match.arrayWith([
           Match.objectLike({
             Effect: "Allow",
-            Action: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem"],
+            Action: [
+              "dynamodb:GetItem",
+              "dynamodb:Query",
+              "dynamodb:PutItem",
+              "dynamodb:DeleteItem",
+            ],
             Resource:
               "arn:aws:dynamodb:eu-central-1:412381763181:table/TasanAppTable",
             Condition: {

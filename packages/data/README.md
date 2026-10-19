@@ -16,15 +16,15 @@ Local setup is documented in the [root README](../../README.md).
 
 Cognito identity mappings use a fixed key and conditional creation so concurrent
 first logins resolve to the same user. Legacy mappings are upgraded automatically
-when resolved, preserving their user IDs and creation timestamps. For multi-region
-deployments, set `COGNITO_MAPPING_REGION` to the
-same table region in every application replica: conditional writes only arbitrate
-within a region. CDK configures Frankfurt as this authority; other persistence
-operations continue using their local replica. Local development can leave this
-variable unset to use the default client and endpoint.
+when resolved, preserving their user IDs and creation timestamps. Migration
+atomically creates the new mapping and removes the old one. New users receive
+only the new mapping format.
 
-New mappings atomically include a legacy-format pointer so older application
-versions can still resolve these users during deployments or rollbacks.
+For multi-region deployments, set `COGNITO_MAPPING_REGION` to the same table
+region in every application replica: conditional writes only arbitrate within a
+region. CDK configures Frankfurt as this authority; other persistence operations
+continue using their local replica. Local development can leave this variable
+unset to use the default client and endpoint.
 
 ## Commands
 

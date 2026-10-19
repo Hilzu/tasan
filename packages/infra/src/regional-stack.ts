@@ -62,7 +62,12 @@ export class RegionalStack extends Stack {
 
     appFunction.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem"],
+        actions: [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+        ],
         resources: [
           this.formatArn({
             service: "dynamodb",

@@ -23,6 +23,11 @@ const userID = genUserID();
 const createdAt = "2025-01-01T00:00:00.000Z";
 const canonical = { pk: cognitoID, sk: cognitoID, userID, createdAt };
 const conditionalFailure = () =>
+  new ConditionalCheckFailedException({
+    $metadata: {},
+    message: "Mapping already exists",
+  });
+const migrationFailure = () =>
   new TransactionCanceledException({
     $metadata: {},
     message: "Mapping already exists",
@@ -53,8 +58,9 @@ await test("existing fixed-key mappings use a strong read without querying or wr
   });
 });
 
-await test("legacy mappings are upgraded once with their original user and creation time", async () => {
+await test("legacy mappings are atomically replaced once, preserving their user and creation time", async () => {
   const legacy = { pk: cognitoID, sk: userID, createdAt };
+  let legacyExists = true;
   let migrated: Record<string, unknown> | undefined;
   let writes = 0;
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
@@ -67,15 +73,30 @@ await test("legacy mappings are upgraded once with their original user and creat
         ":pk": cognitoID,
         ":sk": "usr_",
       });
-      return Promise.resolve({ Items: [legacy] });
+      return Promise.resolve({ Items: legacyExists ? [legacy] : [] });
     }
-    assert.ok(command instanceof PutCommand);
+    assert.ok(command instanceof TransactWriteCommand);
     assert.deepEqual(command.input, {
-      TableName: "TestTable",
-      Item: canonical,
-      ConditionExpression: "attribute_not_exists(pk)",
+      TransactItems: [
+        {
+          Put: {
+            TableName: "TestTable",
+            Item: canonical,
+            ConditionExpression: "attribute_not_exists(pk)",
+          },
+        },
+        {
+          Delete: {
+            TableName: "TestTable",
+            Key: { pk: cognitoID, sk: userID },
+            ConditionExpression: "createdAt = :createdAt",
+            ExpressionAttributeValues: { ":createdAt": createdAt },
+          },
+        },
+      ],
     });
-    migrated = structuredClone(command.input.Item);
+    migrated = structuredClone(command.input.TransactItems[0]?.Put?.Item);
+    legacyExists = false;
     writes++;
     return Promise.resolve({});
   });
@@ -88,12 +109,35 @@ await test("legacy mappings are upgraded once with their original user and creat
   assert.deepEqual(await ensureCognitoUser({ cognitoID }), { userID });
   assert.equal(writes, 1);
   assert.deepEqual(migrated, canonical);
-  assert.deepEqual(legacy, { pk: cognitoID, sk: userID, createdAt });
+  assert.equal(legacyExists, false);
+});
+
+await test("a migration between the initial get and legacy query is found by a second strong read", async () => {
+  let migrated = false;
+  let reads = 0;
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    if (command instanceof GetCommand) {
+      assert.equal(command.input.ConsistentRead, true);
+      reads++;
+      return Promise.resolve({ Item: migrated ? canonical : undefined });
+    }
+    assert.ok(command instanceof QueryCommand);
+    // The other request has atomically created the new mapping and deleted the old.
+    migrated = true;
+    return Promise.resolve({ Items: [] });
+  });
+  assert.deepEqual(await getCognitoUser(cognitoID), {
+    cognitoID,
+    userID,
+    createdAt: new Date(createdAt),
+  });
+  assert.equal(reads, 2);
 });
 
 await test("concurrent legacy migrations preserve one mapping and return the same user", async () => {
   const callers = 12;
   const legacy = { pk: cognitoID, sk: userID, createdAt };
+  let legacyExists = true;
   let persisted: Record<string, unknown> | undefined;
   let readers = 0;
   let accepted = 0;
@@ -118,19 +162,22 @@ await test("concurrent legacy migrations preserve one mapping and return the sam
         await ready;
         return { Items: [legacy] };
       }
-      assert.ok(command instanceof PutCommand);
+      assert.ok(command instanceof TransactWriteCommand);
+      const operations = command.input.TransactItems;
+      assert.equal(operations?.length, 2);
       assert.equal(
-        command.input.ConditionExpression,
+        operations[0]?.Put?.ConditionExpression,
         "attribute_not_exists(pk)",
       );
-      assert.deepEqual(command.input.Item, canonical);
+      assert.deepEqual(operations[0]?.Put?.Item, canonical);
+      assert.deepEqual(operations[1]?.Delete?.Key, {
+        pk: cognitoID,
+        sk: userID,
+      });
       attempts++;
-      if (persisted)
-        throw new ConditionalCheckFailedException({
-          $metadata: {},
-          message: "Already migrated",
-        });
-      persisted = structuredClone(command.input.Item);
+      if (persisted) throw migrationFailure();
+      persisted = structuredClone(operations[0]?.Put?.Item);
+      legacyExists = false;
       accepted++;
       return {};
     },
@@ -145,7 +192,7 @@ await test("concurrent legacy migrations preserve one mapping and return the sam
   assert.equal(attempts, callers);
   assert.equal(accepted, 1);
   assert.deepEqual(persisted, canonical);
-  assert.deepEqual(legacy, { pk: cognitoID, sk: userID, createdAt });
+  assert.equal(legacyExists, false);
 });
 
 await test("a mapping created during legacy lookup wins over the migration candidate", async () => {
@@ -160,14 +207,9 @@ await test("a mapping created during legacy lookup wins over the migration candi
       return Promise.resolve({
         Items: [{ pk: cognitoID, sk: userID, createdAt }],
       });
-    assert.ok(command instanceof PutCommand);
-    assert.deepEqual(command.input.Item, canonical);
-    return Promise.reject(
-      new ConditionalCheckFailedException({
-        $metadata: {},
-        message: "Mapping already exists",
-      }),
-    );
+    assert.ok(command instanceof TransactWriteCommand);
+    assert.deepEqual(command.input.TransactItems?.[0]?.Put?.Item, canonical);
+    return Promise.reject(migrationFailure());
   });
   assert.deepEqual(await ensureCognitoUser({ cognitoID }), {
     userID: winner.userID,
@@ -178,10 +220,7 @@ await test("a mapping created during legacy lookup wins over the migration candi
 await test("migration failures propagate without allocating a different user", async () => {
   for (const error of [
     new Error("Migration write failed"),
-    new ConditionalCheckFailedException({
-      $metadata: {},
-      message: "Winner missing",
-    }),
+    migrationFailure(),
   ]) {
     const send = mock.method(
       DynamoDBDocumentClient.prototype,
@@ -192,14 +231,14 @@ await test("migration failures propagate without allocating a different user", a
           return Promise.resolve({
             Items: [{ pk: cognitoID, sk: userID, createdAt }],
           });
-        assert.ok(command instanceof PutCommand);
+        assert.ok(command instanceof TransactWriteCommand);
         return Promise.reject(error);
       },
     );
     await assert.rejects(ensureCognitoUser({ cognitoID }), (e) => e === error);
     assert.equal(
       send.mock.callCount(),
-      error instanceof ConditionalCheckFailedException ? 4 : 3,
+      error instanceof TransactionCanceledException ? 4 : 3,
     );
     send.mock.restore();
   }
@@ -216,8 +255,8 @@ await test("a lost migration response can be retried without rewriting the mappi
       return Promise.resolve({
         Items: [{ pk: cognitoID, sk: userID, createdAt }],
       });
-    assert.ok(command instanceof PutCommand);
-    persisted = structuredClone(command.input.Item);
+    assert.ok(command instanceof TransactWriteCommand);
+    persisted = structuredClone(command.input.TransactItems?.[0]?.Put?.Item);
     writes++;
     return Promise.reject(error);
   });
@@ -255,29 +294,19 @@ await test("concurrent first logins all return the single persisted mapping", as
         await ready;
         return { Items: [] };
       }
-      assert.ok(command instanceof TransactWriteCommand);
-      const operations = command.input.TransactItems;
-      assert.equal(operations?.length, 2);
-      const primary = operations[0]?.Put;
-      const legacy = operations[1]?.Put;
-      assert.ok(primary);
-      assert.ok(legacy);
-      assert.equal(primary.ConditionExpression, "attribute_not_exists(pk)");
-      assert.equal(legacy.ConditionExpression, "attribute_not_exists(pk)");
-      const item: Record<string, unknown> | undefined = primary.Item;
+      assert.ok(command instanceof PutCommand);
+      assert.equal(
+        command.input.ConditionExpression,
+        "attribute_not_exists(pk)",
+      );
+      const item: Record<string, unknown> | undefined = command.input.Item;
       assert.ok(item);
       assert.equal(item.pk, cognitoID);
       assert.equal(item.sk, cognitoID);
-      assert.deepEqual(legacy.Item, {
-        pk: cognitoID,
-        sk: item.userID,
-        createdAt: item.createdAt,
-      });
       candidates.add(item.userID);
       writes++;
       if (records.length) throw conditionalFailure();
-      assert.ok(legacy.Item);
-      records.push(structuredClone(item), structuredClone(legacy.Item));
+      records.push(structuredClone(item));
       return {};
     },
   );
@@ -286,9 +315,8 @@ await test("concurrent first logins all return the single persisted mapping", as
   );
   assert.equal(writes, callers);
   assert.equal(candidates.size, callers);
-  assert.equal(records.length, 2);
+  assert.equal(records.length, 1);
   assert.equal(records.filter((item) => item.sk === cognitoID).length, 1);
-  assert.equal(records[1]?.sk, results[0]?.userID);
   assert.deepEqual(
     results,
     results.map(() => ({ userID: records[0]?.userID })),
@@ -303,8 +331,8 @@ await test("different Cognito identities get independent fixed keys and user IDs
     if (command instanceof GetCommand)
       return Promise.resolve({ Item: records.get(command.input.Key?.pk) });
     if (command instanceof QueryCommand) return Promise.resolve({ Items: [] });
-    assert.ok(command instanceof TransactWriteCommand);
-    const item = command.input.TransactItems?.[0]?.Put?.Item;
+    assert.ok(command instanceof PutCommand);
+    const item = command.input.Item;
     assert.ok(item);
     records.set(item.pk, item);
     return Promise.resolve({});
@@ -332,7 +360,7 @@ await test("unrelated write errors propagate rather than returning an unused can
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
     if (command instanceof GetCommand) return Promise.resolve({});
     if (command instanceof QueryCommand) return Promise.resolve({ Items: [] });
-    assert.ok(command instanceof TransactWriteCommand);
+    assert.ok(command instanceof PutCommand);
     return Promise.reject(error);
   });
   await assert.rejects(ensureCognitoUser({ cognitoID }), (e) => e === error);
@@ -343,13 +371,13 @@ await test("a conditional conflict with no readable winner propagates the confli
   mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
     if (command instanceof GetCommand) return Promise.resolve({});
     if (command instanceof QueryCommand) return Promise.resolve({ Items: [] });
-    assert.ok(command instanceof TransactWriteCommand);
+    assert.ok(command instanceof PutCommand);
     return Promise.reject(error);
   });
   await assert.rejects(ensureCognitoUser({ cognitoID }), (e) => e === error);
 });
 
-await test("transaction conflicts, legacy-pointer conflicts and missing cancellation reasons propagate", async () => {
+await test("migration transaction conflicts, source conflicts and missing cancellation reasons propagate", async () => {
   for (const reasons of [
     [{ Code: "TransactionConflict" }, { Code: "None" }],
     [{ Code: "None" }, { Code: "ConditionalCheckFailed" }],
@@ -366,7 +394,9 @@ await test("transaction conflicts, legacy-pointer conflicts and missing cancella
       (command: unknown) => {
         if (command instanceof GetCommand) return Promise.resolve({});
         if (command instanceof QueryCommand)
-          return Promise.resolve({ Items: [] });
+          return Promise.resolve({
+            Items: [{ pk: cognitoID, sk: userID, createdAt }],
+          });
         assert.ok(command instanceof TransactWriteCommand);
         return Promise.reject(error);
       },
@@ -377,7 +407,7 @@ await test("transaction conflicts, legacy-pointer conflicts and missing cancella
   }
 });
 
-await test("a lost transaction response can be retried without changing the persisted identity", async () => {
+await test("a lost creation response can be retried without changing the persisted identity", async () => {
   let persisted: Record<string, unknown> | undefined;
   const error = new Error("Response lost");
   let writes = 0;
@@ -385,8 +415,8 @@ await test("a lost transaction response can be retried without changing the pers
     if (command instanceof GetCommand)
       return Promise.resolve({ Item: persisted });
     if (command instanceof QueryCommand) return Promise.resolve({ Items: [] });
-    assert.ok(command instanceof TransactWriteCommand);
-    persisted = command.input.TransactItems?.[0]?.Put?.Item;
+    assert.ok(command instanceof PutCommand);
+    persisted = command.input.Item;
     writes++;
     return Promise.reject(error);
   });

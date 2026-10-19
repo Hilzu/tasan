@@ -73,21 +73,38 @@ export const getCognitoUser = captureAsync(
       ConsistentRead: true,
     });
     const { Items } = await cognitoMappingClient().send(cmd);
-    if (!Items?.length) return;
-    const user = fromItem(
-      parseItem(cognitoUserItemSchema, Items[0], "cognito-user"),
-    );
+    // Another request may have migrated and removed the legacy record after our get.
+    if (!Items?.length) return getCanonicalCognitoUser(cognitoID);
+    const legacy = parseItem(cognitoUserItemSchema, Items[0], "cognito-user");
+    const user = fromItem(legacy);
     try {
-      // Preserve the legacy pointer and its metadata for older readers.
       await cognitoMappingClient().send(
-        new PutCommand({
-          TableName,
-          Item: toItem(user),
-          ConditionExpression: "attribute_not_exists(pk)",
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName,
+                Item: toItem(user),
+                ConditionExpression: "attribute_not_exists(pk)",
+              },
+            },
+            {
+              Delete: {
+                TableName,
+                Key: { pk: cognitoID, sk: user.userID },
+                ConditionExpression: "createdAt = :createdAt",
+                ExpressionAttributeValues: { ":createdAt": legacy.createdAt },
+              },
+            },
+          ],
         }),
       );
     } catch (error) {
-      if (!(error instanceof ConditionalCheckFailedException)) throw error;
+      if (
+        !(error instanceof TransactionCanceledException) ||
+        error.CancellationReasons?.at(0)?.Code !== "ConditionalCheckFailed"
+      )
+        throw error;
       const winner = await getCanonicalCognitoUser(cognitoID);
       if (!winner) throw error;
       return winner;
@@ -106,33 +123,15 @@ export const ensureCognitoUser = captureAsync(
 
     const userID = genUserID();
     const item = toItem({ cognitoID, userID, createdAt: new Date() });
-    const cmd = new TransactWriteCommand({
-      TransactItems: [
-        {
-          Put: {
-            TableName,
-            Item: item,
-            ConditionExpression: "attribute_not_exists(pk)",
-          },
-        },
-        {
-          // Keep older application versions able to resolve newly created users.
-          Put: {
-            TableName,
-            Item: { pk: cognitoID, sk: userID, createdAt: item.createdAt },
-            ConditionExpression: "attribute_not_exists(pk)",
-          },
-        },
-      ],
+    const cmd = new PutCommand({
+      TableName,
+      Item: item,
+      ConditionExpression: "attribute_not_exists(pk)",
     });
     try {
       await cognitoMappingClient().send(cmd);
     } catch (error) {
-      if (
-        !(error instanceof TransactionCanceledException) ||
-        error.CancellationReasons?.at(0)?.Code !== "ConditionalCheckFailed"
-      )
-        throw error;
+      if (!(error instanceof ConditionalCheckFailedException)) throw error;
       // A concurrent first login won. Return its ID, never the unused candidate.
       const winner = await getCognitoUser(cognitoID);
       if (!winner) throw error;
