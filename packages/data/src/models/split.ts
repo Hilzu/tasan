@@ -1,5 +1,4 @@
 import {
-  BatchGetCommand,
   GetCommand,
   paginateQuery,
   TransactWriteCommand,
@@ -9,6 +8,7 @@ import type { CurrencySymbol } from "@tasan/common/currency";
 import { genSplitID, type SplitID, type UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
+import { batchGetItems } from "../batch-get.js";
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import {
@@ -105,13 +105,7 @@ export const findUsersSplits = captureAsync(
       pk: splitID,
       sk: splitID,
     }));
-    const cmd = new BatchGetCommand({
-      RequestItems: { [TableName]: { Keys } },
-    });
-    const { Responses } = await documentClient().send(cmd);
-
-    const Items = Responses?.[TableName];
-    if (!Items?.length) return [];
+    const Items = await batchGetItems(Keys);
 
     return Items.map((item) =>
       fromItem(parseItem(splitItemSchema, item, "split")),

@@ -14,6 +14,10 @@ The package requires `TABLE_NAME` to contain the DynamoDB table name. AWS creden
 
 Local setup is documented in the [root README](../../README.md).
 
+Batch reads use at most 100 keys per request and retry unprocessed keys up to five
+times with exponential backoff and jitter. Exhausted retries fail the operation
+instead of returning incomplete data; records that do not exist remain omitted.
+
 Cognito identity mappings use a fixed key and conditional creation so concurrent
 first logins resolve to the same user. Existing mappings remain readable without
 a migration. For multi-region deployments, set `COGNITO_MAPPING_REGION` to the
