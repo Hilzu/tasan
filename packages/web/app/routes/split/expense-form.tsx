@@ -42,6 +42,8 @@ const allocationModes: { value: AllocationMode; label: string }[] = [
   { value: "shares", label: "Shares and adjustments" },
 ];
 
+const creationTimeoutMs = 30_000;
+
 interface ShareFormInput {
   shares: string;
   adjustment: AmountInput;
@@ -60,6 +62,19 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
     errors: { formErrors: string[]; fieldErrors: Record<string, string[]> };
   }>();
   const actionData = fetcher.data;
+  const pending = fetcher.state !== "idle";
+  const [submissionAttempt, setSubmissionAttempt] = useState(0);
+  const [timedOutAttempt, setTimedOutAttempt] = useState<number>();
+  const timedOut = pending && timedOutAttempt === submissionAttempt;
+  useEffect(() => {
+    if (expense || !pending) return;
+    const timeout = setTimeout(() => {
+      setTimedOutAttempt(submissionAttempt);
+    }, creationTimeoutMs);
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [expense, pending, submissionAttempt]);
   const [submissionID, setSubmissionID] = useState("");
   useEffect(() => {
     setSubmissionID(expense ? genOperationID() : genExpenseID());
@@ -164,7 +179,13 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         method="post"
         className="max-w-md space-y-2"
         onSubmit={(event) => {
-          if (!valid) event.preventDefault();
+          if (!valid || !submissionID || (pending && !timedOut)) {
+            event.preventDefault();
+            return;
+          }
+          // Retrying with the same ID deduplicates a save whose response was lost.
+          // A new fetcher submission supersedes the previous pending request.
+          setSubmissionAttempt((attempt) => attempt + 1);
         }}
       >
         {expense ?
@@ -465,14 +486,25 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         <Button
           type="submit"
           className="mt-4"
-          disabled={fetcher.state !== "idle" || !submissionID || !valid}
+          disabled={(pending && !timedOut) || !submissionID || !valid}
         >
-          {fetcher.state === "submitting" ?
+          {timedOut ?
+            "Retry"
+          : pending ?
             "Saving..."
           : expense ?
             "Save changes"
           : "Create"}
         </Button>
+        {timedOut && (
+          <div role="alert">
+            <FieldError
+              errors={[
+                "Saving is taking longer than expected. You can retry safely; the expense will only be created once.",
+              ]}
+            />
+          </div>
+        )}
         {actionData?.errors.formErrors && (
           <FieldError errors={actionData.errors.formErrors} />
         )}
