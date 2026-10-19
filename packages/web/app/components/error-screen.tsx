@@ -5,17 +5,18 @@ import { Button } from "~/components/button";
 import { MainHeading, SubHeading } from "~/components/heading";
 import { errorDetails } from "~/domain/error-report";
 
+type ReportState =
+  | { status: "idle" }
+  | { status: "sending" }
+  | { status: "sent"; reportID: string }
+  | { status: "failed"; message: string };
+
 export function ErrorScreen({ error }: { error: unknown }) {
   const details = errorDetails(error);
   const matches = useMatches();
   const descriptionID = useId();
   const [authenticated, setAuthenticated] = useState<boolean>();
-  const [description, setDescription] = useState("");
-  const [state, setState] = useState<"idle" | "sending" | "sent" | "failed">(
-    "idle",
-  );
-  const [reportID, setReportID] = useState("");
-  const [failure, setFailure] = useState("");
+  const [report, setReport] = useState<ReportState>({ status: "idle" });
   const notFound = isRouteErrorResponse(error) && error.status === 404;
 
   useEffect(() => {
@@ -24,15 +25,8 @@ export function ErrorScreen({ error }: { error: unknown }) {
       signal: controller.signal,
       cache: "no-store",
     })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to check session");
-        const result: unknown = await response.json();
-        setAuthenticated(
-          typeof result === "object" &&
-            result !== null &&
-            "authenticated" in result &&
-            result.authenticated === true,
-        );
+      .then((response) => {
+        setAuthenticated(response.ok);
       })
       .catch(() => {
         if (!controller.signal.aborted) setAuthenticated(false);
@@ -44,9 +38,10 @@ export function ErrorScreen({ error }: { error: unknown }) {
 
   async function sendReport(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (state === "sending" || state === "sent") return;
-    setState("sending");
-    setFailure("");
+    if (report.status === "sending" || report.status === "sent") return;
+    const description =
+      new FormData(event.currentTarget).get("description") ?? "";
+    setReport({ status: "sending" });
     try {
       // Plain fetch leaves the original error screen and description intact if
       // reporting fails, and does not revalidate the route that just crashed.
@@ -61,10 +56,11 @@ export function ErrorScreen({ error }: { error: unknown }) {
         }),
       });
       if (response.status === 401) {
-        setFailure(
-          "Your session has expired. Sign in again before sending a report.",
-        );
-        setState("failed");
+        setReport({
+          status: "failed",
+          message:
+            "Your session has expired. Sign in again before sending a report.",
+        });
         return;
       }
       if (!response.ok) throw new Error("Report rejected");
@@ -77,13 +73,13 @@ export function ErrorScreen({ error }: { error: unknown }) {
       ) {
         throw new Error("Invalid report response");
       }
-      setReportID(result.reportID);
-      setState("sent");
+      setReport({ status: "sent", reportID: result.reportID });
     } catch {
-      setFailure(
-        "The report could not be sent. Your description is still here; please try again.",
-      );
-      setState("failed");
+      setReport({
+        status: "failed",
+        message:
+          "The report could not be sent. Your description is still here; please try again.",
+      });
     }
   }
 
@@ -136,14 +132,14 @@ export function ErrorScreen({ error }: { error: unknown }) {
             className="rounded-lg border border-gray-300 bg-white p-5 dark:border-gray-700 dark:bg-gray-900"
             aria-label="Error report"
           >
-            {state === "sent" ?
+            {report.status === "sent" ?
               <div role="status" className="space-y-2">
                 <SubHeading>Thanks for your report</SubHeading>
                 <p>
                   Your report has been sent and will help us fix the problem.
                 </p>
                 <p className="text-sm break-all text-gray-600 dark:text-gray-300">
-                  Report reference: {reportID}
+                  Report reference: {report.reportID}
                 </p>
               </div>
             : <form
@@ -165,11 +161,7 @@ export function ErrorScreen({ error }: { error: unknown }) {
                     name="description"
                     rows={4}
                     maxLength={2000}
-                    value={description}
-                    onChange={(event) => {
-                      setDescription(event.target.value);
-                    }}
-                    disabled={state === "sending"}
+                    disabled={report.status === "sending"}
                     placeholder="Tell us what happened just before the error…"
                     className="focus:outline-brand-700 dark:focus:outline-brand-300 block w-full resize-y rounded border border-gray-500 p-3 focus:outline-2"
                   />
@@ -180,16 +172,18 @@ export function ErrorScreen({ error }: { error: unknown }) {
                   account. Please don’t include passwords or sensitive
                   information.
                 </p>
-                {failure && (
+                {report.status === "failed" && (
                   <p
                     role="alert"
                     className="text-sm text-red-600 dark:text-red-400"
                   >
-                    {failure}
+                    {report.message}
                   </p>
                 )}
-                <Button type="submit" disabled={state === "sending"}>
-                  {state === "sending" ? "Sending…" : "Send error report"}
+                <Button type="submit" disabled={report.status === "sending"}>
+                  {report.status === "sending" ?
+                    "Sending…"
+                  : "Send error report"}
                 </Button>
               </form>
             }
