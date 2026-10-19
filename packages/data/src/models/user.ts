@@ -1,11 +1,8 @@
-import {
-  BatchGetCommand,
-  GetCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import type { UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
+import { batchGetItems } from "../batch-get.js";
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { parseItem, type UserItem, userItemSchema } from "../items.js";
@@ -72,17 +69,7 @@ export const getUsers = captureAsync(
     const pks = Array.from(idSet, (id) => {
       return { pk: id, sk: id } satisfies PrimaryKey;
     });
-    if (!pks.length) return [];
-    const cmd = new BatchGetCommand({
-      RequestItems: {
-        [TableName]: {
-          Keys: pks,
-        },
-      },
-    });
-    const { Responses } = await documentClient().send(cmd);
-    const items = Responses?.[TableName];
-    if (!items?.length) return [];
+    const items = await batchGetItems(pks);
     return items.map((item) =>
       fromItem(parseItem(userItemSchema, item, "user")),
     );
