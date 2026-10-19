@@ -14,8 +14,9 @@ const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
 export function loader({ context }: Route.LoaderArgs) {
-  return json({
-    authenticated: Boolean(context.get(sessionContext).get("userID")),
+  return new Response(null, {
+    status: context.get(sessionContext).get("userID") ? 204 : 401,
+    headers: { "Cache-Control": "no-store" },
   });
 }
 
