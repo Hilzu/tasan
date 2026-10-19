@@ -42,7 +42,7 @@ const allocationModes: { value: AllocationMode; label: string }[] = [
   { value: "shares", label: "Shares and adjustments" },
 ];
 
-const creationTimeoutMs = 30_000;
+const saveTimeoutMs = 30_000;
 
 interface ShareFormInput {
   shares: string;
@@ -66,22 +66,20 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const [timedOut, setTimedOut] = useState(false);
   const resetFetcher = fetcher.reset;
   useEffect(() => {
-    if (expense || !pending) return;
+    if (!pending) return;
     const timeout = setTimeout(() => {
       // Reset aborts the request and returns the fetcher to idle. Keep the
-      // expense ID so a retry deduplicates any write that already committed.
+      // submission ID so a retry deduplicates any write that already committed.
       resetFetcher();
       setTimedOut(true);
-    }, creationTimeoutMs);
+    }, saveTimeoutMs);
     return () => {
       clearTimeout(timeout);
     };
-  }, [expense, pending, resetFetcher]);
+  }, [pending, resetFetcher]);
   const formErrors =
     timedOut ?
-      [
-        "Saving timed out. You can retry safely; the expense will only be created once.",
-      ]
+      ["Saving timed out. You can safely retry."]
     : actionData?.errors.formErrors;
   const [submissionID, setSubmissionID] = useState("");
   useEffect(() => {
