@@ -14,15 +14,3 @@ export const documentClient = () => {
   });
   return _documentClient;
 };
-
-let _cognitoMappingClient: DynamoDBDocumentClient | undefined;
-/** All replicas must use one Region to arbitrate identity creation. */
-export const cognitoMappingClient = () => {
-  const region = process.env.COGNITO_MAPPING_REGION;
-  if (!region) return documentClient();
-  _cognitoMappingClient ??= DynamoDBDocumentClient.from(
-    new DynamoDBClient({ region }),
-    { marshallOptions: { removeUndefinedValues: true } },
-  );
-  return _cognitoMappingClient;
-};

@@ -134,7 +134,7 @@ await test("a migration between the initial get and legacy query is found by a s
   assert.equal(reads, 2);
 });
 
-await test("concurrent legacy migrations preserve one mapping and return the same user", async () => {
+await test("concurrent legacy migrations in one replica preserve one mapping and return the same user", async () => {
   const callers = 12;
   const legacy = { pk: cognitoID, sk: userID, createdAt };
   let legacyExists = true;
@@ -266,7 +266,7 @@ await test("a lost migration response can be retried without rewriting the mappi
   assert.equal(writes, 1);
 });
 
-await test("concurrent first logins all return the single persisted mapping", async () => {
+await test("concurrent first logins in one replica all return the single persisted mapping", async () => {
   const callers = 12;
   let readers = 0;
   let writes = 0;

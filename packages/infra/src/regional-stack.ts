@@ -10,7 +10,6 @@ import type { Construct } from "constructs";
 
 type Props = StackProps & {
   tableName: string;
-  cognitoMappingRegion: string;
   userPoolServerURL: string;
   appClientID: string;
   appFunctionAssetPath: string;
@@ -21,7 +20,6 @@ export class RegionalStack extends Stack {
   constructor(scope: Construct, id: string, props: Props) {
     const {
       tableName,
-      cognitoMappingRegion,
       userPoolServerURL,
       appClientID,
       appFunctionAssetPath,
@@ -51,7 +49,6 @@ export class RegionalStack extends Stack {
         NODE_OPTIONS: "--enable-source-maps",
         NODE_ENV: "production",
         TABLE_NAME: tableName,
-        COGNITO_MAPPING_REGION: cognitoMappingRegion,
         ORIGIN_URL: "https://tasan.app",
         AUTH_SERVER_URL: userPoolServerURL,
         AUTH_CLIENT_ID: appClientID,
@@ -59,28 +56,6 @@ export class RegionalStack extends Stack {
     });
 
     appTable.grantReadWriteData(appFunction);
-
-    appFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          "dynamodb:GetItem",
-          "dynamodb:Query",
-          "dynamodb:PutItem",
-          "dynamodb:DeleteItem",
-        ],
-        resources: [
-          this.formatArn({
-            service: "dynamodb",
-            region: cognitoMappingRegion,
-            resource: "table",
-            resourceName: tableName,
-          }),
-        ],
-        conditions: {
-          "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["cog_*"] },
-        },
-      }),
-    );
 
     appFunction.addToRolePolicy(
       new iam.PolicyStatement({

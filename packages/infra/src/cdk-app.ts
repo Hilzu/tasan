@@ -14,7 +14,6 @@ new RegionalStack(app, "SingaporeStack", {
   crossRegionReferences: true,
 
   tableName: tasan.tableName,
-  cognitoMappingRegion: tasan.region,
   userPoolServerURL: tasan.userPoolServerURL,
   appClientID: tasan.appClientID,
   appFunctionAssetPath: tasan.appFunctionAssetPath,

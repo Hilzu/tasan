@@ -11,7 +11,7 @@ import {
 import { type CognitoUserID, genUserID, type UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
-import { cognitoMappingClient } from "../client.js";
+import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import {
   type CognitoUserItem,
@@ -43,7 +43,7 @@ const toItem = (user: CognitoUser): CognitoUserItem => ({
 const getCanonicalCognitoUser = async (
   cognitoID: CognitoUserID,
 ): Promise<CognitoUser | undefined> => {
-  const { Item } = await cognitoMappingClient().send(
+  const { Item } = await documentClient().send(
     new GetCommand({
       TableName,
       Key: { pk: cognitoID, sk: cognitoID },
@@ -72,13 +72,13 @@ export const getCognitoUser = captureAsync(
       Limit: 1,
       ConsistentRead: true,
     });
-    const { Items } = await cognitoMappingClient().send(cmd);
+    const { Items } = await documentClient().send(cmd);
     // Another request may have migrated and removed the legacy record after our get.
     if (!Items?.length) return getCanonicalCognitoUser(cognitoID);
     const legacy = parseItem(cognitoUserItemSchema, Items[0], "cognito-user");
     const user = fromItem(legacy);
     try {
-      await cognitoMappingClient().send(
+      await documentClient().send(
         new TransactWriteCommand({
           TransactItems: [
             {
@@ -115,6 +115,7 @@ export const getCognitoUser = captureAsync(
 
 type PutCognitoUser = Omit<CognitoUser, "createdAt" | "userID">;
 
+/** Conditional creation is local to this replica; simultaneous regional writes can race. */
 export const ensureCognitoUser = captureAsync(
   "ensureCognitoUser",
   async ({ cognitoID }: PutCognitoUser): Promise<{ userID: UserID }> => {
@@ -129,7 +130,7 @@ export const ensureCognitoUser = captureAsync(
       ConditionExpression: "attribute_not_exists(pk)",
     });
     try {
-      await cognitoMappingClient().send(cmd);
+      await documentClient().send(cmd);
     } catch (error) {
       if (!(error instanceof ConditionalCheckFailedException)) throw error;
       // A concurrent first login won. Return its ID, never the unused candidate.
