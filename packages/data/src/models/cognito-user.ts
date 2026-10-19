@@ -1,6 +1,10 @@
-import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
+import {
+  ConditionalCheckFailedException,
+  TransactionCanceledException,
+} from "@aws-sdk/client-dynamodb";
 import {
   GetCommand,
+  PutCommand,
   QueryCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -36,20 +40,28 @@ const toItem = (user: CognitoUser): CognitoUserItem => ({
   createdAt: user.createdAt.toISOString(),
 });
 
+const getCanonicalCognitoUser = async (
+  cognitoID: CognitoUserID,
+): Promise<CognitoUser | undefined> => {
+  const { Item } = await cognitoMappingClient().send(
+    new GetCommand({
+      TableName,
+      Key: { pk: cognitoID, sk: cognitoID },
+      ConsistentRead: true,
+    }),
+  );
+  return Item ?
+      fromItem(parseItem(cognitoUserItemSchema, Item, "cognito-user"))
+    : undefined;
+};
+
+/** Resolves an identity, upgrading legacy mappings without replacing an existing mapping. */
 export const getCognitoUser = captureAsync(
   "getCognitoUser",
   async (cognitoID: CognitoUserID): Promise<CognitoUser | undefined> => {
-    const { Item } = await cognitoMappingClient().send(
-      new GetCommand({
-        TableName,
-        Key: { pk: cognitoID, sk: cognitoID },
-        ConsistentRead: true,
-      }),
-    );
-    if (Item)
-      return fromItem(parseItem(cognitoUserItemSchema, Item, "cognito-user"));
+    const existing = await getCanonicalCognitoUser(cognitoID);
+    if (existing) return existing;
 
-    // Read legacy mappings without changing their user IDs or rewriting them.
     const cmd = new QueryCommand({
       TableName,
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
@@ -62,7 +74,25 @@ export const getCognitoUser = captureAsync(
     });
     const { Items } = await cognitoMappingClient().send(cmd);
     if (!Items?.length) return;
-    return fromItem(parseItem(cognitoUserItemSchema, Items[0], "cognito-user"));
+    const user = fromItem(
+      parseItem(cognitoUserItemSchema, Items[0], "cognito-user"),
+    );
+    try {
+      // Preserve the legacy pointer and its metadata for older readers.
+      await cognitoMappingClient().send(
+        new PutCommand({
+          TableName,
+          Item: toItem(user),
+          ConditionExpression: "attribute_not_exists(pk)",
+        }),
+      );
+    } catch (error) {
+      if (!(error instanceof ConditionalCheckFailedException)) throw error;
+      const winner = await getCanonicalCognitoUser(cognitoID);
+      if (!winner) throw error;
+      return winner;
+    }
+    return user;
   },
 );
 
