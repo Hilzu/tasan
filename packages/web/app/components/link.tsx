@@ -10,7 +10,7 @@ type LinkProps = ComponentProps<typeof ReactRouterLink> & {
 };
 
 const linkClasses =
-  "text-blue-600 dark:text-blue-400 hover:underline active:text-blue-800 dark:active:text-blue-500 active:underline";
+  "text-brand-700 dark:text-brand-300 hover:underline active:text-brand-900 dark:active:text-brand-200 active:underline";
 
 export const Link = (props: LinkProps) => {
   const { variant = "link", className, ...rest } = props;

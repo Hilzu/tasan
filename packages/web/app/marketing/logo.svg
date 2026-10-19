@@ -1,21 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="48"
-    height="48"
-    viewBox="0 0 48 48"
->
-  <rect width="48" height="48" fill="#00796B" />
-
-  <text
-    x="50%"
-    y="35"
-    text-anchor="middle"
-    font-size="32"
-    fill="#FFFFFF"
-    font-family="Helvetica, sans-serif"
-    font-weight="bold"
-  >
-    T
-  </text>
+<svg xmlns="http://www.w3.org/2000/svg" width="212" height="48" viewBox="0 0 212 48" fill="#155b52">
+  <rect width="22" height="22" rx="5.5" />
+  <rect x="26" width="22" height="22" rx="5.5" />
+  <rect y="26" width="22" height="22" rx="5.5" />
+  <rect x="26" y="26" width="22" height="22" rx="5.5" />
+  <g transform="translate(60 4)">
+    <path d="M5 1.5Q5 0 6.5 0H11Q12.5 0 12.5 1.5V8H20Q21.5 8 21.5 9.5V14Q21.5 15.5 20 15.5H12.5V28Q12.5 32 16.5 32Q19 32 21 30L25 35Q21.5 39.5 15.5 39.5Q5 39.5 5 28.5V15.5H1.5Q0 15.5 0 14V9.5Q0 8 1.5 8H5Z" />
+    <path fill-rule="evenodd" d="M44 7Q59 7 59 22.5V38H53Q51.5 38 51.5 36.5V35Q47.5 39 42 39Q27 39 27 23Q27 7 44 7ZM43 14.5Q35 14.5 35 23Q35 31.5 43 31.5Q51 31.5 51 23Q51 14.5 43 14.5Z" />
+    <path d="M85 11L80.5 16Q77.5 13.5 74 13.5Q69.5 13.5 69.5 16.5Q69.5 18.5 76 20.5Q86 23.5 86 29.5Q86 39 74 39Q66 39 60.5 33.5L65.5 28Q69 32 74 32Q78.5 32 78.5 29.5Q78.5 27.5 72 25.5Q62 22.5 62 16Q62 7 74 7Q80.5 7 85 11Z" />
+    <path fill-rule="evenodd" d="M105 7Q120 7 120 22.5V38H114Q112.5 38 112.5 36.5V35Q108.5 39 103 39Q88 39 88 23Q88 7 105 7ZM104 14.5Q96 14.5 96 23Q96 31.5 104 31.5Q112 31.5 112 23Q112 14.5 104 14.5Z" />
+    <path d="M125 38V21Q125 7 138.5 7Q152 7 152 21V38H144V21Q144 14.5 138.5 14.5Q133 14.5 133 21V38Z" />
+  </g>
 </svg>

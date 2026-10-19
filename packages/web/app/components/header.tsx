@@ -2,9 +2,10 @@ import type { Split, User } from "@tasan/data";
 import classNames from "classnames";
 import { href } from "react-router";
 
+import { ActionsDropdown } from "~/components/actions-dropdown";
 import { Link, NavLink } from "~/components/link";
 
-import logo from "../marketing/logo.svg";
+import logo from "../marketing/logo.svg?no-inline";
 
 export interface HeaderProps {
   className?: string;
@@ -22,7 +23,13 @@ export function Header({ className, user, split }: HeaderProps) {
     >
       <div className="container flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
         <Link to={href("/")} variant="plain" className="shrink-0">
-          <img src={logo} alt="Tasan.app" className="h-6 w-6" />
+          <img
+            src={logo}
+            alt="Tasan"
+            width={212}
+            height={48}
+            className="h-6 w-auto dark:brightness-0 dark:invert"
+          />
         </Link>
         <NavLink to={href("/splits")} className="shrink-0">
           Splits
@@ -38,11 +45,20 @@ export function Header({ className, user, split }: HeaderProps) {
         )}
         <div className="ml-auto shrink-0">
           {user ?
-            <div className="flex gap-1">
-              <p className="text-right">Hello, {user.name}!</p>
-              <Link to={href("/logout")}>Logout</Link>
-            </div>
-          : <Link to={href("/login")}>Log in / Sign up</Link>}
+            <ActionsDropdown
+              label={`Account menu for ${user.name}`}
+              heading={user.name}
+              trigger={
+                <span
+                  aria-hidden="true"
+                  className="bg-brand-100 text-brand-800 dark:bg-brand-800 dark:text-brand-100 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
+                >
+                  {Array.from(user.name.trim())[0]?.toUpperCase() || "?"}
+                </span>
+              }
+              items={[{ label: "Log out", to: href("/logout") }]}
+            />
+          : <Link to={href("/login")}>Log in</Link>}
         </div>
       </div>
     </header>

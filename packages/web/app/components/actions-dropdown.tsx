@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { To } from "react-router";
 
 import { Link } from "~/components/link";
@@ -15,6 +15,8 @@ type DropdownItem = {
 interface ActionsDropdownProps {
   label: string;
   items: DropdownItem[];
+  trigger?: ReactNode;
+  heading?: string;
 }
 
 const closeDropdown = (details: HTMLDetailsElement | null) => {
@@ -23,7 +25,12 @@ const closeDropdown = (details: HTMLDetailsElement | null) => {
   details.querySelector("summary")?.focus();
 };
 
-export function ActionsDropdown({ label, items }: ActionsDropdownProps) {
+export function ActionsDropdown({
+  label,
+  items,
+  trigger,
+  heading,
+}: ActionsDropdownProps) {
   const ref = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -54,21 +61,33 @@ export function ActionsDropdown({ label, items }: ActionsDropdownProps) {
     <details ref={ref} className="relative">
       <summary
         aria-label={label}
-        className="outline-brand-700 flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded hover:bg-gray-100 focus-visible:outline-2 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
+        className="outline-brand-700 dark:outline-brand-300 flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded hover:bg-gray-100 focus-visible:outline-2 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
       >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <circle cx="4" cy="10" r="1.5" />
-          <circle cx="10" cy="10" r="1.5" />
-          <circle cx="16" cy="10" r="1.5" />
-        </svg>
+        {trigger ?? (
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <circle cx="4" cy="10" r="1.5" />
+            <circle cx="10" cy="10" r="1.5" />
+            <circle cx="16" cy="10" r="1.5" />
+          </svg>
+        )}
       </summary>
-      <div className="absolute right-0 z-10 mt-1 min-w-32 rounded border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+      <div
+        className={classNames(
+          "absolute right-0 z-10 mt-1 min-w-32 rounded border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900",
+          heading && "w-56 max-w-[calc(100vw-4rem)]",
+        )}
+      >
+        {heading && (
+          <p className="border-b border-gray-200 px-4 py-2 text-sm font-semibold break-words dark:border-gray-700">
+            {heading}
+          </p>
+        )}
         {items.map((item) => {
           const className = classNames(
             "block w-full cursor-pointer px-4 py-2 text-left hover:bg-gray-100 focus-visible:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-gray-800 dark:focus-visible:bg-gray-800",
