@@ -31,7 +31,9 @@ const sessionMock = {
 mock.module("~/.server/sessions", sessionMock);
 const { sessionContext } = await import("~/.server/auth");
 const { getLocale } = await import("~/.server/locale");
-const { canonicalLocale, localeOptions } = await import("~/domain/locale");
+const { canonicalLocale } = await import("~/domain/locale");
+const { localeOptions, resolveLocaleOption } =
+  await import("~/.server/locales");
 const { action, middleware } = await import("~/routes/settings");
 
 beforeEach(() => {
@@ -45,8 +47,10 @@ const request = (language = "en-GB,en;q=0.9") =>
   });
 
 await test("locale options are supported, canonical locales", () => {
-  for (const [locale] of localeOptions)
-    assert.equal(canonicalLocale(locale), locale);
+  for (const { value, label } of localeOptions) {
+    assert.equal(canonicalLocale(value), value);
+    assert.equal(resolveLocaleOption(label), value, label);
+  }
   assert.equal(canonicalLocale("fi-fi"), "fi-FI");
   for (const value of [
     null,
@@ -169,4 +173,58 @@ await test("a failed profile write cannot report a successful save", async () =>
   const error = new Error("Write failed");
   writeSettings.mock.mockImplementationOnce(() => Promise.reject(error));
   await assert.rejects(save("fi-FI"), error);
+});
+
+await test("the picker covers the full supported Unicode catalog and default regions", async () => {
+  const { default: catalog } = await import("cldr-core/availableLocales.json");
+  const options = new Set(localeOptions.map(({ value }) => value));
+  for (const locale of catalog.availableLocales.full) {
+    const canonical = canonicalLocale(locale);
+    if (canonical) assert.ok(options.has(canonical), locale);
+  }
+  for (const locale of [
+    "fi-FI",
+    "ja-JP",
+    "en-AU",
+    "es-MX",
+    "ar-EG",
+    "hi-IN",
+    "uk-UA",
+  ]) {
+    assert.ok(options.has(locale), locale);
+  }
+  assert.equal(options.size, localeOptions.length);
+});
+
+await test("readable English and native locale names resolve without entering codes", () => {
+  const finnish = localeOptions.find(({ value }) => value === "fi-FI");
+  assert.ok(finnish);
+  assert.match(finnish.label, /Finnish/);
+  assert.match(finnish.label, /suomi/);
+  assert.equal(resolveLocaleOption(finnish.label), "fi-FI");
+  assert.equal(resolveLocaleOption("Browser default"), "");
+  assert.equal(resolveLocaleOption(""), "");
+});
+
+await test("supported tags outside the catalog and Unicode extensions are accepted", async () => {
+  for (const locale of ["fi-JP", "en-AU-u-hc-h23"]) {
+    assert.equal(resolveLocaleOption(locale), locale);
+    const result = await save(locale);
+    assert.ok(result instanceof Response);
+    assert.deepEqual(writeSettings.mock.calls.at(-1)?.arguments, [
+      userID,
+      { locale },
+    ]);
+  }
+});
+
+await test("saving a readable picker selection updates the canonical account locale", async () => {
+  const option = localeOptions.find(({ value }) => value === "es-MX");
+  assert.ok(option);
+  const result = await save(option.label);
+  assert.ok(result instanceof Response);
+  assert.deepEqual(writeSettings.mock.calls[0].arguments, [
+    userID,
+    { locale: "es-MX" },
+  ]);
 });

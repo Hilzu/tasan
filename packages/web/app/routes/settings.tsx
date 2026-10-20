@@ -1,4 +1,5 @@
 import { create } from "@tasan/common/decimal";
+import { useId } from "react";
 import {
   data,
   Form,
@@ -13,13 +14,13 @@ import {
   authenticatedSessionContext,
   requireAuthentication,
 } from "~/.server/auth";
+import { localeOptions, resolveLocaleOption } from "~/.server/locales";
 import { saveUserSettings } from "~/.server/services/users";
 import { AmountRender } from "~/components/amount";
 import { Button } from "~/components/button";
-import { SelectField } from "~/components/formField";
+import { InputField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { useLanguage } from "~/context";
-import { canonicalLocale, localeOptions } from "~/domain/locale";
 import type { loader as layoutLoader } from "~/routes/layout";
 
 import type { Route } from "./+types/settings";
@@ -30,26 +31,37 @@ export function meta() {
   return [{ title: "Settings - Tasan.app" }];
 }
 
+export function loader() {
+  return { locales: localeOptions };
+}
+
 export async function action({ request, context }: Route.ActionArgs) {
   const { userID } = context.get(authenticatedSessionContext);
   const form = await request.formData();
   const value = form.get("locale");
-  const locale = canonicalLocale(value);
-  if (value !== "" && !locale) {
+  const locale = resolveLocaleOption(value);
+  if (locale === undefined) {
     return data(
       { errors: { locale: ["Choose a valid locale."] } },
       { status: 400 },
     );
   }
-  await saveUserSettings(userID, { locale });
+  await saveUserSettings(userID, { locale: locale || undefined });
   return redirect(`${href("/settings")}?saved`);
 }
 
-export default function Settings({ actionData }: Route.ComponentProps) {
+export default function Settings({
+  actionData,
+  loaderData,
+}: Route.ComponentProps) {
   const preference =
     useRouteLoaderData<typeof layoutLoader>("routes/layout")?.user?.locale ??
     "";
   const locale = useLanguage();
+  const listID = useId();
+  const preferenceLabel =
+    loaderData.locales.find(({ value }) => value === preference)?.label ??
+    preference;
   const navigation = useNavigation();
   const [searchParams] = useSearchParams();
   const pending = navigation.state !== "idle";
@@ -58,25 +70,24 @@ export default function Settings({ actionData }: Route.ComponentProps) {
       <MainHeading>Settings</MainHeading>
       <p>Manage your account settings. Changes apply across your devices.</p>
       <Form method="post" className="space-y-4">
-        <SelectField
+        <InputField
           key={preference}
           label="Locale"
           name="locale"
-          defaultValue={preference}
-          description="Used to format dates and amounts. The app language stays English."
+          list={listID}
+          defaultValue={preferenceLabel}
+          placeholder="Browser default"
+          autoComplete="off"
+          spellCheck={false}
+          description="Search by language or country, then choose a format. The app language stays English. Clear the field to use your browser default."
           errors={actionData?.errors.locale}
-        >
-          <option value="">Browser default</option>
-          {preference &&
-            !localeOptions.some(([value]) => value === preference) && (
-              <option value={preference}>{preference}</option>
-            )}
-          {localeOptions.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
+        />
+        <datalist id={listID}>
+          <option value="Browser default" />
+          {loaderData.locales.map(({ value, label }) => (
+            <option key={value} value={label} />
           ))}
-        </SelectField>
+        </datalist>
         <div className="rounded border border-gray-300 p-3 dark:border-gray-700">
           <p className="font-semibold">Current format ({locale})</p>
           <p>
