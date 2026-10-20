@@ -4,34 +4,6 @@ import * as G from "@tasan/common/graph";
 import type { UserID } from "@tasan/common/id";
 import type { SplitExpense, SplitWithData } from "@tasan/data";
 
-export const cancelMutual = (graph: G.Graph): G.Graph => {
-  let newGraph = G.create();
-  const skipEdgeMap = new WeakMap<G.Edge, boolean>();
-
-  for (const [from, edges] of graph) {
-    for (const edge of edges) {
-      if (skipEdgeMap.get(edge)) continue;
-      const { to, amount } = edge;
-      const reverseEdge = (graph.get(to) ?? []).find((e) => e.to === from);
-      if (!reverseEdge) {
-        newGraph = G.upsertEdge(newGraph, from, to, amount);
-        continue;
-      }
-
-      const reverseAmount = reverseEdge.amount;
-      skipEdgeMap.set(reverseEdge, true);
-      if (D.gt(amount, reverseAmount)) {
-        const newAmount = D.sub(amount, reverseAmount);
-        newGraph = G.upsertEdge(newGraph, from, to, newAmount);
-      } else if (D.gt(reverseAmount, amount)) {
-        const newAmount = D.sub(reverseAmount, amount);
-        newGraph = G.upsertEdge(newGraph, to, from, newAmount);
-      }
-    }
-  }
-  return newGraph;
-};
-
 export const createGraphWithCurrency = (
   currency: CurrencySymbol,
   expenses: SplitExpense[],
@@ -43,8 +15,12 @@ export const createGraphWithCurrency = (
     const { payer, conversionRate } = expense;
     for (const [userID, amountValue] of expense.participants) {
       if (userID === payer) continue;
-      let amount = D.create(amountValue, fractions);
-      if (conversionRate) amount = D.mul(amount, conversionRate);
+      // Preserve source fractions until after conversion (for example EUR cents
+      // converted to whole JPY), matching the expense summary calculation.
+      const amount = D.create(
+        amountValue.value * (conversionRate ?? 1),
+        fractions,
+      );
       graph = G.upsertEdge(graph, userID, payer, amount);
     }
   }
@@ -53,7 +29,10 @@ export const createGraphWithCurrency = (
 };
 
 export const calculateExpenseGraph = (split: SplitWithData) => {
-  return cancelMutual(createGraphWithCurrency(split.currency, split.expenses));
+  return simplifyDebts(
+    createGraphWithCurrency(split.currency, split.expenses),
+    split.currency,
+  );
 };
 
 export interface Balance {
@@ -84,4 +63,46 @@ export const calculateBalances = (
       (a, b) =>
         a.balance.value - b.balance.value || a.userID.localeCompare(b.userID),
     );
+};
+
+/**
+ * Repeatedly match the largest remaining debtor and creditor. This preserves
+ * net balances while allowing payments between people without a direct debt.
+ * Each payment settles at least one person, giving at most n - 1 payments,
+ * though the greedy approach does not guarantee the minimum payment count.
+ */
+export const simplifyDebts = (
+  graph: G.Graph,
+  currency: CurrencySymbol,
+): G.Graph => {
+  const balances = calculateBalances(graph, [], currency);
+  const debtors = balances
+    .filter(({ balance }) => balance.value < 0)
+    .map(({ userID, balance }) => ({ userID, balance: D.mul(balance, -1) }));
+  const creditors = balances.filter(({ balance }) => D.gt(balance, 0));
+  const largestFirst = (a: Balance, b: Balance) =>
+    b.balance.value - a.balance.value || a.userID.localeCompare(b.userID);
+  let repayments = G.create();
+
+  while (true) {
+    const debtor = debtors.sort(largestFirst).at(0);
+    const creditor = creditors.sort(largestFirst).at(0);
+    if (!debtor || !creditor) break;
+    if (!D.gt(debtor.balance, 0) || !D.gt(creditor.balance, 0)) break;
+
+    const amount =
+      D.gt(debtor.balance, creditor.balance) ?
+        creditor.balance
+      : debtor.balance;
+    repayments = G.upsertEdge(
+      repayments,
+      debtor.userID,
+      creditor.userID,
+      amount,
+    );
+    debtor.balance = D.sub(debtor.balance, amount);
+    creditor.balance = D.sub(creditor.balance, amount);
+  }
+
+  return repayments;
 };

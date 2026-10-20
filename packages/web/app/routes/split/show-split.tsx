@@ -95,7 +95,11 @@ export default function ShowSplit(_: Route.ComponentProps) {
         </ol>
       </Card>
 
-      <Card heading={<SubHeading>Debts</SubHeading>}>
+      <Card heading={<SubHeading>Repayments</SubHeading>}>
+        <p className="mb-2">
+          Simplified payments keep everyone’s balance the same. You may pay
+          someone who didn’t originally pay for you.
+        </p>
         <ul>
           {expenseGraph.size === 0 &&
             "No debts between participants. You are all settled!"}
@@ -105,7 +109,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
               const toName = users.find((u) => u.id === edge.to)?.name;
               return (
                 <li key={from + edge.to}>
-                  {fromName} owes {toName} {split.currency}{" "}
+                  {fromName} pays {toName} {split.currency}{" "}
                   {D.toString(edge.amount)}
                 </li>
               );
