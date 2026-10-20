@@ -56,6 +56,7 @@ export {
   getUser,
   getUsers,
   putUser,
-  setUserLocale,
+  updateUserSettings,
   type User,
+  type UserSettings,
 } from "./models/user.js";

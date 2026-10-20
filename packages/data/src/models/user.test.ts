@@ -53,7 +53,7 @@ await test("profile write failures propagate to the caller", async () => {
 });
 
 await test("locale updates and resets change only the preference on an existing profile", async () => {
-  const { setUserLocale } = await import("./user.js");
+  const { updateUserSettings } = await import("./user.js");
   const userID = genUserID();
   const send = mock.method(
     DynamoDBDocumentClient.prototype,
@@ -83,8 +83,8 @@ await test("locale updates and resets change only the preference on an existing 
       return Promise.resolve({});
     },
   );
-  await setUserLocale(userID, "fi-FI");
-  await setUserLocale(userID, undefined);
+  await updateUserSettings(userID, { locale: "fi-FI" });
+  await updateUserSettings(userID, { locale: undefined });
   assert.equal(send.mock.callCount(), 2);
 });
 
@@ -118,11 +118,23 @@ await test("profile reads preserve optional locale and request strong consistenc
 });
 
 await test("locale update failures propagate rather than creating or replacing a profile", async () => {
-  const { setUserLocale } = await import("./user.js");
+  const { updateUserSettings } = await import("./user.js");
   const error = new Error("ConditionalCheckFailedException");
   const send = mock.method(DynamoDBDocumentClient.prototype, "send", () =>
     Promise.reject(error),
   );
-  await assert.rejects(setUserLocale(genUserID(), "fi-FI"), error);
+  await assert.rejects(
+    updateUserSettings(genUserID(), { locale: "fi-FI" }),
+    error,
+  );
   assert.equal(send.mock.callCount(), 1);
+});
+
+await test("omitting settings does not reset preferences or write the profile", async () => {
+  const { updateUserSettings } = await import("./user.js");
+  const send = mock.method(DynamoDBDocumentClient.prototype, "send", () =>
+    Promise.resolve({}),
+  );
+  await updateUserSettings(genUserID(), {});
+  assert.equal(send.mock.callCount(), 0);
 });

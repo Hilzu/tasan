@@ -23,7 +23,7 @@ export function Footer({ className, showSettings }: FooterProps) {
         {showSettings && (
           <p>
             <Link to={href("/settings")} variant="plain" className="underline">
-              Regional settings
+              Settings
             </Link>
           </p>
         )}

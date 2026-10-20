@@ -13,7 +13,7 @@ import {
   authenticatedSessionContext,
   requireAuthentication,
 } from "~/.server/auth";
-import { updateUserLocale } from "~/.server/services/users";
+import { saveUserSettings } from "~/.server/services/users";
 import { AmountRender } from "~/components/amount";
 import { Button } from "~/components/button";
 import { SelectField } from "~/components/formField";
@@ -36,9 +36,12 @@ export async function action({ request, context }: Route.ActionArgs) {
   const value = form.get("locale");
   const locale = canonicalLocale(value);
   if (value !== "" && !locale) {
-    return data({ error: "Choose a valid regional format." }, { status: 400 });
+    return data(
+      { errors: { locale: ["Choose a valid locale."] } },
+      { status: 400 },
+    );
   }
-  await updateUserLocale(userID, locale);
+  await saveUserSettings(userID, { locale });
   return redirect(`${href("/settings")}?saved`);
 }
 
@@ -53,14 +56,15 @@ export default function Settings({ actionData }: Route.ComponentProps) {
   return (
     <div className="max-w-md space-y-4">
       <MainHeading>Settings</MainHeading>
+      <p>Manage your account settings. Changes apply across your devices.</p>
       <Form method="post" className="space-y-4">
         <SelectField
           key={preference}
-          label="Regional format"
+          label="Locale"
           name="locale"
           defaultValue={preference}
-          description="Choose how dates and amounts are displayed. This preference is saved to your account and follows you across devices. The app language stays English."
-          errors={actionData?.error ? [actionData.error] : undefined}
+          description="Used to format dates and amounts. The app language stays English."
+          errors={actionData?.errors.locale}
         >
           <option value="">Browser default</option>
           {preference &&
@@ -89,7 +93,7 @@ export default function Settings({ actionData }: Route.ComponentProps) {
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save"}
         </Button>
-        {searchParams.has("saved") && !actionData?.error && !pending && (
+        {searchParams.has("saved") && !actionData?.errors && !pending && (
           <p role="status">Settings saved.</p>
         )}
       </Form>

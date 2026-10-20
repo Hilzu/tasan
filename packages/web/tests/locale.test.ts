@@ -2,17 +2,19 @@ import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 
 import { genUserID } from "@tasan/common/id";
-import type { setUserLocale } from "@tasan/data";
+import type { updateUserSettings } from "@tasan/data";
 import { createSession, RouterContextProvider } from "react-router";
 
 import type { getSession } from "~/.server/sessions";
 
 const userID = genUserID();
-const writeLocale = mock.fn<typeof setUserLocale>(() => Promise.resolve());
+const writeSettings = mock.fn<typeof updateUserSettings>(() =>
+  Promise.resolve(),
+);
 const persistenceMock = {
   cache: true,
   exports: {
-    setUserLocale: writeLocale,
+    updateUserSettings: writeSettings,
     ensureCognitoUser: mock.fn(),
     putUser: mock.fn(),
   },
@@ -33,8 +35,8 @@ const { canonicalLocale, localeOptions } = await import("~/domain/locale");
 const { action, middleware } = await import("~/routes/settings");
 
 beforeEach(() => {
-  writeLocale.mock.restore();
-  writeLocale.mock.resetCalls();
+  writeSettings.mock.restore();
+  writeSettings.mock.resetCalls();
 });
 
 const request = (language = "en-GB,en;q=0.9") =>
@@ -42,7 +44,7 @@ const request = (language = "en-GB,en;q=0.9") =>
     headers: { "accept-language": language },
   });
 
-await test("regional format options are supported, canonical locales", () => {
+await test("locale options are supported, canonical locales", () => {
   for (const [locale] of localeOptions)
     assert.equal(canonicalLocale(locale), locale);
   assert.equal(canonicalLocale("fi-fi"), "fi-FI");
@@ -112,15 +114,18 @@ await test("saving canonicalizes and updates only the authenticated account, wit
   assert.equal(result.headers.get("location"), "/settings?saved");
   assert.equal(result.headers.get("set-cookie"), null);
   assert.deepEqual(
-    writeLocale.mock.calls.map(({ arguments: args }) => args),
-    [[userID, "fi-FI"]],
+    writeSettings.mock.calls.map(({ arguments: args }) => args),
+    [[userID, { locale: "fi-FI" }]],
   );
 });
 
 await test("browser default removes the account override", async () => {
   const result = await save("");
   assert.ok(result instanceof Response);
-  assert.deepEqual(writeLocale.mock.calls[0].arguments, [userID, undefined]);
+  assert.deepEqual(writeSettings.mock.calls[0].arguments, [
+    userID,
+    { locale: undefined },
+  ]);
 });
 
 await test("invalid or missing preference is rejected without writing the profile", async () => {
@@ -128,9 +133,9 @@ await test("invalid or missing preference is rejected without writing the profil
     const result = await save(value);
     assert.ok(!(result instanceof Response));
     assert.equal(result.init?.status, 400);
-    assert.equal(result.data.error, "Choose a valid regional format.");
+    assert.deepEqual(result.data.errors.locale, ["Choose a valid locale."]);
   }
-  assert.equal(writeLocale.mock.callCount(), 0);
+  assert.equal(writeSettings.mock.callCount(), 0);
 });
 
 await test("unauthenticated GET and POST settings requests redirect to login", async () => {
@@ -157,11 +162,11 @@ await test("unauthenticated GET and POST settings requests redirect to login", a
     },
     (error: unknown) => error instanceof Response && error.status === 302,
   );
-  assert.equal(writeLocale.mock.callCount(), 0);
+  assert.equal(writeSettings.mock.callCount(), 0);
 });
 
 await test("a failed profile write cannot report a successful save", async () => {
   const error = new Error("Write failed");
-  writeLocale.mock.mockImplementationOnce(() => Promise.reject(error));
+  writeSettings.mock.mockImplementationOnce(() => Promise.reject(error));
   await assert.rejects(save("fi-FI"), error);
 });

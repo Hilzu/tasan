@@ -14,6 +14,8 @@ export interface User {
   locale?: string;
 }
 
+export type UserSettings = Partial<Pick<User, "locale">>;
+
 type PrimaryKey = Pick<UserItem, "pk" | "sk">;
 
 const fromItem = (item: UserItem): User => {
@@ -86,9 +88,12 @@ export const getUsers = captureAsync(
 );
 
 // Keep account preferences separate from identity refreshes during sign-in.
-export const setUserLocale = captureAsync(
-  "setUserLocale",
-  async (id: UserID, locale: string | undefined): Promise<void> => {
+export const updateUserSettings = captureAsync(
+  "updateUserSettings",
+  async (id: UserID, settings: UserSettings): Promise<void> => {
+    // Omitted settings stay unchanged; explicit undefined clears a preference.
+    if (!("locale" in settings)) return;
+    const { locale } = settings;
     const Key: PrimaryKey = { pk: id, sk: id };
     await documentClient().send(
       new UpdateCommand({
