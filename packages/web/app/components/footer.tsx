@@ -1,4 +1,7 @@
 import classNames from "classnames";
+import { href } from "react-router";
+
+import { Link } from "~/components/link";
 
 interface FooterProps {
   className?: string;
@@ -16,7 +19,11 @@ export function Footer({ className }: FooterProps) {
     >
       <div className="container space-y-2">
         <p>© {year} Santeri Consulting Oy and Tasan.app developers</p>
-        <p>There | might | be | some | links | here | at | some | point</p>
+        <p>
+          <Link to={href("/settings")} variant="plain" className="underline">
+            Regional settings
+          </Link>
+        </p>
         <p>Version {version}</p>
       </div>
     </footer>

@@ -56,7 +56,10 @@ export function Header({ className, user, split }: HeaderProps) {
                   {Array.from(user.name.trim())[0]?.toUpperCase() || "?"}
                 </span>
               }
-              items={[{ label: "Log out", to: href("/logout") }]}
+              items={[
+                { label: "Settings", to: href("/settings") },
+                { label: "Log out", to: href("/logout") },
+              ]}
             />
           : <Link to={href("/login")}>Log in</Link>}
         </div>

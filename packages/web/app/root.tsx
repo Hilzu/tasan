@@ -7,12 +7,14 @@ import {
   Scripts,
   ScrollRestoration,
   useNavigation,
+  useRouteLoaderData,
 } from "react-router";
 
+import { getLocale } from "~/.server/locale";
 import { requestLogging } from "~/.server/request-logging";
 import { AppUpdate } from "~/components/app-update";
 import { ErrorScreen } from "~/components/error-screen";
-import { NonceContext } from "~/context";
+import { LanguageContext, NonceContext } from "~/context";
 
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
@@ -21,6 +23,10 @@ import favicon from "./marketing/favicon.svg?no-inline";
 import faviconPNG from "./marketing/favicon-32.png?no-inline";
 
 export const middleware: Route.MiddlewareFunction[] = [requestLogging];
+
+export async function loader({ request }: Route.LoaderArgs) {
+  return getLocale(request);
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -32,6 +38,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useContext(NonceContext);
+  const locale = useRouteLoaderData<typeof loader>("root")?.locale ?? "en-US";
   return (
     <html lang="en" className="bg-brand-700 dark:bg-brand-950 h-full">
       <head>
@@ -55,7 +62,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="bg-brand-700 dark:bg-brand-950 min-h-full text-gray-800 antialiased dark:text-gray-100">
         <div className="bg-brand-canvas min-h-screen dark:bg-gray-950">
-          {children}
+          <LanguageContext.Provider value={locale}>
+            {children}
+          </LanguageContext.Provider>
         </div>
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />

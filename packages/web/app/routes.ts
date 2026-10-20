@@ -10,6 +10,7 @@ export default [
   route("error-report", "routes/error-report.ts"),
   layout("routes/layout.tsx", [
     index("routes/index.tsx"),
+    route("settings", "routes/settings.tsx"),
     route("login", "routes/login.tsx"),
     route("auth-callback", "routes/auth-callback.tsx"),
     route("logout", "routes/logout.tsx"),
