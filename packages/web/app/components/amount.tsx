@@ -32,10 +32,11 @@ export function ConvertedAmount({
   amount,
   currency,
   exchangeRate,
-}: AmountRenderProps & { exchangeRate?: number }) {
+}: Pick<AmountRenderProps, "amount" | "currency"> & { exchangeRate?: number }) {
   if (!exchangeRate) return null;
   const fractions = currencies[currency].fractions;
-  const converted = D.mul(D.create(amount, fractions), exchangeRate);
+  // Convert before rounding so the destination precision never changes the source amount.
+  const converted = D.create(amount.value * exchangeRate, fractions);
   return (
     <>
       (<AmountRender amount={converted} currency={currency} />)

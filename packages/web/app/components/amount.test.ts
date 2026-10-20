@@ -75,3 +75,18 @@ await test("converted amounts are omitted when no exchange rate exists", () => {
   );
   assert.equal(html, "");
 });
+
+await test("conversion preserves source precision before rounding to the destination", () => {
+  const html = renderToStaticMarkup(
+    createElement(
+      LanguageContext.Provider,
+      { value: "en-US" },
+      createElement(ConvertedAmount, {
+        amount: D.create(12.5),
+        currency: "JPY",
+        exchangeRate: 160,
+      }),
+    ),
+  );
+  assert.equal(spaces(html), "(<span>JPY 2,000</span>)");
+});
