@@ -11,7 +11,10 @@ export interface User {
   id: UserID;
   name: string;
   email: string;
+  locale?: string;
 }
+
+export type UserSettings = Partial<Pick<User, "locale">>;
 
 type PrimaryKey = Pick<UserItem, "pk" | "sk">;
 
@@ -20,6 +23,7 @@ const fromItem = (item: UserItem): User => {
     id: item.pk,
     name: item.name,
     email: item.email,
+    ...(item.locale ? { locale: item.locale } : {}),
   };
 };
 
@@ -54,9 +58,16 @@ export const putUser = captureAsync(
 
 export const getUser = captureAsync(
   "getUser",
-  async (id: UserID): Promise<User | undefined> => {
+  async (
+    id: UserID,
+    options: { consistentRead?: boolean } = {},
+  ): Promise<User | undefined> => {
     const Key: PrimaryKey = { pk: id, sk: id };
-    const cmd = new GetCommand({ TableName, Key });
+    const cmd = new GetCommand({
+      TableName,
+      Key,
+      ConsistentRead: options.consistentRead ?? false,
+    });
     const { Item } = await documentClient().send(cmd);
     if (!Item) return;
     return fromItem(parseItem(userItemSchema, Item, "user"));
@@ -72,6 +83,27 @@ export const getUsers = captureAsync(
     const items = await batchGetItems(pks);
     return items.map((item) =>
       fromItem(parseItem(userItemSchema, item, "user")),
+    );
+  },
+);
+
+// Keep account preferences separate from identity refreshes during sign-in.
+export const updateUserSettings = captureAsync(
+  "updateUserSettings",
+  async (id: UserID, settings: UserSettings): Promise<void> => {
+    // Omitted settings stay unchanged; explicit undefined clears a preference.
+    if (!("locale" in settings)) return;
+    const { locale } = settings;
+    const Key: PrimaryKey = { pk: id, sk: id };
+    await documentClient().send(
+      new UpdateCommand({
+        TableName,
+        Key,
+        ConditionExpression: "attribute_exists(pk)",
+        UpdateExpression: locale ? "SET #locale = :locale" : "REMOVE #locale",
+        ExpressionAttributeNames: { "#locale": "locale" },
+        ...(locale ? { ExpressionAttributeValues: { ":locale": locale } } : {}),
+      }),
     );
   },
 );

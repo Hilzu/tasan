@@ -1,7 +1,9 @@
 import { getUser } from "@tasan/data";
-import { Outlet, useRouteLoaderData } from "react-router";
+import { href, Outlet, useRouteLoaderData } from "react-router";
 
 import { sessionContext, sessionMiddleware } from "~/.server/auth";
+import { getLocale } from "~/.server/locale";
+import { localeOption } from "~/.server/locales";
 import { Footer } from "~/components/footer";
 import { Header } from "~/components/header";
 import type { SplitLoader } from "~/routes/split/split-parent";
@@ -20,11 +22,25 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ context }: Route.LoaderArgs) {
+export async function loader({ context, request, url }: Route.LoaderArgs) {
   const session = context.get(sessionContext);
   const userID = session.get("userID");
-  const user = userID ? await getUser(userID) : undefined;
-  return { user };
+  // Settings must read back the latest preference after a save. Other pages
+  // keep their existing eventual-read behavior.
+  const user =
+    userID ?
+      await getUser(userID, {
+        consistentRead: url.pathname === href("/settings"),
+      })
+    : undefined;
+  return {
+    user,
+    locale: getLocale(request, user?.locale),
+    localeOption:
+      url.pathname === href("/settings") && user?.locale ?
+        localeOption(user.locale)
+      : undefined,
+  };
 }
 
 export default function Layout({ loaderData }: Route.ComponentProps) {
@@ -36,7 +52,7 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
       <main className="container mt-4 mb-16">
         <Outlet />
       </main>
-      <Footer className="mt-auto" />
+      <Footer className="mt-auto" showSettings={Boolean(user)} />
     </div>
   );
 }

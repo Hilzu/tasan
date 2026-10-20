@@ -9,8 +9,7 @@ import { renderToPipeableStream } from "react-dom/server";
 import type { EntryContext, HandleErrorFunction } from "react-router";
 import { ServerRouter } from "react-router";
 
-import { parseAcceptLanguage } from "~/.server/accept-language";
-import { LanguageContext, NonceContext, TimeZoneContext } from "~/context";
+import { NonceContext, TimeZoneContext } from "~/context";
 
 export const streamTimeout = 5_000;
 
@@ -24,10 +23,6 @@ export default function handleRequest(
     let shellRendered = false;
     const userAgent = request.headers.get("user-agent");
     const scriptNonce = crypto.randomBytes(16).toString("base64url");
-
-    const language = parseAcceptLanguage(
-      request.headers.get("accept-language"),
-    );
 
     const timeZone =
       request.headers.get("cloudfront-viewer-time-zone") ?? undefined;
@@ -55,15 +50,13 @@ export default function handleRequest(
 
     const { pipe, abort } = renderToPipeableStream(
       <NonceContext.Provider value={scriptNonce}>
-        <LanguageContext.Provider value={language}>
-          <TimeZoneContext.Provider value={timeZone}>
-            <ServerRouter
-              context={routerContext}
-              url={request.url}
-              nonce={scriptNonce}
-            />
-          </TimeZoneContext.Provider>
-        </LanguageContext.Provider>
+        <TimeZoneContext.Provider value={timeZone}>
+          <ServerRouter
+            context={routerContext}
+            url={request.url}
+            nonce={scriptNonce}
+          />
+        </TimeZoneContext.Provider>
       </NonceContext.Provider>,
       {
         nonce: scriptNonce,

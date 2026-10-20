@@ -52,4 +52,11 @@ export {
   getSplitUser,
   type SplitUser,
 } from "./models/split-user.js";
-export { getUser, getUsers, putUser, type User } from "./models/user.js";
+export {
+  getUser,
+  getUsers,
+  putUser,
+  updateUserSettings,
+  type User,
+  type UserSettings,
+} from "./models/user.js";

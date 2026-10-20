@@ -1,6 +1,11 @@
-import type { CognitoUserID } from "@tasan/common/id";
+import type { CognitoUserID, UserID } from "@tasan/common/id";
 import { getLogger } from "@tasan/common/logging";
-import { ensureCognitoUser, putUser } from "@tasan/data";
+import {
+  ensureCognitoUser,
+  putUser,
+  updateUserSettings,
+  type UserSettings,
+} from "@tasan/data";
 
 import { logAction } from "./logging";
 
@@ -16,3 +21,8 @@ export const provisionAuthenticatedUser = async (input: {
     return { userID };
   });
 };
+
+export const saveUserSettings = (userID: UserID, settings: UserSettings) =>
+  logAction("user.settings.update", { userId: userID }, () =>
+    updateUserSettings(userID, settings),
+  );

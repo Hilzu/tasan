@@ -11,6 +11,7 @@ const persistenceMock = {
     ensureCognitoUser: mock.fn<typeof ensureCognitoUser>(() =>
       Promise.resolve({ userID }),
     ),
+    updateUserSettings: mock.fn(() => Promise.resolve()),
     putUser: mock.fn<typeof putUser>(() => Promise.resolve()),
   },
 };

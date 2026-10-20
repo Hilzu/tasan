@@ -181,6 +181,9 @@ importers:
       classnames:
         specifier: ^2.5.1
         version: 2.5.1
+      cldr-core:
+        specifier: ^48.2.0
+        version: 48.2.0
       isbot:
         specifier: ^5.1.43
         version: 5.1.43
@@ -1141,6 +1144,9 @@ packages:
 
   classnames@2.5.1:
     resolution: {integrity: sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow==}
+
+  cldr-core@48.2.0:
+    resolution: {integrity: sha512-zfmLothncSwfv2jlevoSrgI2VGgH8SDGHXst6jUEotHA8nq9Igeg9jzdJDFtBso9pgJuG89DK16TzrmZDdo2Bg==}
 
   cliui@9.0.1:
     resolution: {integrity: sha512-k7ndgKhwoQveBL+/1tqGJYNz097I7WOvwbmmU2AR5+magtbjPWQTS1C5vzGkBC8Ym8UWRzfKUzUUqFLypY4Q+w==}
@@ -2847,6 +2853,8 @@ snapshots:
       readdirp: 5.0.0
 
   classnames@2.5.1: {}
+
+  cldr-core@48.2.0: {}
 
   cliui@9.0.1:
     dependencies:

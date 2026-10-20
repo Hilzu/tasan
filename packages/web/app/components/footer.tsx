@@ -1,10 +1,14 @@
 import classNames from "classnames";
+import { href } from "react-router";
+
+import { Link } from "~/components/link";
 
 interface FooterProps {
   className?: string;
+  showSettings?: boolean;
 }
 
-export function Footer({ className }: FooterProps) {
+export function Footer({ className, showSettings }: FooterProps) {
   const year = new Date().getFullYear();
   const version = import.meta.env.VITE_APP_VERSION || "unknown";
   return (
@@ -16,7 +20,13 @@ export function Footer({ className }: FooterProps) {
     >
       <div className="container space-y-2">
         <p>© {year} Santeri Consulting Oy and Tasan.app developers</p>
-        <p>There | might | be | some | links | here | at | some | point</p>
+        {showSettings && (
+          <p>
+            <Link to={href("/settings")} variant="plain" className="underline">
+              Settings
+            </Link>
+          </p>
+        )}
         <p>Version {version}</p>
       </div>
     </footer>
