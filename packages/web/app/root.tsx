@@ -15,6 +15,7 @@ import { requestLogging } from "~/.server/request-logging";
 import { AppUpdate } from "~/components/app-update";
 import { ErrorScreen } from "~/components/error-screen";
 import { LanguageContext, NonceContext } from "~/context";
+import type { loader as layoutLoader } from "~/routes/layout";
 
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
@@ -24,8 +25,8 @@ import faviconPNG from "./marketing/favicon-32.png?no-inline";
 
 export const middleware: Route.MiddlewareFunction[] = [requestLogging];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  return getLocale(request);
+export function loader({ request }: Route.LoaderArgs) {
+  return { locale: getLocale(request) };
 }
 
 export const links: Route.LinksFunction = () => [
@@ -38,7 +39,10 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useContext(NonceContext);
-  const locale = useRouteLoaderData<typeof loader>("root")?.locale ?? "en-US";
+  const accountLocale =
+    useRouteLoaderData<typeof layoutLoader>("routes/layout")?.locale;
+  const browserLocale = useRouteLoaderData<typeof loader>("root")?.locale;
+  const locale = accountLocale ?? browserLocale ?? "en-US";
   return (
     <html lang="en" className="bg-brand-700 dark:bg-brand-950 h-full">
       <head>

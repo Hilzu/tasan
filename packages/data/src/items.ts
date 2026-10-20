@@ -43,6 +43,7 @@ export const userItemSchema = z
     sk: userIDSchema,
     name: z.string(),
     email: z.string(),
+    locale: z.string().optional(),
     createdAt: timestamp,
   })
   .refine((item) => item.pk === item.sk);

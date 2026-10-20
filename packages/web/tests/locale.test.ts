@@ -1,21 +1,50 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { beforeEach, mock, test } from "node:test";
 
-import { RouterContextProvider } from "react-router";
+import { genUserID } from "@tasan/common/id";
+import type { setUserLocale } from "@tasan/data";
+import { createSession, RouterContextProvider } from "react-router";
 
-import { getLocale, localeCookie } from "~/.server/locale";
-import { canonicalLocale, localeOptions } from "~/domain/locale";
-import { action } from "~/routes/settings";
+import type { getSession } from "~/.server/sessions";
 
-const request = (cookie?: string, language = "en-GB,en;q=0.9") =>
+const userID = genUserID();
+const writeLocale = mock.fn<typeof setUserLocale>(() => Promise.resolve());
+const persistenceMock = {
+  cache: true,
+  exports: {
+    setUserLocale: writeLocale,
+    ensureCognitoUser: mock.fn(),
+    putUser: mock.fn(),
+  },
+};
+mock.module("@tasan/data", persistenceMock);
+const sessionMock = {
+  cache: true,
+  exports: {
+    getSession: mock.fn<typeof getSession>(() =>
+      Promise.resolve(createSession()),
+    ),
+  },
+};
+mock.module("~/.server/sessions", sessionMock);
+const { sessionContext } = await import("~/.server/auth");
+const { getLocale } = await import("~/.server/locale");
+const { canonicalLocale, localeOptions } = await import("~/domain/locale");
+const { action, middleware } = await import("~/routes/settings");
+
+beforeEach(() => {
+  writeLocale.mock.restore();
+  writeLocale.mock.resetCalls();
+});
+
+const request = (language = "en-GB,en;q=0.9") =>
   new Request("https://tasan.app/settings", {
-    headers: { "accept-language": language, ...(cookie ? { cookie } : {}) },
+    headers: { "accept-language": language },
   });
 
 await test("regional format options are supported, canonical locales", () => {
-  for (const [locale] of localeOptions) {
+  for (const [locale] of localeOptions)
     assert.equal(canonicalLocale(locale), locale);
-  }
   assert.equal(canonicalLocale("fi-fi"), "fi-FI");
   for (const value of [
     null,
@@ -30,103 +59,109 @@ await test("regional format options are supported, canonical locales", () => {
   }
 });
 
-await test("saved preference takes priority over browser language", async () => {
-  const cookie = await localeCookie.serialize("fi-FI");
-  assert.deepEqual(await getLocale(request(cookie)), {
-    locale: "fi-FI",
-    preference: "fi-FI",
-  });
+await test("account preference takes priority over browser language", () => {
+  assert.equal(getLocale(request(), "fi-FI"), "fi-FI");
+  assert.equal(getLocale(request("ja-JP"), "fi-FI"), "fi-FI");
 });
 
-await test("missing, malformed, or invalid cookies fall back to browser language", async () => {
-  for (const cookie of [
-    undefined,
-    "locale=garbage",
-    "locale=%ZZ",
-    await localeCookie.serialize("en_US"),
-    await localeCookie.serialize({ locale: "fi" }),
-  ]) {
-    assert.deepEqual(await getLocale(request(cookie)), {
-      locale: "en-GB",
-      preference: "",
-    });
+await test("missing or invalid profile preference falls back to browser language", () => {
+  for (const preference of [undefined, "", "en_US", "xx-XX"]) {
+    assert.equal(getLocale(request(), preference), "en-GB");
   }
 });
 
-await test("missing or unusable browser language has a deterministic SSR fallback", async () => {
-  for (const language of ["", "*", "xx-XX", "en_US"]) {
-    assert.deepEqual(await getLocale(request(undefined, language)), {
-      locale: "en-US",
-      preference: "",
-    });
-  }
+await test("missing or unusable browser language has a deterministic SSR fallback", () => {
+  for (const language of ["", "*", "xx-XX", "en_US"])
+    assert.equal(getLocale(request(language)), "en-US");
 });
 
-const save = async (locale: string | null, origin = "https://tasan.app") => {
+await test("locale cookies are ignored in favor of account and browser preferences", () => {
+  const input = request();
+  input.headers.set("cookie", "locale=ImZpLUZJIiI%3D");
+  assert.equal(getLocale(input), "en-GB");
+  assert.equal(getLocale(input, "ja-JP"), "ja-JP");
+});
+
+const save = async (locale: string | null, authenticated = true) => {
   const form = new FormData();
   if (locale !== null) form.set("locale", locale);
-  const input = new Request(`${origin}/settings`, {
+  // A submitted user ID must never select whose profile is updated.
+  form.set("userID", genUserID());
+  const input = new Request("https://tasan.app/settings", {
     method: "POST",
     body: form,
   });
-  return action({
+  const context = new RouterContextProvider();
+  context.set(sessionContext, createSession(authenticated ? { userID } : {}));
+  const args = {
     request: input,
     url: new URL(input.url),
     params: {},
-    context: new RouterContextProvider(),
+    context,
     pattern: "/settings",
-  });
+  };
+  for (const handler of middleware)
+    await handler(args, () => Promise.resolve(new Response()));
+  return action(args);
 };
 
-await test("saving canonicalizes and persists the preference for subsequent server requests", async () => {
+await test("saving canonicalizes and updates only the authenticated account, without a locale cookie", async () => {
   const result = await save("fi-fi");
   assert.ok(result instanceof Response);
   assert.equal(result.status, 302);
   assert.equal(result.headers.get("location"), "/settings?saved");
-  const cookie = result.headers.get("set-cookie");
-  assert.ok(cookie);
-  for (const attribute of [
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax",
-    "Path=/",
-    "Max-Age=31536000",
-  ]) {
-    assert.ok(cookie.includes(attribute), attribute);
-  }
-  assert.deepEqual(await getLocale(request(cookie)), {
-    locale: "fi-FI",
-    preference: "fi-FI",
-  });
+  assert.equal(result.headers.get("set-cookie"), null);
+  assert.deepEqual(
+    writeLocale.mock.calls.map(({ arguments: args }) => args),
+    [[userID, "fi-FI"]],
+  );
 });
 
-await test("browser default clears the cookie and restores browser formatting", async () => {
+await test("browser default removes the account override", async () => {
   const result = await save("");
   assert.ok(result instanceof Response);
-  const cookie = result.headers.get("set-cookie");
-  assert.ok(cookie);
-  assert.ok(cookie.includes("Max-Age=0"));
-  assert.deepEqual(await getLocale(request(cookie)), {
-    locale: "en-GB",
-    preference: "",
-  });
+  assert.deepEqual(writeLocale.mock.calls[0].arguments, [userID, undefined]);
 });
 
-await test("invalid or missing preference is rejected without writing a cookie", async () => {
+await test("invalid or missing preference is rejected without writing the profile", async () => {
   for (const value of [null, "en_US", "*", "xx-XX"]) {
     const result = await save(value);
     assert.ok(!(result instanceof Response));
     assert.equal(result.init?.status, 400);
     assert.equal(result.data.error, "Choose a valid regional format.");
-    assert.equal(new Headers(result.init.headers).get("set-cookie"), null);
   }
+  assert.equal(writeLocale.mock.callCount(), 0);
 });
 
-await test("local HTTP development can save the preference", async () => {
-  const result = await save("ja-JP", "http://localhost:5173");
-  assert.ok(result instanceof Response);
-  const cookie = result.headers.get("set-cookie");
-  assert.ok(cookie);
-  assert.ok(!cookie.includes("Secure"));
-  assert.equal((await getLocale(request(cookie))).locale, "ja-JP");
+await test("unauthenticated GET and POST settings requests redirect to login", async () => {
+  await assert.rejects(save("fi-FI", false), (error: unknown) => {
+    assert.ok(error instanceof Response);
+    assert.equal(error.status, 302);
+    assert.equal(error.headers.get("location"), "/login?redirect=%2Fsettings");
+    return true;
+  });
+  const input = request();
+  const context = new RouterContextProvider();
+  context.set(sessionContext, createSession());
+  const args = {
+    request: input,
+    url: new URL(input.url),
+    params: {},
+    context,
+    pattern: "/settings",
+  };
+  await assert.rejects(
+    async () => {
+      for (const handler of middleware)
+        await handler(args, () => Promise.resolve(new Response()));
+    },
+    (error: unknown) => error instanceof Response && error.status === 302,
+  );
+  assert.equal(writeLocale.mock.callCount(), 0);
+});
+
+await test("a failed profile write cannot report a successful save", async () => {
+  const error = new Error("Write failed");
+  writeLocale.mock.mockImplementationOnce(() => Promise.reject(error));
+  await assert.rejects(save("fi-FI"), error);
 });

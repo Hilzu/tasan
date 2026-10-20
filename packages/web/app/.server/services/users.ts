@@ -1,6 +1,6 @@
-import type { CognitoUserID } from "@tasan/common/id";
+import type { CognitoUserID, UserID } from "@tasan/common/id";
 import { getLogger } from "@tasan/common/logging";
-import { ensureCognitoUser, putUser } from "@tasan/data";
+import { ensureCognitoUser, putUser, setUserLocale } from "@tasan/data";
 
 import { logAction } from "./logging";
 
@@ -16,3 +16,8 @@ export const provisionAuthenticatedUser = async (input: {
     return { userID };
   });
 };
+
+export const updateUserLocale = (userID: UserID, locale: string | undefined) =>
+  logAction("user.locale.update", { userId: userID }, () =>
+    setUserLocale(userID, locale),
+  );
