@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="#155b52">
-  <style>@media (prefers-color-scheme: dark) { :root { fill: #faf8f2; } }</style>
-  <rect x="1" y="1" width="6" height="6" rx="1.5" />
-  <rect x="9" y="1" width="6" height="6" rx="1.5" />
-  <rect x="1" y="9" width="6" height="6" rx="1.5" />
-  <rect x="9" y="9" width="6" height="6" rx="1.5" />
-</svg>

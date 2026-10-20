@@ -1,6 +1,0 @@
-.react-router/
-build/
-cdk.out/
-dist/
-node_modules/
-pnpm-lock.yaml
