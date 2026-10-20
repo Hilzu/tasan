@@ -7,8 +7,9 @@ import type { SplitExpense } from "@tasan/data";
 
 import {
   calculateBalances,
-  cancelMutual,
+  calculateExpenseGraph,
   createGraphWithCurrency,
+  simplifyDebts,
 } from "~/domain/expense-graph";
 
 const numberGen = function* () {
@@ -122,7 +123,7 @@ await test("createGraphWithCurrency", async (t) => {
   });
 });
 
-await test("cancelMutual", async (t) => {
+await test("simplifyDebts", async (t) => {
   await t.test("cancels mutual debts", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
@@ -131,7 +132,7 @@ await test("cancelMutual", async (t) => {
       [userA, [{ to: userB, amount: D.create(10) }]],
       [userB, [{ to: userA, amount: D.create(5) }]],
     ]);
-    const newGraph = cancelMutual(graph);
+    const newGraph = simplifyDebts(graph, "EUR");
     assert.deepEqual(
       newGraph,
       new Map([[userA, [{ to: userB, amount: D.create(5) }]]]),
@@ -155,7 +156,7 @@ await test("cancelMutual", async (t) => {
       [userC, [{ to: userA, amount: D.create(2) }]],
     ]);
 
-    const newGraph = cancelMutual(graph);
+    const newGraph = simplifyDebts(graph, "EUR");
     assert.deepEqual(
       newGraph,
       new Map([
@@ -204,6 +205,183 @@ await test("calculateBalances", async (t) => {
         { userID: userD, balance: D.create(0) },
         { userID: userC, balance: D.create(15) },
       ],
+    );
+  });
+});
+
+await test("simplified repayment plans", async (t) => {
+  const a = genTestUserID("a");
+  const b = genTestUserID("b");
+  const c = genTestUserID("c");
+  const d = genTestUserID("d");
+  const users = [a, b, c, d];
+
+  for (const { name, currency, edges, expected } of [
+    { name: "empty split", currency: "EUR", edges: [], expected: [] },
+    {
+      name: "chain",
+      currency: "EUR",
+      edges: [
+        [a, b, 30],
+        [b, c, 30],
+      ],
+      expected: [[a, c, 30]],
+    },
+    {
+      name: "cycle",
+      currency: "EUR",
+      edges: [
+        [a, b, 30],
+        [b, c, 30],
+        [c, a, 30],
+      ],
+      expected: [],
+    },
+    {
+      name: "equal mutual debts",
+      currency: "EUR",
+      edges: [
+        [a, b, 30],
+        [b, a, 30],
+      ],
+      expected: [],
+    },
+    {
+      name: "largest remaining balances are matched again after each payment",
+      currency: "EUR",
+      edges: [
+        [a, c, 8],
+        [a, d, 1],
+        [b, d, 7],
+      ],
+      expected: [
+        [a, c, 8],
+        [b, d, 7],
+        [a, d, 1],
+      ],
+    },
+    {
+      name: "cent precision",
+      currency: "EUR",
+      edges: [
+        [a, b, 0.1],
+        [b, c, 0.3],
+      ],
+      expected: [
+        [b, c, 0.2],
+        [a, c, 0.1],
+      ],
+    },
+    {
+      name: "ties use user IDs regardless of original debt order",
+      currency: "EUR",
+      edges: [
+        [b, c, 10],
+        [a, d, 10],
+      ],
+      expected: [
+        [a, c, 10],
+        [b, d, 10],
+      ],
+    },
+    {
+      name: "yen precision",
+      currency: "JPY",
+      edges: [
+        [a, b, 301],
+        [b, c, 201],
+      ],
+      expected: [
+        [a, c, 201],
+        [a, b, 100],
+      ],
+    },
+    {
+      name: "zero-value edges",
+      currency: "EUR",
+      edges: [[a, b, 0]],
+      expected: [],
+    },
+    {
+      name: "negative adjustment",
+      currency: "EUR",
+      edges: [[a, b, -5]],
+      expected: [[b, a, 5]],
+    },
+  ] satisfies {
+    name: string;
+    currency: "EUR" | "JPY";
+    edges: [UserID, UserID, number][];
+    expected: [UserID, UserID, number][];
+  }[]) {
+    await t.test(name, () => {
+      const graph = new Map<UserID, { to: UserID; amount: D.Decimal }[]>();
+      const fractions = currency === "JPY" ? 0 : 2;
+      for (const [from, to, amount] of edges) {
+        graph.set(from, [
+          ...(graph.get(from) ?? []),
+          { to, amount: D.create(amount, fractions) },
+        ]);
+      }
+      const before = structuredClone(graph);
+      const result = simplifyDebts(graph, currency);
+      const payments = [...result].flatMap(([from, debts]) =>
+        debts.map(({ to, amount }) => [from, to, amount.value]),
+      );
+      const normalize = (items: unknown[][]) =>
+        items.sort((x, y) =>
+          JSON.stringify(x).localeCompare(JSON.stringify(y)),
+        );
+      assert.deepEqual(normalize(payments), normalize(expected));
+      assert.deepEqual(
+        calculateBalances(result, users, currency),
+        calculateBalances(graph, users, currency),
+      );
+      assert.deepEqual(graph, before);
+      assert.deepEqual(
+        simplifyDebts(
+          new Map(
+            [...graph]
+              .reverse()
+              .map(([from, debts]) => [from, [...debts].reverse()]),
+          ),
+          currency,
+        ),
+        result,
+      );
+      const active = calculateBalances(graph, users, currency).filter(
+        ({ balance }) => !D.equals(balance, 0),
+      ).length;
+      assert.ok(payments.length <= Math.max(0, active - 1));
+    });
+  }
+
+  await t.test("converted expenses use simplified repayments", () => {
+    const expenses = [
+      createTestExpense({
+        payer: b,
+        amount: D.create(10),
+        participants: { [a]: D.create(10) },
+        conversionRate: 1.666666,
+      }),
+      createTestExpense({
+        payer: c,
+        amount: D.create(10),
+        participants: { [b]: D.create(10) },
+        conversionRate: 1.666666,
+      }),
+    ];
+    assert.deepEqual(
+      calculateExpenseGraph({
+        id: genSplitID(),
+        name: "Converted split",
+        createdBy: a,
+        createdAt: new Date(),
+        userIDs: new Set(users),
+        currency: "EUR",
+        expenses,
+      }),
+      new Map([[a, [{ to: c, amount: D.create(16.67) }]]]),
     );
   });
 });
