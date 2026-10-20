@@ -13,6 +13,7 @@ import {
   calculateBalances,
   calculateExpenseGraph,
 } from "~/domain/expense-graph";
+import { calculateExpenseSummary } from "~/domain/expense-summary";
 import ExpenseListItem from "~/routes/split/components/expense-list-item";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
@@ -22,6 +23,11 @@ export default function ShowSplit(_: Route.ComponentProps) {
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
+  const summary = calculateExpenseSummary(
+    split.expenses,
+    split.currency,
+    session.userID,
+  );
   const expenseGraph = calculateExpenseGraph(split);
   const balances = calculateBalances(
     expenseGraph,
@@ -39,6 +45,19 @@ export default function ShowSplit(_: Route.ComponentProps) {
           ["Created by", users.find((u) => u.id === split.createdBy)?.name],
         ]}
       />
+
+      <Card heading={<SubHeading>Summary</SubHeading>}>
+        <DescriptionList
+          items={[
+            [
+              "Total expenses",
+              `${split.currency} ${D.toString(summary.total)}`,
+            ],
+            ["Your share", `${split.currency} ${D.toString(summary.share)}`],
+            ["You paid", `${split.currency} ${D.toString(summary.paid)}`],
+          ]}
+        />
+      </Card>
 
       <Card
         heading={<SubHeading>Participants</SubHeading>}
@@ -96,7 +115,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
       </Card>
 
       <Card
-        heading={<SubHeading>Expenses</SubHeading>}
+        heading={<SubHeading>Expenses ({split.expenses.length})</SubHeading>}
         action={
           <Link
             to={href("/splits/:splitID/new-expense", { splitID: split.id })}
