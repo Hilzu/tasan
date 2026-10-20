@@ -15,8 +15,12 @@ export const createGraphWithCurrency = (
     const { payer, conversionRate } = expense;
     for (const [userID, amountValue] of expense.participants) {
       if (userID === payer) continue;
-      let amount = D.create(amountValue, fractions);
-      if (conversionRate) amount = D.mul(amount, conversionRate);
+      // Preserve source fractions until after conversion (for example EUR cents
+      // converted to whole JPY), matching the expense summary calculation.
+      const amount = D.create(
+        amountValue.value * (conversionRate ?? 1),
+        fractions,
+      );
       graph = G.upsertEdge(graph, userID, payer, amount);
     }
   }

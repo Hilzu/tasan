@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { currencies } from "@tasan/common/currency";
 import * as D from "@tasan/common/decimal";
 import { genExpenseID, genSplitID, type UserID } from "@tasan/common/id";
 import type { SplitExpense } from "@tasan/data";
@@ -11,6 +12,7 @@ import {
   createGraphWithCurrency,
   simplifyDebts,
 } from "~/domain/expense-graph";
+import { calculateExpenseSummary } from "~/domain/expense-summary";
 
 const numberGen = function* () {
   let i = 0;
@@ -121,6 +123,56 @@ await test("createGraphWithCurrency", async (t) => {
       new Map([[userB, [{ to: userA, amount: D.create(16.67) }]]]),
     );
   });
+
+  await t.test(
+    "converts foreign fractions before rounding to home currency",
+    () => {
+      const debtor = genTestUserID("debtor");
+      const payer = genTestUserID("payer");
+      for (const [currency, source, conversionRate, expected] of [
+        ["JPY", 1.49, 160, 238],
+        ["JPY", 1.5, 160, 240],
+        ["JPY", 0.01, 160, 2],
+        ["KRW", 1.49, 1500, 2235],
+        ["USD", 1.49, 1.234567, 1.84],
+        ["EUR", 0.15, 0.7, 0.1],
+      ] as const) {
+        const expense = createTestExpense({
+          payer,
+          amount: D.create(source),
+          participants: { [debtor]: D.create(source) },
+          conversionRate,
+        });
+        const before = structuredClone(expense);
+        const amount = D.create(expected, currencies[currency].fractions);
+        const expectedGraph = new Map([[debtor, [{ to: payer, amount }]]]);
+        assert.deepEqual(
+          createGraphWithCurrency(currency, [expense]),
+          expectedGraph,
+        );
+
+        const graph = calculateExpenseGraph({
+          id: expense.splitID,
+          name: "Foreign expense",
+          currency,
+          createdAt: new Date(),
+          createdBy: payer,
+          userIDs: new Set([payer, debtor]),
+          expenses: [expense],
+        });
+        assert.deepEqual(graph, expectedGraph);
+        for (const { userID, balance } of calculateBalances(
+          graph,
+          [payer, debtor],
+          currency,
+        )) {
+          const summary = calculateExpenseSummary([expense], currency, userID);
+          assert.deepEqual(balance, D.sub(summary.paid, summary.share));
+        }
+        assert.deepEqual(expense, before);
+      }
+    },
+  );
 });
 
 await test("simplifyDebts", async (t) => {
