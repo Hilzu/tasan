@@ -66,10 +66,13 @@ export const calculateBalances = (
 };
 
 /**
- * Repeatedly match the largest remaining debtor and creditor. This preserves
+ * First settle debtors and creditors whose balances match exactly, then
+ * repeatedly match the largest remaining debtor and creditor. This preserves
  * net balances while allowing payments between people without a direct debt.
  * Each payment settles at least one person, giving at most n - 1 payments,
  * though the greedy approach does not guarantee the minimum payment count.
+ * The exact-match pass catches pairs the greedy can split up, for example
+ * debts of 7 and 6 against credits of 6, 4, and 3.
  */
 export const simplifyDebts = (
   graph: G.Graph,
@@ -83,6 +86,21 @@ export const simplifyDebts = (
   const largestFirst = (a: Balance, b: Balance) =>
     b.balance.value - a.balance.value || a.userID.localeCompare(b.userID);
   let repayments = G.create();
+
+  for (const debtor of debtors.sort(largestFirst)) {
+    const creditor = creditors
+      .sort(largestFirst)
+      .find(({ balance }) => D.equals(balance, debtor.balance));
+    if (!creditor) continue;
+    repayments = G.upsertEdge(
+      repayments,
+      debtor.userID,
+      creditor.userID,
+      debtor.balance,
+    );
+    creditor.balance = D.sub(creditor.balance, debtor.balance);
+    debtor.balance = D.sub(debtor.balance, debtor.balance);
+  }
 
   while (true) {
     const debtor = debtors.sort(largestFirst).at(0);

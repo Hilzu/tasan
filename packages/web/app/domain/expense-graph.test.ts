@@ -266,7 +266,8 @@ await test("simplified repayment plans", async (t) => {
   const b = genTestUserID("b");
   const c = genTestUserID("c");
   const d = genTestUserID("d");
-  const users = [a, b, c, d];
+  const e = genTestUserID("e");
+  const users = [a, b, c, d, e];
 
   for (const { name, currency, edges, expected } of [
     { name: "empty split", currency: "EUR", edges: [], expected: [] },
@@ -310,6 +311,21 @@ await test("simplified repayment plans", async (t) => {
         [a, c, 8],
         [b, d, 7],
         [a, d, 1],
+      ],
+    },
+    {
+      name: "exact balance matches are settled before the greedy pass",
+      currency: "EUR",
+      edges: [
+        [a, c, 6],
+        [a, d, 1],
+        [b, d, 3],
+        [b, e, 3],
+      ],
+      expected: [
+        [b, c, 6],
+        [a, d, 4],
+        [a, e, 3],
       ],
     },
     {
