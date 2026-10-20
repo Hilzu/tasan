@@ -4,9 +4,9 @@ import type { SplitID, UserID } from "@tasan/common/id";
 import type { SplitExpense, User } from "@tasan/data";
 import { href } from "react-router";
 
+import { AmountRender, ConvertedAmount } from "~/components/amount";
 import { DateRender } from "~/components/date";
 import { Link } from "~/components/link";
-import { showInCurrency } from "~/domain/show-in-currency";
 
 export interface ExpenseListItemProps {
   expense: SplitExpense;
@@ -37,16 +37,25 @@ export default function ExpenseListItem({
         </Link>
       </div>
       <div>
-        {expense.currency} {D.toString(expense.amount)}{" "}
-        {showInCurrency(expense.amount, currency, expense.conversionRate)} paid
-        by {users.find((u) => u.id === expense.payer)?.name}
+        <AmountRender amount={expense.amount} currency={expense.currency} />{" "}
+        <ConvertedAmount
+          amount={expense.amount}
+          currency={currency}
+          exchangeRate={expense.conversionRate}
+        />{" "}
+        paid by {users.find((u) => u.id === expense.payer)?.name}
       </div>
       <div>
         {D.equals(yourShare, 0) ?
           "You didn't participate"
         : <>
-            Your share is {expense.currency} {D.toString(yourShare)}{" "}
-            {showInCurrency(yourShare, currency, expense.conversionRate)}
+            Your share is{" "}
+            <AmountRender amount={yourShare} currency={expense.currency} />{" "}
+            <ConvertedAmount
+              amount={yourShare}
+              currency={currency}
+              exchangeRate={expense.conversionRate}
+            />
           </>
         }
       </div>

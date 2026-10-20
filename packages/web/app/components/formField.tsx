@@ -11,6 +11,8 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
+import { useLanguage } from "~/context";
+
 export function FieldError({ errors }: { errors: string[] }) {
   return (
     <div className="text-red-600">
@@ -197,6 +199,7 @@ export function CurrencyInputField({
   errors,
   ...rest
 }: CurrencyInputFieldProps) {
+  const language = useLanguage();
   const [showInvalid, setShowInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { fractions } = currencies[currencySymbol];
@@ -253,7 +256,11 @@ export function CurrencyInputField({
               expressionMode &&
               /[+\-*/]/.test(text) && (
                 <span className="pr-1 whitespace-nowrap text-gray-400">
-                  = {Decimal.toString(resolved)}
+                  ={" "}
+                  {resolved.value.toLocaleString(language, {
+                    minimumFractionDigits: fractions,
+                    maximumFractionDigits: fractions,
+                  })}
                 </span>
               )}
             {allowNegative && (
