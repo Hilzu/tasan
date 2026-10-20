@@ -3,6 +3,7 @@ import { href, Outlet, useRouteLoaderData } from "react-router";
 
 import { sessionContext, sessionMiddleware } from "~/.server/auth";
 import { getLocale } from "~/.server/locale";
+import { localeOption } from "~/.server/locales";
 import { Footer } from "~/components/footer";
 import { Header } from "~/components/header";
 import type { SplitLoader } from "~/routes/split/split-parent";
@@ -32,7 +33,14 @@ export async function loader({ context, request, url }: Route.LoaderArgs) {
         consistentRead: url.pathname === href("/settings"),
       })
     : undefined;
-  return { user, locale: getLocale(request, user?.locale) };
+  return {
+    user,
+    locale: getLocale(request, user?.locale),
+    localeOption:
+      url.pathname === href("/settings") && user?.locale ?
+        localeOption(user.locale)
+      : undefined,
+  };
 }
 
 export default function Layout({ loaderData }: Route.ComponentProps) {

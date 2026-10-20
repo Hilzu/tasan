@@ -32,8 +32,9 @@ mock.module("~/.server/sessions", sessionMock);
 const { sessionContext } = await import("~/.server/auth");
 const { getLocale } = await import("~/.server/locale");
 const { canonicalLocale } = await import("~/domain/locale");
-const { localeOptions, resolveLocaleOption } =
+const { getLocaleOptions, resolveLocaleOption, searchLocales } =
   await import("~/.server/locales");
+const localeOptions = getLocaleOptions();
 const { action, middleware } = await import("~/routes/settings");
 
 beforeEach(() => {
@@ -227,4 +228,59 @@ await test("saving a readable picker selection updates the canonical account loc
     userID,
     { locale: "es-MX" },
   ]);
+});
+
+await test("empty searches return no catalog and suggestions are bounded", () => {
+  assert.deepEqual(searchLocales(""), { options: [], total: 0 });
+  assert.deepEqual(searchLocales("  "), { options: [], total: 0 });
+  const results = searchLocales("English");
+  assert.ok(results.total > 20);
+  assert.equal(results.options.length, 20);
+});
+
+await test("search finds English names, native names, country combinations, and supported custom tags", () => {
+  for (const [query, value] of [
+    ["Finnish Finland", "fi-FI"],
+    ["suomi", "fi-FI"],
+    ["English Australia", "en-AU"],
+    ["espanol Mexico", "es-MX"],
+    ["fi-JP", "fi-JP"],
+  ]) {
+    assert.ok(
+      searchLocales(query).options.some((option) => option.value === value),
+      query,
+    );
+  }
+});
+
+await test("Settings sends no locale catalog until a search is requested", async () => {
+  const { loader } = await import("~/routes/settings");
+  const input = request();
+  const result = loader({
+    request: input,
+    url: new URL(input.url),
+    context: new RouterContextProvider(),
+    params: {},
+    pattern: "/settings",
+  });
+  assert.deepEqual(result.options, []);
+  assert.equal(result.total, 0);
+});
+
+await test("public suggestion responses are bounded and cacheable without a session", async () => {
+  const { loader } = await import("~/routes/locale-options");
+  const input = new Request("https://tasan.app/locale-options?q=English");
+  const result = loader({
+    request: input,
+    url: new URL(input.url),
+    context: new RouterContextProvider(),
+    params: {},
+    pattern: "/locale-options",
+  });
+  assert.equal(result.data.options.length, 20);
+  assert.ok(result.data.total > 20);
+  assert.equal(
+    new Headers(result.init?.headers).get("cache-control"),
+    "public, max-age=86400",
+  );
 });
