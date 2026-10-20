@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useFetcher, useRouteLoaderData } from "react-router";
 
+import { useFormatAmount } from "~/components/amount";
 import { Button } from "~/components/button";
 import {
   type AmountInput,
@@ -55,6 +56,7 @@ const emptyShareInput: ShareFormInput = {
 };
 
 export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
+  const formatAmount = useFormatAmount();
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
@@ -171,9 +173,9 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const allocationError =
     byShares && amount === undefined ? undefined
     : D.gt(difference, 0) ?
-      `${currency} ${D.toString(difference)} left to allocate.${byShares ? " Set shares or adjustments." : ""}`
+      `${formatAmount(difference, currency)} left to allocate.${byShares ? " Set shares or adjustments." : ""}`
     : D.gt(D.create(0, fractionDigits), difference) ?
-      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${currency} ${D.toString(D.mul(difference, -1))}.`
+      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(D.mul(difference, -1), currency)}.`
     : undefined;
 
   return (
@@ -270,7 +272,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
             byShares ?
               "Required when splitting by shares. Adjustments are applied first, and the rest is split by shares."
             : amount === undefined && calculated.hasAmounts ?
-              `Calculated total: ${currency} ${D.toString(calculated.amount)}. Enter a total to split the remainder equally.`
+              `Calculated total: ${formatAmount(calculated.amount, currency)}. Enter a total to split the remainder equally.`
             : "Enter a total or individual amounts. Clear the total to calculate it from individual amounts."
 
           }
@@ -370,7 +372,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
               >
                 <legend className="px-1">
                   {users.find((u) => u.id === userID)?.name ?? "Unknown"}:{" "}
-                  {currency} {D.toString(participantAmount)}
+                  {formatAmount(participantAmount, currency)}
                 </legend>
                 <input
                   type="hidden"

@@ -3,6 +3,7 @@ import * as D from "@tasan/common/decimal";
 import classNames from "classnames";
 import { href, useRouteLoaderData } from "react-router";
 
+import { AmountRender } from "~/components/amount";
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
@@ -51,10 +52,16 @@ export default function ShowSplit(_: Route.ComponentProps) {
           items={[
             [
               "Total expenses",
-              `${split.currency} ${D.toString(summary.total)}`,
+              <AmountRender amount={summary.total} currency={split.currency} />,
             ],
-            ["Your share", `${split.currency} ${D.toString(summary.share)}`],
-            ["You paid", `${split.currency} ${D.toString(summary.paid)}`],
+            [
+              "Your share",
+              <AmountRender amount={summary.share} currency={split.currency} />,
+            ],
+            [
+              "You paid",
+              <AmountRender amount={summary.paid} currency={split.currency} />,
+            ],
           ]}
         />
       </Card>
@@ -86,8 +93,11 @@ export default function ShowSplit(_: Route.ComponentProps) {
                     balance.value < 0 && "text-red-700 dark:text-red-400",
                   )}
                 >
-                  {split.currency} {D.gt(balance, 0) ? "+" : ""}
-                  {D.toString(balance)}
+                  <AmountRender
+                    amount={balance}
+                    currency={split.currency}
+                    signDisplay="exceptZero"
+                  />
                 </span>
               </li>
             );
@@ -109,8 +119,11 @@ export default function ShowSplit(_: Route.ComponentProps) {
               const toName = users.find((u) => u.id === edge.to)?.name;
               return (
                 <li key={from + edge.to}>
-                  {fromName} pays {toName} {split.currency}{" "}
-                  {D.toString(edge.amount)}
+                  {fromName} pays {toName}{" "}
+                  <AmountRender
+                    amount={edge.amount}
+                    currency={split.currency}
+                  />
                 </li>
               );
             });

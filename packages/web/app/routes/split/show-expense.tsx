@@ -1,7 +1,6 @@
 import { compareByKey } from "@tasan/common/compare";
-import * as D from "@tasan/common/decimal";
 import { asExpenseID, asSplitID, genOperationID } from "@tasan/common/id";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   data,
   href,
@@ -16,12 +15,13 @@ import { ApplicationError } from "~/.server/services/errors";
 import { deleteExpense, getExpenseHistory } from "~/.server/services/expenses";
 import { errorResponse } from "~/.server/services/http";
 import { ActionsDropdown } from "~/components/actions-dropdown";
+import { AmountRender, ConvertedAmount } from "~/components/amount";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
 import { FieldError } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
-import { showInCurrency } from "~/domain/show-in-currency";
+import { useLanguage } from "~/context";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
@@ -79,6 +79,7 @@ function ExpenseDetails({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
+  const language = useLanguage();
   const { expenseID } = params;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const submit = useSubmit();
@@ -92,7 +93,12 @@ function ExpenseDetails({
   const { split, users } = parentData;
   const { expense } = loaderData;
   const exchangeRate =
-    expense.conversionRate ? (1 / expense.conversionRate).toFixed(5) : "-";
+    expense.conversionRate ?
+      new Intl.NumberFormat(language, {
+        minimumFractionDigits: 5,
+        maximumFractionDigits: 5,
+      }).format(1 / expense.conversionRate)
+    : "-";
   return (
     <Card
       heading={<MainHeading>Expense - {expense.name}</MainHeading>}
@@ -124,7 +130,17 @@ function ExpenseDetails({
         items={[
           [
             "Amount",
-            `${expense.currency} ${D.toString(expense.amount)} ${showInCurrency(expense.amount, split.currency, expense.conversionRate)}`,
+            <>
+              <AmountRender
+                amount={expense.amount}
+                currency={expense.currency}
+              />{" "}
+              <ConvertedAmount
+                amount={expense.amount}
+                currency={split.currency}
+                exchangeRate={expense.conversionRate}
+              />
+            </>,
           ],
           ["Created by", users.find((u) => u.id === expense.createdBy)?.name],
           ["Paid by", users.find((u) => u.id === expense.payer)?.name],
@@ -138,12 +154,12 @@ function ExpenseDetails({
                 .map(([userID, amount]) => (
                   <div key={userID}>
                     {users.find((u) => u.id === userID)?.name}:{" "}
-                    {expense.currency} {D.toString(amount)}{" "}
-                    {showInCurrency(
-                      amount,
-                      split.currency,
-                      expense.conversionRate,
-                    )}
+                    <AmountRender amount={amount} currency={expense.currency} />{" "}
+                    <ConvertedAmount
+                      amount={amount}
+                      currency={split.currency}
+                      exchangeRate={expense.conversionRate}
+                    />
                   </div>
                 ))}
             </div>,
@@ -179,17 +195,28 @@ function ExpenseDetails({
                   <DateRender date={revision.recordedAt} />
                 </p>
                 <p>
-                  {revision.expense.name}: {revision.expense.currency}{" "}
-                  {D.toString(revision.expense.amount)}, paid by{" "}
+                  {revision.expense.name}:{" "}
+                  <AmountRender
+                    amount={revision.expense.amount}
+                    currency={revision.expense.currency}
+                  />
+                  , paid by{" "}
                   {users.find((u) => u.id === revision.expense.payer)?.name}
                 </p>
                 <p>
-                  {[...revision.expense.participants]
-                    .map(
-                      ([id, amount]) =>
-                        `${users.find((u) => u.id === id)?.name ?? "Unknown"}: ${revision.expense.currency} ${D.toString(amount)}`,
-                    )
-                    .join(", ")}
+                  {[...revision.expense.participants].map(
+                    ([id, amount], index) => (
+                      <Fragment key={id}>
+                        {index > 0 && ", "}
+                        {users.find((u) => u.id === id)?.name ??
+                          "Unknown"}:{" "}
+                        <AmountRender
+                          amount={amount}
+                          currency={revision.expense.currency}
+                        />
+                      </Fragment>
+                    ),
+                  )}
                 </p>
               </li>
             ))}
