@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { LanguageContext } from "~/context";
 import { formatAmount } from "~/domain/format-amount";
 
-import { AmountRender, ConvertedAmount } from "./amount";
+import { AmountRender, AmountWithConversion } from "./amount";
 
 const spaces = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
 
@@ -49,44 +49,54 @@ await test("amount components use the existing language context", () => {
     createElement(
       LanguageContext.Provider,
       { value: "fi-FI" },
-      createElement(AmountRender, {
+      createElement(AmountWithConversion, {
         amount: D.create(1234.5),
         currency: "EUR",
-      }),
-      createElement(ConvertedAmount, {
-        amount: D.create(1500, 0),
-        currency: "EUR",
-        exchangeRate: 0.006,
+        convertedAmount: D.create(2000, 0),
+        convertedCurrency: "JPY",
       }),
     ),
   );
   assert.equal(
     spaces(html),
-    "<span>1 234,50 EUR</span>(<span>9,00 EUR</span>)",
+    "<span>1 234,50 EUR</span> (<span>2 000 JPY</span>)",
   );
 });
 
-await test("converted amounts are omitted when no exchange rate exists", () => {
-  const html = renderToStaticMarkup(
-    createElement(ConvertedAmount, {
-      amount: D.create(10),
-      currency: "EUR",
-    }),
-  );
-  assert.equal(html, "");
-});
-
-await test("conversion preserves source precision before rounding to the destination", () => {
+await test("amounts without a conversion omit the parentheses and separator", () => {
   const html = renderToStaticMarkup(
     createElement(
       LanguageContext.Provider,
       { value: "en-US" },
-      createElement(ConvertedAmount, {
-        amount: D.create(12.5),
-        currency: "JPY",
-        exchangeRate: 160,
+      createElement(AmountWithConversion, {
+        amount: D.create(10),
+        currency: "EUR",
+        convertedCurrency: "EUR",
       }),
     ),
   );
-  assert.equal(spaces(html), "(<span>JPY 2,000</span>)");
+  assert.equal(spaces(html), "<span>EUR 10.00</span>");
+});
+
+await test("zero amounts render with the currency precision", () => {
+  const html = renderToStaticMarkup(
+    createElement(
+      LanguageContext.Provider,
+      { value: "en-US" },
+      createElement(AmountWithConversion, {
+        amount: D.create(0.01),
+        currency: "EUR",
+        convertedAmount: D.create(0, 0),
+        convertedCurrency: "JPY",
+      }),
+      createElement(AmountRender, {
+        amount: D.create(0, 0),
+        currency: "JPY",
+      }),
+    ),
+  );
+  assert.equal(
+    spaces(html),
+    "<span>EUR 0.01</span> (<span>JPY 0</span>)<span>JPY 0</span>",
+  );
 });

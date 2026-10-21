@@ -3,6 +3,8 @@ import * as D from "@tasan/common/decimal";
 import type { UserID } from "@tasan/common/id";
 import type { SplitExpense } from "@tasan/data";
 
+import { convertExpense } from "~/domain/convert-expense";
+
 export const calculateExpenseSummary = (
   expenses: SplitExpense[],
   currency: CurrencySymbol,
@@ -15,15 +17,11 @@ export const calculateExpenseSummary = (
 
   for (const expense of expenses) {
     if (expense.kind === "repayment") continue;
-    // Convert before rounding so foreign fractional amounts survive when the
-    // home currency has fewer decimal places (for example EUR to JPY).
-    const convert = (amount: D.Decimal) =>
-      D.create(amount.value * (expense.conversionRate ?? 1), fractions);
-    const amount = convert(expense.amount);
+    const { amount, participants } = convertExpense(expense, currency);
     total = D.add(total, amount);
     if (expense.payer === userID) paid = D.add(paid, amount);
-    const participation = expense.participants.get(userID);
-    if (participation) share = D.add(share, convert(participation));
+    const participation = participants.get(userID);
+    if (participation) share = D.add(share, participation);
   }
 
   return { total, paid, share };

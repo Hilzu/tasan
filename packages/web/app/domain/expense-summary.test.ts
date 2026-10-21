@@ -72,13 +72,19 @@ await test("combines home and foreign expenses using their saved conversion rate
       currency: "JPY",
       conversionRate: 0.006,
       payer: other,
-      participants: new Map([[you, D.create(1000, 0)]]),
+      participants: new Map([
+        [you, D.create(1000, 0)],
+        [other, D.create(2000, 0)],
+      ]),
     }),
     expense({
       amount: D.create(10),
       currency: "USD",
       conversionRate: 0.9,
-      participants: new Map([[you, D.create(5)]]),
+      participants: new Map([
+        [you, D.create(5)],
+        [other, D.create(5)],
+      ]),
     }),
   ];
   assert.deepEqual(calculateExpenseSummary(expenses, "EUR", you), {
@@ -93,7 +99,10 @@ await test("converts fractional foreign amounts before rounding to whole yen", (
     expense({
       amount: D.create(1.5),
       conversionRate: 160,
-      participants: new Map([[you, D.create(0.75)]]),
+      participants: new Map([
+        [you, D.create(0.75)],
+        [other, D.create(0.75)],
+      ]),
     }),
   ];
   assert.deepEqual(calculateExpenseSummary(expenses, "JPY", you), {

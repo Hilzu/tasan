@@ -15,13 +15,14 @@ import { ApplicationError } from "~/.server/services/errors";
 import { deleteExpense, getExpenseHistory } from "~/.server/services/expenses";
 import { errorResponse } from "~/.server/services/http";
 import { ActionsDropdown } from "~/components/actions-dropdown";
-import { AmountRender, ConvertedAmount } from "~/components/amount";
+import { AmountRender, AmountWithConversion } from "~/components/amount";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
 import { FieldError } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { useLanguage } from "~/context";
+import { convertExpense } from "~/domain/convert-expense";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
@@ -92,6 +93,10 @@ function ExpenseDetails({
   if (!parentData) throw new Error("Parent data not found");
   const { split, users } = parentData;
   const { expense } = loaderData;
+  const converted =
+    expense.conversionRate ?
+      convertExpense(expense, split.currency)
+    : undefined;
   const repayment = expense.kind === "repayment";
   const exchangeRate =
     expense.conversionRate ?
@@ -139,17 +144,12 @@ function ExpenseDetails({
         items={[
           [
             "Amount",
-            <>
-              <AmountRender
-                amount={expense.amount}
-                currency={expense.currency}
-              />{" "}
-              <ConvertedAmount
-                amount={expense.amount}
-                currency={split.currency}
-                exchangeRate={expense.conversionRate}
-              />
-            </>,
+            <AmountWithConversion
+              amount={expense.amount}
+              currency={expense.currency}
+              convertedAmount={converted?.amount}
+              convertedCurrency={split.currency}
+            />,
           ],
           ["Created by", users.find((u) => u.id === expense.createdBy)?.name],
           ["Paid by", users.find((u) => u.id === expense.payer)?.name],
@@ -165,11 +165,11 @@ function ExpenseDetails({
                 .map(([userID, amount]) => (
                   <div key={userID}>
                     {users.find((u) => u.id === userID)?.name}:{" "}
-                    <AmountRender amount={amount} currency={expense.currency} />{" "}
-                    <ConvertedAmount
+                    <AmountWithConversion
                       amount={amount}
-                      currency={split.currency}
-                      exchangeRate={expense.conversionRate}
+                      currency={expense.currency}
+                      convertedAmount={converted?.participants.get(userID)}
+                      convertedCurrency={split.currency}
                     />
                   </div>
                 ))}
