@@ -25,7 +25,7 @@ export function Modal({
   }, [open]);
   return (
     <dialog
-      className="fixed m-auto h-fit rounded-lg"
+      className="bg-brand-canvas fixed m-auto h-fit rounded-lg text-gray-800 dark:bg-gray-950 dark:text-gray-100"
       ref={ref}
       onCancel={(event) => {
         if (!dismissible) event.preventDefault();
