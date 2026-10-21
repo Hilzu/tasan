@@ -6,7 +6,6 @@ import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
 import { fromUnixTime, toUnixTime } from "../date.js";
 import { parseItem, type SessionItem, sessionItemSchema } from "../items.js";
-import { memoizeSingleFlight } from "../promise.js";
 
 export interface Session {
   id: SessionID;
@@ -67,7 +66,7 @@ export const createSession = captureAsync(
 
 export const getSession = captureAsync(
   "getSession",
-  memoizeSingleFlight(async (id: SessionID): Promise<Session | undefined> => {
+  async (id: SessionID): Promise<Session | undefined> => {
     const Key: PrimaryKey = { pk: id, sk: id };
     const cmd = new GetCommand({
       TableName,
@@ -77,7 +76,7 @@ export const getSession = captureAsync(
     if (!Item) return;
     const item = parseItem(sessionItemSchema, Item, "session");
     return fromItem(item);
-  }),
+  },
 );
 
 export const deleteSession = captureAsync(
