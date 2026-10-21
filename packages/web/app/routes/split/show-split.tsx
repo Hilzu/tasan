@@ -119,6 +119,9 @@ export default function ShowSplit(_: Route.ComponentProps) {
           Simplified payments keep everyone’s balance the same. You may pay
           someone who didn’t originally pay for you.
         </p>
+        {expenseGraph.size > 0 && (
+          <p className="mb-1 text-sm">Select a repayment to record it.</p>
+        )}
         <ul>
           {expenseGraph.size === 0 &&
             "No debts between participants. You are all settled!"}
@@ -127,19 +130,10 @@ export default function ShowSplit(_: Route.ComponentProps) {
             return edges.sort(compareByTo).map((edge) => {
               const toName = users.find((u) => u.id === edge.to)?.name;
               return (
-                <li
-                  key={from + edge.to}
-                  className="flex flex-wrap items-center justify-between gap-2 py-1"
-                >
-                  <span>
-                    {fromName} pays {toName}{" "}
-                    <AmountRender
-                      amount={edge.amount}
-                      currency={split.currency}
-                    />
-                  </span>
-                  <Button
-                    variant="secondary"
+                <li key={from + edge.to}>
+                  <button
+                    type="button"
+                    className="outline-brand-700 dark:outline-brand-300 grid min-h-11 w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded px-2 py-2 text-left hover:bg-gray-100 focus-visible:outline-2 dark:hover:bg-gray-800"
                     onClick={() => {
                       setPayment({
                         id: genExpenseID(),
@@ -151,8 +145,31 @@ export default function ShowSplit(_: Route.ComponentProps) {
                       });
                     }}
                   >
-                    Record payment
-                  </Button>
+                    <span className="min-w-0 leading-tight break-words">
+                      <span className="sr-only">Record payment from </span>
+                      {fromName ?? "Unknown"}
+                      <span aria-hidden="true"> → </span>
+                      <span className="sr-only"> to </span>
+                      {toName ?? "Unknown"}
+                    </span>
+                    <span className="text-right whitespace-nowrap tabular-nums">
+                      <AmountRender
+                        amount={edge.amount}
+                        currency={split.currency}
+                      />
+                    </span>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden="true"
+                    >
+                      <path d="m9 6 6 6-6 6" />
+                    </svg>
+                  </button>
                 </li>
               );
             });
