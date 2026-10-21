@@ -22,6 +22,7 @@ import { DescriptionList } from "~/components/description-list";
 import { FieldError } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
 import { useLanguage } from "~/context";
+import { convertExpense } from "~/domain/convert-expense";
 import { DeleteExpenseModal } from "~/routes/split/components/delete-expense-modal";
 import type { SplitLoader } from "~/routes/split/split-parent";
 import { validateOrRespond } from "~/validation";
@@ -92,6 +93,10 @@ function ExpenseDetails({
   if (!parentData) throw new Error("Parent data not found");
   const { split, users } = parentData;
   const { expense } = loaderData;
+  const converted =
+    expense.conversionRate ?
+      convertExpense(expense, split.currency)
+    : undefined;
   const repayment = expense.kind === "repayment";
   const exchangeRate =
     expense.conversionRate ?
@@ -145,9 +150,8 @@ function ExpenseDetails({
                 currency={expense.currency}
               />{" "}
               <ConvertedAmount
-                amount={expense.amount}
+                amount={converted?.amount}
                 currency={split.currency}
-                exchangeRate={expense.conversionRate}
               />
             </>,
           ],
@@ -167,9 +171,8 @@ function ExpenseDetails({
                     {users.find((u) => u.id === userID)?.name}:{" "}
                     <AmountRender amount={amount} currency={expense.currency} />{" "}
                     <ConvertedAmount
-                      amount={amount}
+                      amount={converted?.participants.get(userID)}
                       currency={split.currency}
-                      exchangeRate={expense.conversionRate}
                     />
                   </div>
                 ))}

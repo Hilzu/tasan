@@ -54,9 +54,8 @@ await test("amount components use the existing language context", () => {
         currency: "EUR",
       }),
       createElement(ConvertedAmount, {
-        amount: D.create(1500, 0),
+        amount: D.create(9),
         currency: "EUR",
-        exchangeRate: 0.006,
       }),
     ),
   );
@@ -66,27 +65,25 @@ await test("amount components use the existing language context", () => {
   );
 });
 
-await test("converted amounts are omitted when no exchange rate exists", () => {
+await test("converted amounts are omitted when no conversion exists", () => {
   const html = renderToStaticMarkup(
     createElement(ConvertedAmount, {
-      amount: D.create(10),
       currency: "EUR",
     }),
   );
   assert.equal(html, "");
 });
 
-await test("conversion preserves source precision before rounding to the destination", () => {
+await test("converted zero shares remain visible with the destination precision", () => {
   const html = renderToStaticMarkup(
     createElement(
       LanguageContext.Provider,
       { value: "en-US" },
       createElement(ConvertedAmount, {
-        amount: D.create(12.5),
+        amount: D.create(0, 0),
         currency: "JPY",
-        exchangeRate: 160,
       }),
     ),
   );
-  assert.equal(spaces(html), "(<span>JPY 2,000</span>)");
+  assert.equal(spaces(html), "(<span>JPY 0</span>)");
 });

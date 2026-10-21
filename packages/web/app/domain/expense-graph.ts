@@ -4,23 +4,18 @@ import * as G from "@tasan/common/graph";
 import type { UserID } from "@tasan/common/id";
 import type { SplitExpense, SplitWithData } from "@tasan/data";
 
+import { convertExpense } from "~/domain/convert-expense";
+
 export const createGraphWithCurrency = (
   currency: CurrencySymbol,
   expenses: SplitExpense[],
 ) => {
   let graph = G.create();
-  const fractions = currencies[currency].fractions;
-
   for (const expense of expenses) {
-    const { payer, conversionRate } = expense;
-    for (const [userID, amountValue] of expense.participants) {
-      if (userID === payer) continue;
-      // Preserve source fractions until after conversion (for example EUR cents
-      // converted to whole JPY), matching the expense summary calculation.
-      const amount = D.create(
-        amountValue.value * (conversionRate ?? 1),
-        fractions,
-      );
+    const { payer } = expense;
+    for (const [userID, amount] of convertExpense(expense, currency)
+      .participants) {
+      if (userID === payer || !D.gt(amount, 0)) continue;
       graph = G.upsertEdge(graph, userID, payer, amount);
     }
   }

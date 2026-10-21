@@ -1,5 +1,5 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
+import type * as D from "@tasan/common/decimal";
 
 import { useLanguage } from "~/context";
 import { formatAmount } from "~/domain/format-amount";
@@ -31,15 +31,11 @@ export function AmountRender({
 export function ConvertedAmount({
   amount,
   currency,
-  exchangeRate,
-}: Pick<AmountRenderProps, "amount" | "currency"> & { exchangeRate?: number }) {
-  if (!exchangeRate) return null;
-  const fractions = currencies[currency].fractions;
-  // Convert before rounding so the destination precision never changes the source amount.
-  const converted = D.create(amount.value * exchangeRate, fractions);
+}: Pick<AmountRenderProps, "currency"> & { amount?: D.Decimal }) {
+  if (!amount) return null;
   return (
     <>
-      (<AmountRender amount={converted} currency={currency} />)
+      (<AmountRender amount={amount} currency={currency} />)
     </>
   );
 }
