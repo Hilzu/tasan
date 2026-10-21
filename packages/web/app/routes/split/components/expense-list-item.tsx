@@ -4,7 +4,7 @@ import type { SplitID, UserID } from "@tasan/common/id";
 import type { SplitExpense, User } from "@tasan/data";
 import { href } from "react-router";
 
-import { AmountRender } from "~/components/amount";
+import { AmountWithConversion } from "~/components/amount";
 import { DateRender } from "~/components/date";
 import { Link } from "~/components/link";
 import { convertExpense } from "~/domain/convert-expense";
@@ -27,7 +27,6 @@ export default function ExpenseListItem({
   const yourShare = expense.participants.get(currentUserID) ?? D.create(0);
   const converted =
     expense.conversionRate ? convertExpense(expense, currency) : undefined;
-  const convertedShare = converted?.participants.get(currentUserID);
   return (
     <li className="space-y-1 leading-tight">
       <div className="font-semibold">
@@ -43,12 +42,12 @@ export default function ExpenseListItem({
         </Link>
       </div>
       <div>
-        <AmountRender amount={expense.amount} currency={expense.currency} />{" "}
-        {converted && (
-          <>
-            (<AmountRender amount={converted.amount} currency={currency} />)
-          </>
-        )}
+        <AmountWithConversion
+          amount={expense.amount}
+          currency={expense.currency}
+          convertedAmount={converted?.amount}
+          convertedCurrency={currency}
+        />
         {expense.kind !== "repayment" && (
           <> paid by {users.find((u) => u.id === expense.payer)?.name}</>
         )}
@@ -59,12 +58,12 @@ export default function ExpenseListItem({
             "You didn't participate"
           : <>
               Your share is{" "}
-              <AmountRender amount={yourShare} currency={expense.currency} />{" "}
-              {convertedShare && (
-                <>
-                  (<AmountRender amount={convertedShare} currency={currency} />)
-                </>
-              )}
+              <AmountWithConversion
+                amount={yourShare}
+                currency={expense.currency}
+                convertedAmount={converted?.participants.get(currentUserID)}
+                convertedCurrency={currency}
+              />
             </>
           }
         </div>

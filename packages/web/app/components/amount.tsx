@@ -27,3 +27,27 @@ export function AmountRender({
   const format = useFormatAmount();
   return <span>{format(amount, currency, signDisplay)}</span>;
 }
+
+export function AmountWithConversion({
+  amount,
+  currency,
+  convertedAmount,
+  convertedCurrency,
+}: Pick<AmountRenderProps, "amount" | "currency"> & {
+  convertedAmount?: D.Decimal;
+  convertedCurrency: CurrencySymbol;
+}) {
+  return (
+    <>
+      <AmountRender amount={amount} currency={currency} />
+      {convertedAmount && (
+        <>
+          {" "}
+          (
+          <AmountRender amount={convertedAmount} currency={convertedCurrency} />
+          )
+        </>
+      )}
+    </>
+  );
+}

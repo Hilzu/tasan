@@ -15,7 +15,7 @@ import { ApplicationError } from "~/.server/services/errors";
 import { deleteExpense, getExpenseHistory } from "~/.server/services/expenses";
 import { errorResponse } from "~/.server/services/http";
 import { ActionsDropdown } from "~/components/actions-dropdown";
-import { AmountRender } from "~/components/amount";
+import { AmountRender, AmountWithConversion } from "~/components/amount";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
@@ -144,22 +144,12 @@ function ExpenseDetails({
         items={[
           [
             "Amount",
-            <>
-              <AmountRender
-                amount={expense.amount}
-                currency={expense.currency}
-              />{" "}
-              {converted && (
-                <>
-                  (
-                  <AmountRender
-                    amount={converted.amount}
-                    currency={split.currency}
-                  />
-                  )
-                </>
-              )}
-            </>,
+            <AmountWithConversion
+              amount={expense.amount}
+              currency={expense.currency}
+              convertedAmount={converted?.amount}
+              convertedCurrency={split.currency}
+            />,
           ],
           ["Created by", users.find((u) => u.id === expense.createdBy)?.name],
           ["Paid by", users.find((u) => u.id === expense.payer)?.name],
@@ -172,28 +162,17 @@ function ExpenseDetails({
             <div className="space-y-1 leading-tight">
               {[...expense.participants]
                 .sort(compareByKey)
-                .map(([userID, amount]) => {
-                  const convertedShare = converted?.participants.get(userID);
-                  return (
-                    <div key={userID}>
-                      {users.find((u) => u.id === userID)?.name}:{" "}
-                      <AmountRender
-                        amount={amount}
-                        currency={expense.currency}
-                      />{" "}
-                      {convertedShare && (
-                        <>
-                          (
-                          <AmountRender
-                            amount={convertedShare}
-                            currency={split.currency}
-                          />
-                          )
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                .map(([userID, amount]) => (
+                  <div key={userID}>
+                    {users.find((u) => u.id === userID)?.name}:{" "}
+                    <AmountWithConversion
+                      amount={amount}
+                      currency={expense.currency}
+                      convertedAmount={converted?.participants.get(userID)}
+                      convertedCurrency={split.currency}
+                    />
+                  </div>
+                ))}
             </div>,
           ],
         ]}
