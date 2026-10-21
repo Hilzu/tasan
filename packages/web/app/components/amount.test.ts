@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { LanguageContext } from "~/context";
 import { formatAmount } from "~/domain/format-amount";
 
-import { AmountRender, ConvertedAmount } from "./amount";
+import { AmountRender } from "./amount";
 
 const spaces = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
 
@@ -53,37 +53,21 @@ await test("amount components use the existing language context", () => {
         amount: D.create(1234.5),
         currency: "EUR",
       }),
-      createElement(ConvertedAmount, {
-        amount: D.create(9),
-        currency: "EUR",
-      }),
     ),
   );
-  assert.equal(
-    spaces(html),
-    "<span>1 234,50 EUR</span>(<span>9,00 EUR</span>)",
-  );
+  assert.equal(spaces(html), "<span>1 234,50 EUR</span>");
 });
 
-await test("converted amounts are omitted when no conversion exists", () => {
-  const html = renderToStaticMarkup(
-    createElement(ConvertedAmount, {
-      currency: "EUR",
-    }),
-  );
-  assert.equal(html, "");
-});
-
-await test("converted zero shares remain visible with the destination precision", () => {
+await test("zero amounts render with the currency precision", () => {
   const html = renderToStaticMarkup(
     createElement(
       LanguageContext.Provider,
       { value: "en-US" },
-      createElement(ConvertedAmount, {
+      createElement(AmountRender, {
         amount: D.create(0, 0),
         currency: "JPY",
       }),
     ),
   );
-  assert.equal(spaces(html), "(<span>JPY 0</span>)");
+  assert.equal(spaces(html), "<span>JPY 0</span>");
 });

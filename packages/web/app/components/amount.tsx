@@ -27,15 +27,3 @@ export function AmountRender({
   const format = useFormatAmount();
   return <span>{format(amount, currency, signDisplay)}</span>;
 }
-
-export function ConvertedAmount({
-  amount,
-  currency,
-}: Pick<AmountRenderProps, "currency"> & { amount?: D.Decimal }) {
-  if (!amount) return null;
-  return (
-    <>
-      (<AmountRender amount={amount} currency={currency} />)
-    </>
-  );
-}
