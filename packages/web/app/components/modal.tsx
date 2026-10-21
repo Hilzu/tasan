@@ -7,20 +7,31 @@ interface ModalProps {
   children: ReactNode;
   actions: ReactNode;
   open?: boolean;
+  dismissible?: boolean;
   onClose?: (returnValue: string) => void;
 }
 
-export function Modal({ title, children, actions, open, onClose }: ModalProps) {
+export function Modal({
+  title,
+  children,
+  actions,
+  open,
+  onClose,
+  dismissible = true,
+}: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (open && ref.current) ref.current.showModal();
   }, [open]);
   return (
     <dialog
-      className="fixed m-auto h-fit rounded-lg"
+      className="bg-brand-canvas fixed m-auto h-fit rounded-lg text-gray-800 dark:bg-gray-950 dark:text-gray-100"
       ref={ref}
+      onCancel={(event) => {
+        if (!dismissible) event.preventDefault();
+      }}
       onClick={(event) => {
-        event.currentTarget.close("");
+        if (dismissible) event.currentTarget.close("");
       }}
       onClose={(event) => {
         onClose?.(event.currentTarget.returnValue);

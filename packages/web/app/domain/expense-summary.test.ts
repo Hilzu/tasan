@@ -118,3 +118,18 @@ await test("rounds converted amounts per expense and sums decimals without drift
     share: D.create(0.3),
   });
 });
+
+await test("repayments do not change any spending totals", () => {
+  const spending = expense();
+  const repayment = expense({
+    kind: "repayment",
+    payer: other,
+    participants: new Map([[you, D.create(20)]]),
+    amount: D.create(20),
+  });
+  for (const user of [you, other])
+    assert.deepEqual(
+      calculateExpenseSummary([spending, repayment], "EUR", user),
+      calculateExpenseSummary([spending], "EUR", user),
+    );
+});

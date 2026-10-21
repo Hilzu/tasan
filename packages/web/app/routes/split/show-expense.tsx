@@ -92,6 +92,7 @@ function ExpenseDetails({
   if (!parentData) throw new Error("Parent data not found");
   const { split, users } = parentData;
   const { expense } = loaderData;
+  const repayment = expense.kind === "repayment";
   const exchangeRate =
     expense.conversionRate ?
       new Intl.NumberFormat(language, {
@@ -101,18 +102,26 @@ function ExpenseDetails({
     : "-";
   return (
     <Card
-      heading={<MainHeading>Expense - {expense.name}</MainHeading>}
+      heading={
+        <MainHeading>
+          {repayment ? "Recorded payment" : `Expense - ${expense.name}`}
+        </MainHeading>
+      }
       action={
         <ActionsDropdown
-          label="Expense actions"
+          label={repayment ? "Payment actions" : "Expense actions"}
           items={[
-            {
-              label: "Edit",
-              to: href("/splits/:splitID/:expenseID/edit", {
-                splitID: split.id,
-                expenseID: expense.id,
-              }),
-            },
+            ...(repayment ?
+              []
+            : [
+                {
+                  label: "Edit",
+                  to: href("/splits/:splitID/:expenseID/edit", {
+                    splitID: split.id,
+                    expenseID: expense.id,
+                  }),
+                },
+              ]),
             {
               label: "Delete",
               destructive: true,
@@ -145,9 +154,11 @@ function ExpenseDetails({
           ["Created by", users.find((u) => u.id === expense.createdBy)?.name],
           ["Paid by", users.find((u) => u.id === expense.payer)?.name],
           ["Created at", <DateRender date={expense.createdAt} />],
-          ["Exchange rate", exchangeRate],
+          ...(repayment ?
+            []
+          : [["Exchange rate", exchangeRate] as [string, string]]),
           [
-            "Participants",
+            repayment ? "Paid to" : "Participants",
             <div className="space-y-1 leading-tight">
               {[...expense.participants]
                 .sort(compareByKey)
@@ -172,7 +183,7 @@ function ExpenseDetails({
             actionData.errors.formErrors.length ?
               actionData.errors.formErrors
             : [
-                "Unable to delete expense. Please refresh the page and try again.",
+                `Unable to delete ${repayment ? "payment" : "expense"}. Please refresh the page and try again.`,
               ]
           }
         />
@@ -185,7 +196,7 @@ function ExpenseDetails({
       )}
       {loaderData.history.length > 1 && (
         <details className="mt-4">
-          <summary>Expense history</summary>
+          <summary>{repayment ? "Payment history" : "Expense history"}</summary>
           <ol className="mt-2 space-y-3">
             {[...loaderData.history].reverse().map((revision) => (
               <li key={revision.operationID ?? revision.expense.id}>
@@ -224,6 +235,7 @@ function ExpenseDetails({
         </details>
       )}
       <DeleteExpenseModal
+        repayment={repayment}
         open={deleteOpen}
         onClose={() => {
           setDeleteOpen(false);

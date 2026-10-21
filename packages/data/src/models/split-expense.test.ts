@@ -527,3 +527,40 @@ await test("decimal amounts and participant maps round-trip in currencies with f
   assert.equal("pk" in restored, false);
   assert.equal("sk" in restored, false);
 });
+
+await test("repayments retain their type through persistence, retries, history, and deletion", async () => {
+  const db = storage();
+  const payment = {
+    ...expense,
+    kind: "repayment" as const,
+    participants: new Map([[genUserID(), expense.amount]]),
+  };
+  await createSplitExpense(payment);
+  await createSplitExpense(payment);
+  assert.equal(db.writes, 1);
+  assert.equal(
+    (await getSplitExpense(payment.splitID, payment.id))?.kind,
+    "repayment",
+  );
+  assert.equal(
+    (await findExpenseRevisions(payment.splitID, payment.id))[0].expense.kind,
+    "repayment",
+  );
+  await deleteSplitExpense(payment.splitID, payment.id, actorID, operation());
+  assert.equal(await getSplitExpense(payment.splitID, payment.id), undefined);
+  assert.equal(
+    (await findExpenseRevisions(payment.splitID, payment.id)).at(-1)?.expense
+      .kind,
+    "repayment",
+  );
+});
+
+await test("existing expenses without a type are read as ordinary expenses", async () => {
+  const db = storage();
+  await createSplitExpense(expense);
+  delete db.baseline.kind;
+  assert.equal(
+    (await getSplitExpense(expense.splitID, expense.id))?.kind,
+    "expense",
+  );
+});

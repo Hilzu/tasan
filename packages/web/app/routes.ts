@@ -29,6 +29,7 @@ export default [
         [
           index("routes/split/show-split.tsx"),
           route("invite", "routes/split/invite.tsx"),
+          route("record-repayment", "routes/split/record-repayment.ts"),
           route("new-expense", "routes/split/new-expense.tsx"),
           route(":expenseID/edit", "routes/split/edit-expense.tsx"),
           route(":expenseID", "routes/split/show-expense.tsx"),

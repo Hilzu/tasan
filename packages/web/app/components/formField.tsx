@@ -15,7 +15,7 @@ import { useLanguage } from "~/context";
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (
-    <div className="text-red-600">
+    <div className="text-red-600 dark:text-red-400">
       {errors.map((error) => (
         <p key={error}>{error}</p>
       ))}

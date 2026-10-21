@@ -42,13 +42,14 @@ export interface NewExpense {
   participants: Map<UserID, number>;
 }
 
-export const createExpense = async (
+const createEntry = async (
   actorID: UserID,
   splitID: SplitID,
   input: NewExpense,
+  kind: "expense" | "repayment",
 ) => {
   return logAction(
-    "expense.create",
+    kind === "repayment" ? "repayment.create" : "expense.create",
     {
       userId: actorID,
       splitId: splitID,
@@ -95,6 +96,7 @@ export const createExpense = async (
       getLogger().appendKeys({ conversionRate });
       try {
         return await createSplitExpense({
+          kind,
           id: input.id,
           splitID,
           name: input.name,
@@ -111,6 +113,38 @@ export const createExpense = async (
         throw error;
       }
     },
+  );
+};
+
+export const createExpense = (
+  actorID: UserID,
+  splitID: SplitID,
+  input: NewExpense,
+) => createEntry(actorID, splitID, input, "expense");
+
+export const recordRepayment = async (
+  actorID: UserID,
+  splitID: SplitID,
+  input: { id: ExpenseID; payer: UserID; recipient: UserID; amount: number },
+) => {
+  await requireMembership(actorID, splitID);
+  const split = await requireSplit(splitID);
+  if (input.payer === input.recipient)
+    invalidField("recipient", "Payer and recipient must be different.");
+  // A repayment reverses the recipient's debt to the person paying them.
+  // Use the confirmed amount even if the suggested payments have since changed.
+  return createEntry(
+    actorID,
+    splitID,
+    {
+      id: input.id,
+      name: "Repayment",
+      currency: split.currency,
+      amount: input.amount,
+      payer: input.payer,
+      participants: new Map([[input.recipient, input.amount]]),
+    },
+    "repayment",
   );
 };
 
@@ -212,6 +246,11 @@ export const editExpense = async (
           actorID,
           operationID,
           async (current) => {
+            if (current.kind === "repayment")
+              invalidField(
+                "kind",
+                "Recorded payments cannot be edited. Delete the payment and record it again.",
+              );
             const [split, members] = await Promise.all([
               requireSplit(splitID),
               findSplitUsers(splitID),
