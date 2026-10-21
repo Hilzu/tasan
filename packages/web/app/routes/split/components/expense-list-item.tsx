@@ -33,7 +33,9 @@ export default function ExpenseListItem({
             expenseID: expense.id,
           })}
         >
-          {expense.name}
+          {expense.kind === "repayment" ?
+            `${users.find((u) => u.id === expense.payer)?.name ?? "Unknown"} paid ${users.find((u) => expense.participants.has(u.id))?.name ?? "Unknown"}`
+          : expense.name}
         </Link>
       </div>
       <div>
@@ -42,23 +44,27 @@ export default function ExpenseListItem({
           amount={expense.amount}
           currency={currency}
           exchangeRate={expense.conversionRate}
-        />{" "}
-        paid by {users.find((u) => u.id === expense.payer)?.name}
+        />
+        {expense.kind !== "repayment" && (
+          <> paid by {users.find((u) => u.id === expense.payer)?.name}</>
+        )}
       </div>
-      <div>
-        {D.equals(yourShare, 0) ?
-          "You didn't participate"
-        : <>
-            Your share is{" "}
-            <AmountRender amount={yourShare} currency={expense.currency} />{" "}
-            <ConvertedAmount
-              amount={yourShare}
-              currency={currency}
-              exchangeRate={expense.conversionRate}
-            />
-          </>
-        }
-      </div>
+      {expense.kind !== "repayment" && (
+        <div>
+          {D.equals(yourShare, 0) ?
+            "You didn't participate"
+          : <>
+              Your share is{" "}
+              <AmountRender amount={yourShare} currency={expense.currency} />{" "}
+              <ConvertedAmount
+                amount={yourShare}
+                currency={currency}
+                exchangeRate={expense.conversionRate}
+              />
+            </>
+          }
+        </div>
+      )}
       <div className="text-xs">
         <DateRender date={expense.createdAt} />
       </div>

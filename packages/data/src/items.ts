@@ -127,6 +127,7 @@ const operationKeySchema = z.string().transform((key, ctx) => {
   return expenseOperationKey(expense.data, operation.data);
 });
 const expenseFields = z.object({
+  kind: z.enum(["expense", "repayment"]).optional(),
   pk: splitIDSchema,
   name: z.string(),
   createdAt: timestamp,

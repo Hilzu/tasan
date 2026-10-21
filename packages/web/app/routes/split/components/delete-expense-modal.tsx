@@ -5,16 +5,18 @@ interface DeleteExpenseModalProps {
   open: boolean;
   onClose: () => void;
   onDelete: () => void;
+  repayment?: boolean;
 }
 
 export function DeleteExpenseModal({
   open,
   onClose,
   onDelete,
+  repayment,
 }: DeleteExpenseModalProps) {
   return (
     <Modal
-      title="Delete expense"
+      title={repayment ? "Delete payment" : "Delete expense"}
       open={open}
       onClose={(returnValue) => {
         if (returnValue === "delete") onDelete();
@@ -31,8 +33,8 @@ export function DeleteExpenseModal({
         </>
       }
     >
-      Are you sure you want to delete this expense? This action cannot be
-      undone.
+      Are you sure you want to delete this {repayment ? "payment" : "expense"}?
+      This action cannot be undone.
     </Modal>
   );
 }

@@ -1,6 +1,8 @@
 import { compareByKey, compareByTo } from "@tasan/common/compare";
 import * as D from "@tasan/common/decimal";
+import { genExpenseID } from "@tasan/common/id";
 import classNames from "classnames";
+import { useState } from "react";
 import { href, useRouteLoaderData } from "react-router";
 
 import { AmountRender } from "~/components/amount";
@@ -16,14 +18,21 @@ import {
 } from "~/domain/expense-graph";
 import { calculateExpenseSummary } from "~/domain/expense-summary";
 import ExpenseListItem from "~/routes/split/components/expense-list-item";
+import {
+  type PaymentDraft,
+  RecordPaymentModal,
+} from "~/routes/split/components/record-payment-modal";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
 import type { Route } from "./+types/show-split";
 
 export default function ShowSplit(_: Route.ComponentProps) {
+  const [payment, setPayment] = useState<PaymentDraft>();
   const parentData = useRouteLoaderData<SplitLoader>("split-parent");
   if (!parentData) throw new Error("Parent data not found");
   const { split, users, session } = parentData;
+  const expenses = split.expenses.filter((entry) => entry.kind !== "repayment");
+  const payments = split.expenses.filter((entry) => entry.kind === "repayment");
   const summary = calculateExpenseSummary(
     split.expenses,
     split.currency,
@@ -118,12 +127,32 @@ export default function ShowSplit(_: Route.ComponentProps) {
             return edges.sort(compareByTo).map((edge) => {
               const toName = users.find((u) => u.id === edge.to)?.name;
               return (
-                <li key={from + edge.to}>
-                  {fromName} pays {toName}{" "}
-                  <AmountRender
-                    amount={edge.amount}
-                    currency={split.currency}
-                  />
+                <li
+                  key={from + edge.to}
+                  className="flex flex-wrap items-center justify-between gap-2 py-1"
+                >
+                  <span>
+                    {fromName} pays {toName}{" "}
+                    <AmountRender
+                      amount={edge.amount}
+                      currency={split.currency}
+                    />
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setPayment({
+                        id: genExpenseID(),
+                        payer: from,
+                        recipient: edge.to,
+                        payerName: fromName ?? "Unknown",
+                        recipientName: toName ?? "Unknown",
+                        amount: edge.amount,
+                      });
+                    }}
+                  >
+                    Record payment
+                  </Button>
                 </li>
               );
             });
@@ -131,8 +160,35 @@ export default function ShowSplit(_: Route.ComponentProps) {
         </ul>
       </Card>
 
+      {payment && (
+        <RecordPaymentModal
+          key={payment.id}
+          payment={payment}
+          splitID={split.id}
+          currency={split.currency}
+          onClose={() => {
+            setPayment(undefined);
+          }}
+        />
+      )}
+      {payments.length > 0 && (
+        <Card heading={<SubHeading>Recorded payments</SubHeading>}>
+          <ul className="space-y-2">
+            {payments.map((entry) => (
+              <ExpenseListItem
+                key={entry.id}
+                expense={entry}
+                currency={split.currency}
+                users={users}
+                currentUserID={session.userID}
+                splitID={split.id}
+              />
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card
-        heading={<SubHeading>Expenses ({split.expenses.length})</SubHeading>}
+        heading={<SubHeading>Expenses ({expenses.length})</SubHeading>}
         action={
           <Link
             to={href("/splits/:splitID/new-expense", { splitID: split.id })}
@@ -143,10 +199,10 @@ export default function ShowSplit(_: Route.ComponentProps) {
           </Link>
         }
       >
-        {split.expenses.length === 0 ?
+        {expenses.length === 0 ?
           "No expenses yet."
         : <ul className="space-y-2">
-            {split.expenses.map((expense) => (
+            {expenses.map((expense) => (
               <ExpenseListItem
                 key={expense.id}
                 expense={expense}

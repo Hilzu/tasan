@@ -14,6 +14,7 @@ export const calculateExpenseSummary = (
   let share = D.create(0, fractions);
 
   for (const expense of expenses) {
+    if (expense.kind === "repayment") continue;
     // Convert before rounding so foreign fractional amounts survive when the
     // home currency has fewer decimal places (for example EUR to JPY).
     const convert = (amount: D.Decimal) =>

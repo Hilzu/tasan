@@ -552,3 +552,101 @@ await test("expense details reject missing expenses and any deletion regardless 
     code: "not_found",
   });
 });
+
+await test("recording a repayment reverses the debt in the home currency", async () => {
+  const { recordRepayment } = await import("~/.server/services/expenses");
+  const id = genExpenseID();
+  await recordRepayment(actorID, splitID, {
+    id,
+    payer: actorID,
+    recipient: payerID,
+    amount: 25,
+  });
+  const saved = save.mock.calls[0].arguments[0];
+  assert.equal(saved.id, id);
+  assert.equal(saved.kind, "repayment");
+  assert.equal(saved.currency, "EUR");
+  assert.equal(saved.payer, actorID);
+  assert.deepEqual(
+    [...saved.participants],
+    [[payerID, { value: 25, fractions: 2 }]],
+  );
+  assert.equal(saved.createdBy, actorID);
+  assert.equal(rate.mock.callCount(), 0);
+});
+
+await test("repayments reject invalid participants and amounts", async () => {
+  const { recordRepayment } = await import("~/.server/services/expenses");
+  const input = {
+    id: genExpenseID(),
+    payer: actorID,
+    recipient: payerID,
+    amount: 25,
+  };
+  for (const changes of [
+    { recipient: actorID },
+    { payer: outsiderID },
+    { recipient: outsiderID },
+    { amount: 0 },
+    { amount: -1 },
+    { amount: 1.001 },
+    { amount: Infinity },
+  ])
+    await assert.rejects(
+      () => recordRepayment(actorID, splitID, { ...input, ...changes }),
+      { code: "invalid_input" },
+    );
+  assert.equal(save.mock.callCount(), 0);
+});
+
+await test("repayment retry returns the existing record without writing again", async () => {
+  const { recordRepayment } = await import("~/.server/services/expenses");
+  const id = genExpenseID();
+  persistenceMock.exports.findExpenseCreation.mock.mockImplementation(() =>
+    Promise.resolve({ id }),
+  );
+  assert.deepEqual(
+    await recordRepayment(actorID, splitID, {
+      id,
+      payer: actorID,
+      recipient: payerID,
+      amount: 25,
+    }),
+    { id },
+  );
+  assert.equal(save.mock.callCount(), 0);
+});
+
+await test("nonmembers cannot record repayments", async () => {
+  const { recordRepayment } = await import("~/.server/services/expenses");
+  splitMock.exports.requireMembership.mock.mockImplementation(() =>
+    Promise.reject(new ApplicationError("not_found", "Split not found.")),
+  );
+  await assert.rejects(
+    () =>
+      recordRepayment(outsiderID, splitID, {
+        id: genExpenseID(),
+        payer: actorID,
+        recipient: payerID,
+        amount: 25,
+      }),
+    { code: "not_found" },
+  );
+  assert.equal(save.mock.callCount(), 0);
+});
+
+await test("ordinary expense edits cannot change a recorded payment", async () => {
+  const original = await persistenceMock.exports.getSplitExpense(
+    splitID,
+    expense.id,
+  );
+  assert.ok(original);
+  persistenceMock.exports.getSplitExpense.mock.mockImplementation(() =>
+    Promise.resolve({ ...original, kind: "repayment" }),
+  );
+  await assert.rejects(
+    () => editExpense(actorID, splitID, expense.id, genOperationID(), expense),
+    { code: "invalid_input" },
+  );
+  assert.equal(savedChanges.length, 0);
+});

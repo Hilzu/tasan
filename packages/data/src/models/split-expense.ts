@@ -24,6 +24,7 @@ import {
 } from "../items.js";
 
 export interface SplitExpense {
+  kind?: "expense" | "repayment";
   id: ExpenseID;
   splitID: SplitID;
   name: string;
@@ -45,6 +46,7 @@ interface ExpenseReadOptions {
 const fromItem = (item: SplitExpenseItem): SplitExpense => {
   const fractionDigits = currencies[item.currency].fractions;
   return {
+    kind: item.kind ?? "expense",
     id: expenseIDOf(item),
     splitID: item.pk,
     updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
@@ -185,6 +187,7 @@ export const createSplitExpense = captureAsync(
     try {
       await insertItem({
         ...storedChanges(expense),
+        kind: expense.kind,
         pk: expense.splitID,
         sk: expense.id,
         createdAt: new Date().toISOString(),

@@ -13,13 +13,17 @@ import { editExpenseFormSchema } from "./new-expense-form";
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   try {
-    return {
-      expense: await requireExpense(
-        context.get(authenticatedSessionContext).userID,
-        asSplitID(params.splitID),
-        asExpenseID(params.expenseID),
-      ),
-    };
+    const expense = await requireExpense(
+      context.get(authenticatedSessionContext).userID,
+      asSplitID(params.splitID),
+      asExpenseID(params.expenseID),
+    );
+    if (expense.kind === "repayment")
+      throw new ApplicationError(
+        "invalid_input",
+        "Recorded payments cannot be edited.",
+      );
+    return { expense };
   } catch (error) {
     throw errorResponse(error);
   }
