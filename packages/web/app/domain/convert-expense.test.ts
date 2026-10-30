@@ -114,13 +114,10 @@ await test("rounding remainders favour the payer on ties, independent of partici
   assert.deepEqual(result.participants.get(payer), D.create(0.01));
   assert.deepEqual(result.participants.get(tieWinner), D.create(0.01));
   assert.deepEqual(result.participants.get(tieLoser), D.create(0));
-  assert.deepEqual(
-    convertExpense(
-      { ...entry, participants: new Map([...entry.participants].reverse()) },
-      "EUR",
-    ),
-    result,
-  );
+  const reversed = new Map([...entry.participants].reverse());
+  const reordered = convertExpense({ ...entry, participants: reversed }, "EUR");
+  assert.deepEqual(reordered, result);
+  assert.deepEqual([...reordered.participants.keys()], [...reversed.keys()]);
   assert.deepEqual(
     createGraphWithCurrency("EUR", [entry]),
     new Map([[tieWinner, [{ to: payer, amount: D.create(0.01) }]]]),

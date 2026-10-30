@@ -9,47 +9,32 @@ export const convertExpense = (
   expense: SplitExpense,
   currency: CurrencySymbol,
 ) => {
-  const fractions = currencies[currency].fractions;
-  const scale = 10 ** fractions;
-  const rate = D.toRational(expense.conversionRate ?? 1);
-  const convert = (value: D.Decimal) => {
-    const source = D.toRational(value);
-    const numerator = source.numerator * rate.numerator * BigInt(scale);
-    const denominator = source.denominator * rate.denominator;
-    return {
-      units: numerator / denominator,
-      remainder: numerator % denominator,
-      denominator,
-    };
-  };
-  const total = convert(expense.amount);
-  const totalUnits =
-    total.units + (total.remainder * 2n >= total.denominator ? 1n : 0n);
-  const amount = D.create(Number(totalUnits) / scale, fractions);
-  const shares = [...expense.participants].map(([userID, share]) => {
-    return { userID, ...convert(share) };
-  });
-  const remaining =
-    totalUnits - shares.reduce((sum, share) => sum + share.units, 0n);
-  const order = [...shares].sort((a, b) => {
-    const difference =
-      b.remainder * a.denominator - a.remainder * b.denominator;
-    return (
-      (difference > 0n ? 1
-      : difference < 0n ? -1
-      : 0) ||
-      Number(b.userID === expense.payer) - Number(a.userID === expense.payer) ||
-      a.userID.localeCompare(b.userID)
+  const participants = [...expense.participants]
+    .map(([userID, amount], index) => ({ userID, amount, index }))
+    .sort(
+      (a, b) =>
+        Number(b.userID === expense.payer) -
+          Number(a.userID === expense.payer) ||
+        a.userID.localeCompare(b.userID),
     );
-  });
-  for (const share of order.slice(0, Number(remaining))) share.units++;
+  const converted = D.mulAndAllocate(
+    expense.amount,
+    participants.map(({ amount }) => amount),
+    expense.conversionRate ?? 1,
+    currencies[currency].fractions,
+  );
   return {
-    amount,
+    amount: converted.total,
     participants: new Map(
-      shares.map(({ userID, units }) => [
-        userID,
-        D.create(Number(units) / scale, fractions),
-      ]),
+      // Allocation priority must not change the participant display order.
+      participants
+        .map(({ userID, index }, part) => ({
+          userID,
+          index,
+          amount: converted.parts[part],
+        }))
+        .sort((a, b) => a.index - b.index)
+        .map(({ userID, amount }) => [userID, amount]),
     ),
   };
 };
