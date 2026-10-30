@@ -135,7 +135,7 @@ await test("createGraphWithCurrency", async (t) => {
         ["JPY", 0.01, 160, 2],
         ["KRW", 1.49, 1500, 2235],
         ["USD", 1.49, 1.234567, 1.84],
-        ["EUR", 0.15, 0.7, 0.1],
+        ["EUR", 0.15, 0.7, 0.11],
       ] as const) {
         const expense = createTestExpense({
           payer,
