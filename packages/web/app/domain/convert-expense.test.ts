@@ -60,6 +60,48 @@ await test("rounding shares down preserves the converted total and the payer's b
   );
 });
 
+await test("converted expense totals round exact decimal half units up", () => {
+  for (const [source, rate, currency, expected] of [
+    [86500, 0.00565, "EUR", 488.73],
+    [300, 0.00565, "EUR", 1.7],
+    [2700, 0.00565, "EUR", 15.26],
+    [10700, 0.00565, "EUR", 60.46],
+    [500, 0.00563, "EUR", 2.82],
+    [10000, 5e-7, "EUR", 0.01],
+    [1, 0.5, "JPY", 1],
+  ] as const) {
+    const entry = expense({
+      currency: "JPY",
+      amount: D.create(source, 0),
+      conversionRate: rate,
+      participants: new Map([[second, D.create(source, 0)]]),
+    });
+    const converted = convertExpense(entry, currency);
+    const amount = D.create(expected, currencies[currency].fractions);
+    assert.deepEqual(converted.amount, amount);
+    assert.deepEqual(converted.participants.get(second), amount);
+    assert.deepEqual(calculateExpenseSummary([entry], currency, payer), {
+      total: amount,
+      paid: amount,
+      share: D.create(0, amount.fractions),
+    });
+  }
+});
+
+await test("conversion distinguishes exact half units from values just below them", () => {
+  for (const [rate, expected] of [
+    [1.005, 1.01],
+    [1.0049999999999997, 1],
+  ]) {
+    const entry = expense({
+      amount: D.create(1),
+      conversionRate: rate,
+      participants: new Map([[second, D.create(1)]]),
+    });
+    assert.deepEqual(convertExpense(entry, "EUR").amount, D.create(expected));
+  }
+});
+
 await test("rounding remainders favour the payer on ties, independent of participant order", () => {
   const entry = expense({
     amount: D.create(0.03),
@@ -67,18 +109,19 @@ await test("rounding remainders favour the payer on ties, independent of partici
     participants: new Map(users.map((id) => [id, D.create(0.01)])),
   });
   const result = convertExpense(entry, "EUR");
-  assert.deepEqual(result.amount, D.create(0.01));
+  const [tieWinner, tieLoser] = [second, third].sort();
+  assert.deepEqual(result.amount, D.create(0.02));
   assert.deepEqual(result.participants.get(payer), D.create(0.01));
-  assert.deepEqual(result.participants.get(second), D.create(0));
-  assert.deepEqual(result.participants.get(third), D.create(0));
+  assert.deepEqual(result.participants.get(tieWinner), D.create(0.01));
+  assert.deepEqual(result.participants.get(tieLoser), D.create(0));
+  const reversed = new Map([...entry.participants].reverse());
+  const reordered = convertExpense({ ...entry, participants: reversed }, "EUR");
+  assert.deepEqual(reordered, result);
+  assert.deepEqual([...reordered.participants.keys()], [...reversed.keys()]);
   assert.deepEqual(
-    convertExpense(
-      { ...entry, participants: new Map([...entry.participants].reverse()) },
-      "EUR",
-    ),
-    result,
+    createGraphWithCurrency("EUR", [entry]),
+    new Map([[tieWinner, [{ to: payer, amount: D.create(0.01) }]]]),
   );
-  assert.equal(createGraphWithCurrency("EUR", [entry]).size, 0);
 });
 
 await test("tiny converted expenses produce no zero-value repayment suggestions", () => {
@@ -89,6 +132,21 @@ await test("tiny converted expenses produce no zero-value repayment suggestions"
   });
   assert.deepEqual(convertExpense(entry, "JPY").amount, D.create(0, 0));
   assert.equal(createGraphWithCurrency("JPY", [entry]).size, 0);
+});
+
+await test("distinct decimal remainders are not treated as ties", () => {
+  const entry = expense({
+    amount: D.create(0.04),
+    conversionRate: 0.5000000001,
+    participants: new Map([
+      [payer, D.create(0.01)],
+      [second, D.create(0.03)],
+    ]),
+  });
+  const converted = convertExpense(entry, "EUR");
+  assert.deepEqual(converted.amount, D.create(0.02));
+  assert.deepEqual(converted.participants.get(payer), D.create(0));
+  assert.deepEqual(converted.participants.get(second), D.create(0.02));
 });
 
 await test("converted totals, summaries and simplified balances agree across rounding cases", () => {

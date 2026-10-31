@@ -122,9 +122,9 @@ await test("rounds converted amounts per expense and sums decimals without drift
     }),
   );
   assert.deepEqual(calculateExpenseSummary(expenses, "EUR", you), {
-    total: D.create(0.3),
-    paid: D.create(0.3),
-    share: D.create(0.3),
+    total: D.create(0.33),
+    paid: D.create(0.33),
+    share: D.create(0.33),
   });
 });
 
