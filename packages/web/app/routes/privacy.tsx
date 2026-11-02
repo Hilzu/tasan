@@ -55,9 +55,10 @@ export default function Privacy() {
         <ul className="list-disc space-y-2 pl-6">
           <li>
             <strong>Account information:</strong> your email address, name,
-            account identifiers, account creation time and saved locale
-            preference. Our sign-in provider, Amazon Cognito, also handles your
-            password and email verification information.
+            account identifiers, account creation time and saved account
+            settings, currently including your locale preference. Our sign-in
+            provider, Amazon Cognito, also handles your password and email
+            verification information.
           </li>
           <li>
             <strong>Shared records:</strong> split names, membership, expense
@@ -251,11 +252,11 @@ export default function Privacy() {
           sign-in from working.
         </p>
         <p>
-          We do not use advertising cookies or visitor analytics. Your locale
-          preference is saved with your account. Your browser may also keep
-          cached app assets and page scroll positions. You can clear cookies and
-          site data in your browser; doing so does not delete your account or
-          shared records.
+          We do not use advertising cookies or visitor analytics. Account
+          settings, such as your locale preference, are saved with your account.
+          Your browser may also keep cached app assets and page scroll
+          positions. You can clear cookies and site data in your browser; doing
+          so does not delete your account or shared records.
         </p>
       </section>
 
