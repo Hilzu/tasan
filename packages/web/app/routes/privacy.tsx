@@ -54,45 +54,41 @@ export default function Privacy() {
         </SubHeading>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong>Account information:</strong> your email address, name,
-            account identifiers, account creation time and saved account
-            settings, currently including your locale preference. Our sign-in
-            provider, Amazon Cognito, also handles your password and email
-            verification information.
+            <strong>Account information:</strong> contact and profile details,
+            such as your name and email address, account identifiers, account
+            settings and authentication information.
           </li>
           <li>
-            <strong>Shared records:</strong> split names, membership, expense
-            and repayment descriptions, amounts, currencies, exchange rates,
-            payers, participants and their shares. We keep creation, edit and
-            deletion timestamps and the identifiers of the people making those
-            changes, including earlier expense revisions.
+            <strong>Shared financial records:</strong> information you and other
+            participants provide to organize shared expenses and settle
+            balances, including group membership, descriptions, amounts,
+            currencies, payments and allocations. We also keep a history of
+            changes and who made them.
           </li>
           <li>
-            <strong>Sign-in and invitation information:</strong> session
-            identifiers, authentication tokens and security checks, sign-in
-            redirects, and invitations with their creator, split and expiry.
+            <strong>Session and access information:</strong> information needed
+            to sign you in, maintain your session, manage invitations and
+            control access to shared records.
           </li>
           <li>
-            <strong>Technical information:</strong> our hosting services process
-            your IP address, browser and request information to deliver and
-            protect the service. Application logs and performance traces can
-            include user and record identifiers, request paths, timings, actions
-            and error details.
+            <strong>Technical information:</strong> IP addresses, browser and
+            request information, usage and performance diagnostics, account and
+            record identifiers, and error details needed to operate and protect
+            the service.
           </li>
           <li>
-            <strong>Messages and optional error reports:</strong> what you send
-            us by email, or through the error report button. An error report
-            contains your description, error message and stack trace, page route
-            and app version, and is logged with your account identifier.
+            <strong>Support information:</strong> messages, reports and
+            diagnostic information you choose to send us, which may be
+            associated with your account.
           </li>
         </ul>
         <p>
           You provide account details, preferences and records directly. Other
           members of your splits can enter expenses and repayments involving
-          you. Account details also come from Cognito, and technical information
-          is generated when you use the service. Please avoid including
-          sensitive information, such as health details, in descriptions or
-          reports.
+          you. Account details also come from our authentication provider, and
+          technical information is generated when you use the service. Please
+          avoid including sensitive information, such as health details, in
+          descriptions or reports.
         </p>
       </section>
 
@@ -103,10 +99,9 @@ export default function Privacy() {
         <ul className="list-disc space-y-2 pl-6">
           <li>
             <strong>Providing Tasan (GDPR Article 6(1)(b)):</strong> creating
-            and authenticating your account, saving preferences, managing splits
-            and invitations, recording expenses and repayments, converting
-            currencies and calculating balances are necessary to provide the
-            service you request.
+            and managing your account, applying your settings, organizing shared
+            financial records and calculating and settling balances are
+            necessary to provide the service you request.
           </li>
           <li>
             <strong>Legitimate interests (Article 6(1)(f)):</strong> we process
@@ -124,11 +119,11 @@ export default function Privacy() {
         </ul>
         <p>
           Providing data is not a statutory requirement. Account and sign-in
-          details are needed to use an account; membership, amounts and shares
-          are needed for shared balance calculations. Without them we cannot
-          provide those features. Error reports and contacting support are
-          optional. We do not rely on consent for the processing described here;
-          choosing to send a report is voluntary.
+          details are needed to use an account; shared financial information is
+          needed to calculate and settle balances. Without the necessary data we
+          cannot provide the relevant service. Support messages and diagnostic
+          reports are optional. We do not rely on consent for the processing
+          described here.
         </p>
         <p>
           Tasan does not sell personal data or use it for advertising. Balance
@@ -160,9 +155,8 @@ export default function Privacy() {
           claims.
         </p>
         <p>
-          Exchange rates are requested from Frankfurter by our server using
-          currency codes; account and expense details are not sent with those
-          requests. Following a GitHub link takes you to a separate service
+          Following an external link takes you to a separate service with its
+          own privacy practices. For example, GitHub links lead to a service
           governed by{" "}
           <Link to="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">
             GitHub’s privacy statement
@@ -176,20 +170,12 @@ export default function Privacy() {
           <span id="transfers">Where data is processed</span>
         </SubHeading>
         <p>
-          Tasan runs on AWS in Frankfurt, Germany, and Singapore. Application
-          data, including account records, sessions and shared expenses, is
-          replicated to Singapore, outside the European Economic Area (EEA).
-          Authentication is hosted in Frankfurt. AWS CloudFront and edge
-          functions deliver and route requests through locations worldwide, so
-          request data may also be processed outside the EEA, including in the
-          United States.
-        </p>
-        <p>
-          We may expand hosting and replication to additional AWS regions,
-          including US East (Ohio), United States. Ohio is a possible future
-          location, not a current database replica. Before personal data is
-          replicated to a new region, we will update this notice to identify the
-          location and applicable transfer safeguards.
+          Tasan uses AWS to host and replicate data in Germany and Singapore,
+          and may also use locations in the United States. Data may be stored
+          and processed in more than one of these countries for availability and
+          performance. AWS’s global delivery network also processes request data
+          in locations worldwide. This involves transfers outside the European
+          Economic Area (EEA).
         </p>
         <p>
           AWS’s Data Processing Addendum incorporates the European Commission’s
@@ -225,10 +211,9 @@ export default function Privacy() {
           criteria when responding to your request.
         </p>
         <p>
-          The app’s session cookie lasts up to 14 days after it is set or
-          renewed. Signing out deletes the app session. Invitations expire after
-          five days; expired session and invitation records are removed
-          asynchronously by the database. Frankfurt application logs, including
+          Signing out deletes the app session. Session and invitation records
+          are retained until they expire or are revoked; expired records are
+          removed asynchronously. Application logs in Germany, including
           submitted error reports, expire after 13 months. Other regional and
           edge logs currently have no configured automatic expiry; their
           retention is assessed based on incident investigation, security and
@@ -243,20 +228,19 @@ export default function Privacy() {
           <span id="cookies">Cookies and browser storage</span>
         </SubHeading>
         <p>
-          Tasan uses the first-party <code>__session</code> cookie to remember
-          your session and secure sign-in. It contains a signed session
-          identifier; authentication tokens are stored on the server. The
-          auth.tasan.app sign-in service also uses cookies for authentication
-          and protection against forged requests. These are necessary to provide
-          sign-in and do not require cookie consent. Blocking them prevents
-          sign-in from working.
+          Tasan and its sign-in service use first-party cookies to maintain your
+          session, authenticate you and protect against forged requests. The
+          app’s <code>__session</code> cookie contains a signed session
+          identifier and lasts up to 14 days after it is set or renewed. These
+          cookies are necessary to provide sign-in and do not require cookie
+          consent. Blocking them prevents sign-in from working.
         </p>
         <p>
           We do not use advertising cookies or visitor analytics. Account
-          settings, such as your locale preference, are saved with your account.
-          Your browser may also keep cached app assets and page scroll
-          positions. You can clear cookies and site data in your browser; doing
-          so does not delete your account or shared records.
+          settings are saved with your account. Your browser may also store
+          information needed to display and navigate the app. You can clear
+          cookies and site data in your browser; doing so does not delete your
+          account or shared records.
         </p>
       </section>
 
@@ -308,10 +292,10 @@ export default function Privacy() {
           <span id="changes">Changes to this notice</span>
         </SubHeading>
         <p>
-          We update this notice when our data handling changes and show the date
-          above. If we intend to use your data for a new purpose, we will
-          provide information about it before that processing begins and obtain
-          consent where required.
+          We keep this notice up to date and show its revision date above. If
+          our processing changes in a way that requires new information, we will
+          provide it before the change takes effect and obtain consent where
+          required.
         </p>
       </section>
     </article>
