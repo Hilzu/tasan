@@ -213,13 +213,14 @@ export default function Privacy() {
         <p>
           Signing out deletes the app session. Session and invitation records
           are retained until they expire or are revoked; expired records are
-          removed asynchronously. Application logs in Germany, including
-          submitted error reports, expire after 13 months. Other regional and
-          edge logs currently have no configured automatic expiry; their
-          retention is assessed based on incident investigation, security and
-          troubleshooting needs. Support correspondence is kept for handling
-          your request and any related follow-up or dispute, then deleted when
-          no longer needed.
+          removed asynchronously. Application and edge logs, including submitted
+          error reports, are stored across the AWS regions used to operate
+          Tasan. Retention currently varies by log group: some application logs
+          expire after 13 months, while other application and edge logs have no
+          configured automatic expiry. Retention is assessed based on incident
+          investigation, security and troubleshooting needs. Support
+          correspondence is kept for handling your request and any related
+          follow-up or dispute, then deleted when no longer needed.
         </p>
       </section>
 
