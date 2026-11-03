@@ -4,10 +4,11 @@ import type { Route } from "./+types/index";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "Tasan.app - Split bills with your friends" },
+    { title: "Tasan — Good times. All square." },
     {
       name: "description",
-      content: "Easily split bills with your friends using the Tasan web app.",
+      content:
+        "Split bills across currencies with automatic conversion and simplified repayments. Tasan brings shared expenses into one home currency and works out who pays whom.",
     },
   ];
 }
