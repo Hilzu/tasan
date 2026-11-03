@@ -110,10 +110,9 @@ export default function Privacy() {
         </p>
         <p>
           Sessions and invitations are retained until expiry or revocation;
-          expired database records are removed asynchronously. Application and
-          edge logs, including submitted error reports, expire after 13 months.
-          Support correspondence is retained for handling the request and
-          related follow-up or disputes. Applicable legal obligations or
+          expired database records are removed asynchronously. Logs expire after
+          13 months. Support correspondence is retained for handling the request
+          and related follow-up or disputes. Applicable legal obligations or
           specific legal claims may require longer retention.
         </p>
       </section>

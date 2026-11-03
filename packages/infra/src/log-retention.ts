@@ -1,56 +1,7 @@
-import {
-  Aspects,
-  aws_lambda as lambda,
-  aws_logs as logs,
-  CfnResource,
-  type IAspect,
-  Stack,
-} from "aws-cdk-lib";
-import type { Construct, IConstruct } from "constructs";
+import { aws_logs as logs } from "aws-cdk-lib";
+import type { Construct } from "constructs";
 
 export const logRetention = logs.RetentionDays.THIRTEEN_MONTHS;
-
-/** Includes CDK-generated helper Lambdas as well as application functions. */
-export class LogRetention implements IAspect {
-  visit(node: IConstruct) {
-    if (node instanceof logs.CfnLogGroup) {
-      node.retentionInDays = logRetention;
-    } else if (
-      CfnResource.isCfnResource(node) &&
-      node.cfnResourceType === "AWS::Lambda::Function" &&
-      !(
-        node instanceof lambda.CfnFunction &&
-        node.loggingConfig &&
-        "logGroup" in node.loggingConfig &&
-        node.loggingConfig.logGroup
-      )
-    ) {
-      const stack = Stack.of(node);
-      const logGroupName = `/aws/lambda/${node.ref}`;
-      // Don't race a CloudFormation-managed group by creating it in a custom resource.
-      const managedGroup = stack.node
-        .findAll()
-        .some(
-          (child) =>
-            child instanceof logs.CfnLogGroup &&
-            JSON.stringify(stack.resolve(child.logGroupName)) ===
-              JSON.stringify(stack.resolve(logGroupName)),
-        );
-      if (managedGroup) return;
-      const id = `FunctionLogRetention-${node.node.addr}`;
-      if (!stack.node.tryFindChild(id)) {
-        new logs.LogRetention(stack, id, {
-          logGroupName,
-          retention: logRetention,
-        });
-      }
-    }
-  }
-}
-
-export function configureLogRetention(scope: Construct) {
-  Aspects.of(scope).add(new LogRetention());
-}
 
 // Lambda@Edge execution regions, independent of the application's origin regions:
 // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-edge-permissions.html

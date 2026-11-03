@@ -2,11 +2,14 @@ import {
   aws_dynamodb as dynamodb,
   aws_iam as iam,
   aws_lambda as lambda,
+  aws_logs as logs,
   CfnOutput,
   Stack,
   type StackProps,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
+
+import { logRetention } from "./log-retention.js";
 
 type Props = StackProps & {
   tableName: string;
@@ -53,6 +56,11 @@ export class RegionalStack extends Stack {
         AUTH_SERVER_URL: userPoolServerURL,
         AUTH_CLIENT_ID: appClientID,
       },
+    });
+
+    new logs.LogRetention(this, "AppLogRetention", {
+      logGroupName: `/aws/lambda/${appFunction.functionName}`,
+      retention: logRetention,
     });
 
     appTable.grantReadWriteData(appFunction);
