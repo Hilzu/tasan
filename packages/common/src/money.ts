@@ -138,20 +138,12 @@ export const allocate = (total: Money, weights: readonly string[]): Money[] => {
   const sum = values.reduce(E.add, E.rational(0n));
   if (sum.numerator === 0n)
     return values.map(() => fromMinorUnits(0n, total.currency));
-  const active = values
-    .map((value, index) => ({ value, index }))
-    .filter(({ value }) => value.numerator !== 0n);
-  const result = values.map(() => 0n);
-  const units = E.allocate(
+  return E.allocate(
     total.minorUnits,
-    active.map(({ value }) =>
+    values.map((value) =>
       E.divide(E.multiply(E.rational(total.minorUnits), value), sum),
     ),
-  );
-  active.forEach(({ index }, position) => {
-    result[index] = units[position];
-  });
-  return result.map((value) => fromMinorUnits(value, total.currency));
+  ).map((units) => fromMinorUnits(units, total.currency));
 };
 /** Intl accepts exact decimal strings at runtime; older TS lib declarations omit them. */
 export const formatDecimal = (

@@ -19,6 +19,32 @@ const invalidCalculation = (
   };
 };
 
+const allocationResult = (
+  amount: M.Money,
+  participants: Map<UserID, M.Money>,
+) => {
+  const zero = M.create("0", amount.currency);
+  const difference = M.sub(
+    amount,
+    [...participants.values()].reduce(M.add, zero),
+  );
+  const invalidAmounts = new Set(
+    [...participants].filter(([, value]) => !M.gt(value, 0)).map(([id]) => id),
+  );
+  return {
+    error: undefined,
+    amount,
+    participants,
+    invalidAmounts,
+    difference,
+    valid:
+      participants.size > 0 &&
+      M.gt(amount, 0) &&
+      M.equals(difference, 0) &&
+      invalidAmounts.size === 0,
+  };
+};
+
 // Undefined means automatic; specific amounts must be positive.
 export const calculateExpenseAmounts = (
   total: M.Money | undefined,
@@ -51,26 +77,8 @@ export const calculateExpenseAmounts = (
       order.map(() => "1"),
     );
     order.forEach((id, index) => participants.set(id, allocated[index]));
-    const difference = M.sub(
-      amount,
-      [...participants.values()].reduce(M.add, zero),
-    );
-    const invalidAmounts = new Set(
-      [...participants]
-        .filter(([, value]) => !M.gt(value, 0))
-        .map(([id]) => id),
-    );
     return {
-      error: undefined,
-      amount,
-      participants,
-      invalidAmounts,
-      difference,
-      valid:
-        participants.size > 0 &&
-        M.gt(amount, 0) &&
-        M.equals(difference, 0) &&
-        invalidAmounts.size === 0,
+      ...allocationResult(amount, participants),
       hasAmounts:
         total !== undefined ||
         [...inputs.values()].some((value) => value !== undefined),
@@ -131,29 +139,11 @@ export const calculateShareAmounts = (
         M.add(shares.get(id) ?? zero, adjustments.get(id) ?? zero),
       ]),
     );
-    const difference = M.sub(
-      amount,
-      [...participants.values()].reduce(M.add, zero),
-    );
-    const invalidAmounts = new Set(
-      [...participants]
-        .filter(([, value]) => !M.gt(value, 0))
-        .map(([id]) => id),
-    );
+    const result = allocationResult(amount, participants);
     return {
-      error: undefined,
-      amount,
-      participants,
+      ...result,
       invalidShares,
-      invalidAmounts,
-      difference,
-      valid:
-        total !== undefined &&
-        participants.size > 0 &&
-        M.gt(amount, 0) &&
-        M.equals(difference, 0) &&
-        invalidShares.size === 0 &&
-        invalidAmounts.size === 0,
+      valid: total !== undefined && result.valid && invalidShares.size === 0,
     };
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
