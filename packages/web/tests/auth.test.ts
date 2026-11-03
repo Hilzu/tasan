@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 
 import { genUserID } from "@tasan/common/id";
+import { getLogger } from "@tasan/common/logging";
 import {
   createSession,
   type MiddlewareFunction,
@@ -128,6 +129,55 @@ await test("renewal appends the cookie without replacing unrelated cookies and p
     "__session=renewed",
   ]);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
+});
+
+await test("failed renewal logs the error and preserves a completed action's response", async (t) => {
+  const failure = new Error("Session renewal database write failed");
+  const errorLog = t.mock.method(getLogger(), "error", () => undefined);
+  const session = createSession({ userID: genUserID() });
+  readSession.mock.mockImplementation(() => Promise.resolve(session));
+  let completedActions = 0;
+  refreshCookie.mock.mockImplementation(() => {
+    assert.equal(completedActions, 1);
+    return Promise.reject(failure);
+  });
+  const successfulResponse = new Response(null, {
+    status: 302,
+    headers: {
+      Location: "/splits/newly-created",
+      "Set-Cookie": "preference=light",
+      "Cache-Control": "private, no-cache, max-age=0",
+    },
+  });
+
+  const response = await sessionMiddleware(
+    args(new Request("https://tasan.app/splits/new", { method: "POST" })),
+    () => {
+      completedActions++;
+      return Promise.resolve(successfulResponse);
+    },
+  );
+
+  assert.equal(completedActions, 1);
+  assert.equal(response, successfulResponse);
+  assert.equal(successfulResponse.status, 302);
+  assert.equal(
+    successfulResponse.headers.get("location"),
+    "/splits/newly-created",
+  );
+  assert.deepEqual(successfulResponse.headers.getSetCookie(), [
+    "preference=light",
+  ]);
+  assert.equal(
+    successfulResponse.headers.get("cache-control"),
+    "private, no-cache, max-age=0",
+  );
+  assert.equal(refreshCookie.mock.callCount(), 1);
+  assert.equal(errorLog.mock.callCount(), 1);
+  assert.deepEqual(errorLog.mock.calls[0].arguments, [
+    "Session renewal failed",
+    { error: failure },
+  ]);
 });
 
 for (const cookie of [

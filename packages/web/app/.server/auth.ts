@@ -1,5 +1,5 @@
 import type { UserID } from "@tasan/common/id";
-import { getLogger } from "@tasan/common/logging";
+import { getLogger, logError } from "@tasan/common/logging";
 import {
   createContext,
   href,
@@ -28,7 +28,13 @@ export const sessionMiddleware: MiddlewareFunction<Response> = async (
       .getSetCookie()
       .some((value) => value.startsWith("__session="))
   ) {
-    const cookie = await refreshSessionCookie(session);
+    let cookie: string | undefined;
+    try {
+      cookie = await refreshSessionCookie(session);
+    } catch (error) {
+      // The action may already have committed changes; preserve its response.
+      logError("Session renewal failed", error);
+    }
     if (cookie) {
       response.headers.append("Set-Cookie", cookie);
       response.headers.set("Cache-Control", "private, no-store");
