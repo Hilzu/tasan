@@ -160,12 +160,40 @@ await test("form logos satisfy Cognito's 1:1 to 4:1 aspect-ratio limit", () => {
     const svg = Buffer.from(logo.Bytes, "base64").toString("utf8");
     const root = /<svg\b[^>]*>/.exec(svg)?.[0];
     assert.ok(root);
-    const width = Number(/\bwidth="([\d.]+)"/.exec(root)?.[1]);
-    const height = Number(/\bheight="([\d.]+)"/.exec(root)?.[1]);
+    const width = Number(/\swidth="([\d.]+)"/.exec(root)?.[1]);
+    const height = Number(/\sheight="([\d.]+)"/.exec(root)?.[1]);
     const ratio = width / height;
     assert.ok(
       Number.isFinite(ratio) && ratio >= 1 && ratio <= 4,
       `${logo.ColorMode} logo must have a ratio between 1:1 and 4:1; got ${String(width)}×${String(height)}`,
     );
   }
+});
+
+await test("the dark wordmark stays visible on Cognito's light recovery form", () => {
+  const branding = properties();
+  const logo = branding.Assets.find(
+    (asset) => asset.Category === "FORM_LOGO" && asset.ColorMode === "DARK",
+  );
+  assert.ok(logo);
+  const svg = Buffer.from(logo.Bytes, "base64").toString("utf8");
+  const root = /<svg\b[^>]*>/.exec(svg)?.[0];
+  assert.ok(root);
+  const fill = /\bfill="#([\da-f]{6})"/i.exec(root)?.[1];
+  const stroke = /\bstroke="#([\da-f]{6})"/i.exec(root)?.[1];
+  assert.ok(fill);
+  assert.ok(stroke);
+  assertContrast(
+    fill,
+    branding.Settings.components.form.darkMode.backgroundColor,
+  );
+  assertContrast(
+    stroke,
+    branding.Settings.components.form.lightMode.backgroundColor,
+  );
+  const strokeWidth = Number(/\bstroke-width="([\d.]+)"/.exec(root)?.[1]);
+  // Half of the stroke sits outside the fill: retain at least one SVG unit.
+  assert.ok(strokeWidth >= 2);
+  // Paint the outline behind the original shapes to preserve their white fill.
+  assert.match(root, /\bpaint-order="stroke"/);
 });
