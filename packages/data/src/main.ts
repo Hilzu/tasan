@@ -19,6 +19,7 @@ export {
   deleteSession,
   getSession,
   putSession,
+  refreshSession,
   type Session,
 } from "./models/session.js";
 export {

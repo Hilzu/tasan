@@ -112,7 +112,8 @@ await test("public operations round-trip domain objects without exposing storage
   await api.createSplitUser(membership);
   assert.deepEqual(await api.getSplitUser(userID, splitID), membership);
 
-  const expiresAt = new Date("2026-10-22T12:00:00.000Z");
+  const expiresAt = new Date(Date.now() + 3_600_000);
+  expiresAt.setMilliseconds(0);
   const session = {
     id: genSessionID(),
     userID,

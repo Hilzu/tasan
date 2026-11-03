@@ -1,4 +1,10 @@
-import { DeleteCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
+import {
+  DeleteCommand,
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { genSessionID, type SessionID, type UserID } from "@tasan/common/id";
 import { captureAsync } from "@tasan/common/tracing";
 
@@ -10,7 +16,10 @@ import { parseItem, type SessionItem, sessionItemSchema } from "../items.js";
 export interface Session {
   id: SessionID;
   userID?: UserID;
+  /** Current expiry; activity may extend it up to absoluteExpiresAt. */
   expiresAt: Date;
+  /** Fixed deadline set at sign-in; activity cannot extend it. */
+  absoluteExpiresAt?: Date;
   authState?: string;
   authNonce?: string;
   authRedirect?: string;
@@ -25,6 +34,8 @@ const toItem = (session: Session): SessionItem => ({
   sk: session.id,
   createdAt: new Date().toISOString(),
   expiresAt: toUnixTime(session.expiresAt),
+  absoluteExpiresAt:
+    session.absoluteExpiresAt && toUnixTime(session.absoluteExpiresAt),
   forUser: session.userID,
   authState: session.authState,
   authNonce: session.authNonce,
@@ -37,6 +48,10 @@ const fromItem = (item: SessionItem): Session => ({
   id: item.pk,
   userID: item.forUser,
   expiresAt: fromUnixTime(item.expiresAt),
+  absoluteExpiresAt:
+    item.absoluteExpiresAt === undefined ?
+      undefined
+    : fromUnixTime(item.absoluteExpiresAt),
   authState: item.authState,
   authNonce: item.authNonce,
   authRedirect: item.authRedirect,
@@ -71,11 +86,53 @@ export const getSession = captureAsync(
     const cmd = new GetCommand({
       TableName,
       Key,
+      ConsistentRead: true,
     });
     const { Item } = await documentClient().send(cmd);
     if (!Item) return;
     const item = parseItem(sessionItemSchema, Item, "session");
+    // DynamoDB TTL deletion is asynchronous; retained records are not valid sessions.
+    const now = toUnixTime(new Date());
+    if (
+      item.expiresAt <= now ||
+      (item.absoluteExpiresAt !== undefined && item.absoluteExpiresAt <= now)
+    )
+      return;
     return fromItem(item);
+  },
+);
+
+/** Refresh only a live record, without overwriting auth data or resurrecting logout. */
+export const refreshSession = captureAsync(
+  "refreshSession",
+  async (
+    id: SessionID,
+    expiresAt: Date,
+    previousExpiresAt: Date,
+  ): Promise<boolean> => {
+    const expiry = toUnixTime(expiresAt);
+    const now = toUnixTime(new Date());
+    if (expiry <= now) return false;
+    try {
+      await documentClient().send(
+        new UpdateCommand({
+          TableName,
+          Key: { pk: id, sk: id } satisfies PrimaryKey,
+          UpdateExpression: "SET expiresAt = :expiry",
+          ConditionExpression:
+            "attribute_exists(pk) AND expiresAt > :now AND expiresAt = :previousExpiry AND expiresAt < :expiry AND (attribute_not_exists(absoluteExpiresAt) OR absoluteExpiresAt >= :expiry)",
+          ExpressionAttributeValues: {
+            ":now": now,
+            ":expiry": expiry,
+            ":previousExpiry": toUnixTime(previousExpiresAt),
+          },
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof ConditionalCheckFailedException) return false;
+      throw error;
+    }
   },
 );
 
