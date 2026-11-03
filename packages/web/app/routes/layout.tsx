@@ -1,5 +1,5 @@
 import { getUser } from "@tasan/data";
-import { href, Outlet, useRouteLoaderData } from "react-router";
+import { href, Outlet, useMatch, useRouteLoaderData } from "react-router";
 
 import { sessionContext, sessionMiddleware } from "~/.server/auth";
 import { getLocale } from "~/.server/locale";
@@ -45,11 +45,16 @@ export async function loader({ context, request, url }: Route.LoaderArgs) {
 
 export default function Layout({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData;
+  const isLandingPage = Boolean(useMatch("/"));
   const splitData = useRouteLoaderData<SplitLoader>("split-parent");
   return (
     <div className="flex min-h-screen flex-col">
-      <Header user={user} split={splitData?.split} />
-      <main className="container mt-4 mb-16">
+      <Header
+        user={user}
+        split={splitData?.split}
+        isLandingPage={isLandingPage}
+      />
+      <main className={`container mb-16 ${isLandingPage ? "" : "mt-4"}`}>
         <Outlet />
       </main>
       <Footer className="mt-auto" showSettings={Boolean(user)} />
