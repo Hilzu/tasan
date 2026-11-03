@@ -21,6 +21,7 @@ import type { Asset } from "aws-cdk-lib/aws-s3-assets";
 import type { Construct } from "constructs";
 
 import { configureEdgeLogRetention, logRetention } from "./log-retention.js";
+import { managedLoginBranding } from "./managed-login-branding.js";
 
 const publicRootFiles = ["favicon.ico", "robots.txt"];
 
@@ -100,7 +101,7 @@ export class TasanStack extends Stack {
     new cognito.CfnManagedLoginBranding(this, "AppManagedLoginBranding", {
       userPoolId: userPool.userPoolId,
       clientId: userPoolWebClient.userPoolClientId,
-      useCognitoProvidedValues: true,
+      ...managedLoginBranding,
     });
 
     const appTable = new dynamodb.TableV2(this, "AppTable", {

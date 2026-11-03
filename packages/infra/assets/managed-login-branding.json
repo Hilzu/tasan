@@ -46,7 +46,7 @@
             "backgroundColor": "ffffffff",
             "borderColor": "c6c6cdff"
           },
-          "borderRadius": 4.0,
+          "borderRadius": 4,
           "backgroundImage": {
             "enabled": false
           },
@@ -68,7 +68,7 @@
               "borderColor": "d91515ff"
             }
           },
-          "borderRadius": 12.0,
+          "borderRadius": 12,
           "darkMode": {
             "error": {
               "backgroundColor": "1a0000ff",
@@ -241,7 +241,7 @@
               "itemTextColor": "0972d3ff"
             }
           },
-          "borderRadius": 8.0,
+          "borderRadius": 8,
           "darkMode": {
             "hover": {
               "itemBackgroundColor": "081120ff",
@@ -265,7 +265,7 @@
             },
             "placeholderColor": "5A605Eff"
           },
-          "borderRadius": 4.0,
+          "borderRadius": 4,
           "darkMode": {
             "defaults": {
               "backgroundColor": "0f1b2aff",
@@ -283,7 +283,7 @@
           }
         },
         "buttons": {
-          "borderRadius": 4.0
+          "borderRadius": 4
         },
         "optionControls": {
           "lightMode": {
