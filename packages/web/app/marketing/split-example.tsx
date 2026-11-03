@@ -4,7 +4,6 @@ import classNames from "classnames";
 
 import { AmountRender, AmountWithConversion } from "~/components/amount";
 import { Card } from "~/components/card";
-import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
 import { SubHeading } from "~/components/heading";
 
@@ -20,7 +19,6 @@ export interface ExampleSplit {
   payments: { from: string; amount: number }[];
 }
 
-const exampleDate = new Date("2026-11-01T12:00:00Z");
 const people = ["Alex", "Sam", "Jo"];
 
 export function SplitExample({ example }: { example: ExampleSplit }) {
@@ -40,18 +38,18 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
   const alexPaid = participants.find(({ name }) => name === "Alex")?.paid ?? 0;
 
   return (
-    <>
-      <h2 className="mb-2 text-2xl font-semibold">Split - {example.title}</h2>
-      <DescriptionList
-        className="mb-2"
-        items={[
-          ["Created at", <DateRender date={exampleDate} />],
-          ["Home currency", "EUR"],
-          ["Created by", "Alex"],
-        ]}
-      />
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {example.title}
+        </h2>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          Alex, Sam &amp; Jo · Totals in EUR
+        </p>
+      </div>
       <Card heading={<SubHeading>Summary</SubHeading>}>
         <DescriptionList
+          className="mt-2 gap-y-1 text-sm"
           items={[
             [
               "Total expenses",
@@ -68,13 +66,19 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
           ]}
         />
       </Card>
-      <Card heading={<SubHeading>Participants</SubHeading>}>
-        <ol>
+      <Card
+        className="border-t border-gray-200 pt-4 dark:border-gray-700"
+        heading={<SubHeading>Participants</SubHeading>}
+      >
+        <ol className="mt-2 text-sm">
           {participants.map(({ name, balance }) => (
-            <li key={name} className="flex justify-between gap-2">
+            <li
+              key={name}
+              className="flex min-h-8 items-center justify-between gap-2"
+            >
               <span>
                 {name}
-                {name === "Alex" ? " (you!)" : ""}
+                {name === "Alex" ? " (you)" : ""}
               </span>
               <span
                 className={classNames(
@@ -93,22 +97,25 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
           ))}
         </ol>
       </Card>
-      <Card heading={<SubHeading>Repayments</SubHeading>}>
-        <p className="mb-2">
-          Simplified payments keep everyone’s balance the same. You may pay
-          someone who didn’t originally pay for you.
+      <Card
+        className="border-t border-gray-200 pt-4 dark:border-gray-700"
+        heading={<SubHeading>Repayments</SubHeading>}
+      >
+        <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+          {example.payments.length} payment
+          {example.payments.length === 1 ? "" : "s"} to settle up.
         </p>
-        <ul>
+        <ul className="bg-brand-50 dark:bg-brand-900/40 mt-3 rounded-lg px-3 py-1 text-sm">
           {example.payments.map((payment) => (
             <li
               key={payment.from}
-              className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-2 py-2"
+              className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 py-2"
             >
               <span>
                 {payment.from} <span aria-hidden="true">→</span>
                 <span className="sr-only">pays</span> Alex
               </span>
-              <span className="text-right whitespace-nowrap tabular-nums">
+              <span className="text-right font-medium whitespace-nowrap tabular-nums">
                 <AmountRender
                   amount={D.create(payment.amount)}
                   currency="EUR"
@@ -119,11 +126,12 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
         </ul>
       </Card>
       <Card
+        className="border-t border-gray-200 pt-4 dark:border-gray-700"
         heading={<SubHeading>Expenses ({example.expenses.length})</SubHeading>}
       >
-        <ul className="space-y-2">
+        <ul className="mt-3 space-y-4">
           {example.expenses.map((expense) => (
-            <li key={expense.name} className="space-y-1 leading-tight">
+            <li key={expense.name} className="space-y-1 text-sm leading-snug">
               <p className="text-brand-700 dark:text-brand-300 font-semibold">
                 {expense.name}
               </p>
@@ -135,32 +143,15 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
                     expense.original ? D.create(expense.amount) : undefined
                   }
                   convertedCurrency="EUR"
-                />{" "}
-                paid by {expense.paidBy}
-              </p>
-              <p>
-                Your share is{" "}
-                <AmountWithConversion
-                  amount={D.create(
-                    (expense.original?.amount ?? expense.amount) /
-                      people.length,
-                  )}
-                  currency={expense.original?.currency ?? "EUR"}
-                  convertedAmount={
-                    expense.original ?
-                      D.create(expense.amount / people.length)
-                    : undefined
-                  }
-                  convertedCurrency="EUR"
                 />
               </p>
-              <p className="text-xs">
-                <DateRender date={exampleDate} />
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                Paid by {expense.paidBy}
               </p>
             </li>
           ))}
         </ul>
       </Card>
-    </>
+    </div>
   );
 }

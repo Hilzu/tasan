@@ -168,7 +168,7 @@ export const LandingPage = () => {
             id="example-description"
             className="text-brand-800 dark:text-brand-200 mb-3 text-center text-xs"
           >
-            Read-only example · Scroll to see expenses
+            Example split · Scroll to explore
           </p>
           <p role="status" className="sr-only">
             Showing {example.name}
