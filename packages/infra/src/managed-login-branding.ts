@@ -5,14 +5,22 @@ import type { CfnManagedLoginBrandingProps } from "aws-cdk-lib/aws-cognito";
 const asset = (name: string) =>
   readFileSync(new URL(`../assets/login/${name}`, import.meta.url));
 
-// Cognito needs a separate asset for each mode; SVGs use the app's wordmark
-// and four-square icon, with white artwork on dark backgrounds.
-const svg = (name: string, colorMode: string) =>
-  Buffer.from(
-    asset(name)
-      .toString("utf8")
-      .replaceAll("#155b52", colorMode === "DARK" ? "#ffffff" : "#155b52"),
-  ).toString("base64");
+// Cognito needs a separate asset for each mode.
+const svg = (name: string, colorMode: string) => {
+  let source = asset(name).toString("utf8");
+  if (colorMode === "DARK") {
+    source = source.replaceAll("#155b52", "#ffffff");
+    if (name === "logo.svg") {
+      // Recovery can select dark artwork while rendering a light form.
+      // A green outline keeps the white wordmark visible on either surface.
+      source = source.replace(
+        "<svg ",
+        '<svg stroke="#155b52" stroke-width="2" paint-order="stroke" ',
+      );
+    }
+  }
+  return Buffer.from(source).toString("base64");
+};
 
 const settings: unknown = JSON.parse(asset("settings.json").toString("utf8"));
 
