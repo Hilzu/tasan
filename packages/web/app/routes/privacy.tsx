@@ -83,11 +83,10 @@ export default function Privacy() {
           law or necessary for legal claims.
         </p>
         <p>
-          Data is hosted and replicated in Germany and Singapore and may also be
-          hosted in the United States. Request data and logs are processed
-          across the AWS regions and global delivery locations used to operate
-          Tasan, including outside the European Economic Area. Transfers to
-          countries without an applicable adequacy decision rely on the European
+          We use AWS for hosting, replication, content delivery and logging.
+          Data is processed within and outside the European Economic Area,
+          including in Singapore and the United States. Transfers to countries
+          without an applicable adequacy decision rely on the European
           Commission’s Standard Contractual Clauses incorporated into AWS’s data
           processing terms. The safeguards are described in{" "}
           <Link to="https://aws.amazon.com/compliance/gdpr-center/">
@@ -122,10 +121,9 @@ export default function Privacy() {
           <span id="cookies">Cookies</span>
         </SubHeading>
         <p>
-          Tasan and its sign-in service use necessary first-party cookies for
-          authentication, sessions and request security. The app’s{" "}
-          <code>__session</code> cookie lasts up to 14 days after it is set or
-          renewed. Blocking these cookies prevents sign-in from working.
+          Tasan uses necessary cookies to provide sign-in, maintain sessions and
+          protect the service. Blocking these cookies may prevent those
+          functions from working.
         </p>
       </section>
 
