@@ -85,10 +85,15 @@ export default function Privacy() {
         <p>
           We use AWS for hosting, replication, content delivery and logging.
           Data is processed within and outside the European Economic Area,
-          including in Singapore and the United States. Transfers to countries
-          without an applicable adequacy decision rely on the European
-          Commission’s Standard Contractual Clauses incorporated into AWS’s data
-          processing terms. The safeguards are described in{" "}
+          including Australia, Brazil, India, Japan, Singapore, South Korea, the
+          United Kingdom and the United States. AWS identifies additional
+          processing locations in its{" "}
+          <Link to="https://aws.amazon.com/compliance/sub-processors/">
+            subprocessors list
+          </Link>
+          . Transfers to countries without an applicable adequacy decision rely
+          on the European Commission’s Standard Contractual Clauses incorporated
+          into AWS’s data processing terms. The safeguards are described in{" "}
           <Link to="https://aws.amazon.com/compliance/gdpr-center/">
             AWS’s GDPR information
           </Link>
@@ -101,18 +106,23 @@ export default function Privacy() {
           <span id="retention">Retention</span>
         </SubHeading>
         <p>
-          Account data is retained while the account is in use. Shared records
-          and their history are retained for ongoing group recordkeeping,
-          checking balances and resolving disputes, with no automatic expiry.
+          Account data is retained until account deletion; inactivity alone does
+          not trigger deletion. You can request deletion using the contact
+          details below. Shared records and their history are retained while
+          participants continue to use the split, or while outstanding balances
+          or disputes remain. When those reasons no longer apply, personal data
+          is deleted or anonymized, subject to the legal exceptions below.
+          Account deletion does not automatically remove shared records still
+          needed by other participants. There is no automatic inactivity expiry.
           Deleting an expense removes it from active balances but retains its
           history and deletion record.
         </p>
         <p>
           Sessions and invitations are retained until expiry or revocation;
           expired database records are removed asynchronously. Logs expire after
-          13 months. Support correspondence is retained for handling the request
-          and related follow-up or disputes. Applicable legal obligations or
-          specific legal claims may require longer retention.
+          13 months. Support correspondence is retained until the request and
+          any related follow-up or disputes are resolved. Applicable legal
+          obligations or specific legal claims may require longer retention.
         </p>
       </section>
 
