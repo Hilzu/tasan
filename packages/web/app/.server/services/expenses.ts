@@ -24,6 +24,8 @@ import {
   getSplitExpense,
 } from "@tasan/data";
 
+import { convertExpense } from "~/domain/convert-expense";
+
 import { ApplicationError } from "./errors";
 import { logAction } from "./logging";
 import { requireMembership, requireSplit } from "./splits";
@@ -42,6 +44,22 @@ export interface NewExpense {
   payer: UserID;
   participants: Map<UserID, string>;
 }
+
+const validateConversion = (
+  expense: Parameters<typeof convertExpense>[0],
+  currency: CurrencySymbol,
+) => {
+  try {
+    // Use the same allocation and tie policy as the split's displayed amounts.
+    convertExpense(expense, currency);
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    invalidField(
+      "amount",
+      `Amount or participant shares exceed the supported range when converted to ${currency}.`,
+    );
+  }
+};
 
 const createEntry = async (
   actorID: UserID,
@@ -91,17 +109,21 @@ const createEntry = async (
         : await fetchCurrencyConversionRate(input.currency, split.currency);
       if (conversionRate !== undefined) Rate.create(conversionRate);
       getLogger().appendKeys({ conversionRate });
+      const changes = {
+        name: input.name,
+        currency: input.currency,
+        amount,
+        payer: input.payer,
+        participants,
+        conversionRate,
+      };
+      validateConversion(changes, split.currency);
       try {
         return await createSplitExpense({
+          ...changes,
           kind,
           id: input.id,
           splitID,
-          name: input.name,
-          currency: input.currency,
-          amount,
-          payer: input.payer,
-          participants,
-          conversionRate,
           createdBy: actorID,
         });
       } catch (error) {
@@ -262,7 +284,7 @@ export const editExpense = async (
                 );
             if (conversionRate !== undefined) Rate.create(conversionRate);
             getLogger().appendKeys({ conversionRate });
-            return {
+            const changes = {
               name: input.name,
               currency: input.currency,
               amount,
@@ -270,6 +292,8 @@ export const editExpense = async (
               payer: input.payer,
               conversionRate,
             };
+            validateConversion(changes, split.currency);
+            return changes;
           },
         );
       } catch (error) {

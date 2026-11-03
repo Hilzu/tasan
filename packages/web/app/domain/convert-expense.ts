@@ -7,7 +7,10 @@ import type { SplitExpense } from "@tasan/data";
 // and allocate whole minor units by largest remainder.
 // Stable ties favour the payer, then user ID, independent of map insertion order.
 export const convertExpense = (
-  expense: SplitExpense,
+  expense: Pick<
+    SplitExpense,
+    "amount" | "currency" | "payer" | "participants" | "conversionRate"
+  >,
   currency: CurrencySymbol,
 ) => {
   M.assertCurrency(expense.amount, expense.currency);

@@ -166,6 +166,126 @@ await test("same-currency expenses do not call the rate provider", async () => {
   assert.equal(save.mock.calls[0].arguments[0].conversionRate, undefined);
 });
 
+const conversionRangeCases = [
+  {
+    name: "converted total exceeds precision",
+    amount: "9".repeat(38),
+    rate: "0.9",
+    participants: new Map([[actorID, "9".repeat(38)]]),
+  },
+  {
+    name: "converted total exceeds magnitude",
+    amount: "1e125",
+    rate: "10",
+    participants: new Map([[actorID, "1e125"]]),
+  },
+  {
+    name: "participant conversion exceeds precision despite a valid total",
+    amount: "1e38",
+    rate: "0.9",
+    participants: new Map([
+      [actorID, "1"],
+      [payerID, "9".repeat(38)],
+    ]),
+  },
+];
+
+const isConversionFieldError = (error: unknown) => {
+  assert.ok(error instanceof ApplicationError);
+  assert.equal(error.code, "invalid_input");
+  assert.match(error.fieldErrors.amount[0], /supported range/);
+  assert.ok(error.fieldErrors.amount[0].includes(split.currency));
+  return true;
+};
+
+await test("creation rejects unrepresentable conversions before writing", async (t) => {
+  for (const entry of conversionRangeCases)
+    await t.test(entry.name, async () => {
+      rate.mock.mockImplementation(() =>
+        Promise.resolve(Rate.create(entry.rate)),
+      );
+      await assert.rejects(
+        () =>
+          createExpense(actorID, splitID, {
+            ...expense,
+            currency: "USD",
+            amount: entry.amount,
+            participants: entry.participants,
+          }),
+        isConversionFieldError,
+      );
+      assert.equal(save.mock.callCount(), 0);
+    });
+});
+
+await test("currency-changing edits reject unrepresentable conversions before saving a revision", async (t) => {
+  for (const entry of conversionRangeCases)
+    await t.test(entry.name, async () => {
+      rate.mock.mockImplementation(() =>
+        Promise.resolve(Rate.create(entry.rate)),
+      );
+      await assert.rejects(
+        () =>
+          editExpense(actorID, splitID, expense.id, genOperationID(), {
+            ...expense,
+            currency: "USD",
+            amount: entry.amount,
+            participants: entry.participants,
+          }),
+        isConversionFieldError,
+      );
+      assert.equal(savedChanges.length, 0);
+    });
+});
+
+await test("edits validate conversions with the preserved historical rate", async () => {
+  const original = await persistenceMock.exports.getSplitExpense(
+    splitID,
+    expense.id,
+  );
+  assert.ok(original);
+  persistenceMock.exports.getSplitExpense.mock.mockImplementation(() =>
+    Promise.resolve({
+      ...original,
+      currency: "USD",
+      amount: M.create("10", "USD"),
+      participants: new Map([[actorID, M.create("10", "USD")]]),
+      conversionRate: Rate.create("0.9"),
+    }),
+  );
+  await assert.rejects(
+    () =>
+      editExpense(actorID, splitID, expense.id, genOperationID(), {
+        ...expense,
+        currency: "USD",
+        amount: "9".repeat(38),
+        participants: new Map([[actorID, "9".repeat(38)]]),
+      }),
+    isConversionFieldError,
+  );
+  assert.equal(rate.mock.callCount(), 0);
+  assert.equal(savedChanges.length, 0);
+});
+
+await test("large representable conversions keep source amounts when creating and editing", async () => {
+  rate.mock.mockImplementation(() => Promise.resolve(Rate.create("0.9")));
+  const input: NewExpense = {
+    ...expense,
+    currency: "USD",
+    amount: "1e37",
+    participants: new Map([[actorID, "1e37"]]),
+  };
+  await createExpense(actorID, splitID, input);
+  await editExpense(actorID, splitID, expense.id, genOperationID(), input);
+  assert.equal(save.mock.callCount(), 1);
+  assert.equal(savedChanges.length, 1);
+  for (const saved of [save.mock.calls[0].arguments[0], savedChanges[0]]) {
+    assert.deepEqual(saved.amount, M.create(input.amount, "USD"));
+    assert.deepEqual(saved.participants.get(actorID), saved.amount);
+    assert.equal(saved.conversionRate, "0.9");
+  }
+});
+
 await test("expense operations stop when membership is rejected", async () => {
   splitMock.exports.requireMembership.mock.mockImplementation(() =>
     Promise.reject(new ApplicationError("not_found", "Split not found.")),
