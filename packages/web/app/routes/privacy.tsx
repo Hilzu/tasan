@@ -46,7 +46,7 @@ export default function Privacy() {
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong>Providing the service (GDPR Article 6(1)(b)):</strong>
+            <strong>Providing the service (GDPR Article 6(1)(b)):</strong>{" "}
             managing your account and shared financial records, applying
             settings and calculating balances.
           </li>
