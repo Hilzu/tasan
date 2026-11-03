@@ -134,16 +134,7 @@ export const LandingPage = () => {
           </div>
         </div>
 
-        <div className="bg-brand-100/70 dark:bg-brand-950 relative isolate -mx-4 min-w-0 rounded-3xl p-4 min-[380px]:mx-0 sm:p-7">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 -z-10 grid grid-cols-2 gap-3 overflow-hidden rounded-3xl p-4 sm:gap-4 sm:p-7"
-          >
-            <div className="bg-brand-200/40 dark:bg-brand-800/30 rounded-3xl" />
-            <div className="bg-brand-200/40 dark:bg-brand-800/30 rounded-3xl" />
-            <div className="bg-brand-200/40 dark:bg-brand-800/30 rounded-3xl" />
-            <div className="bg-brand-200/40 dark:bg-brand-800/30 rounded-3xl" />
-          </div>
+        <div className="bg-brand-100/70 dark:bg-brand-950 -mx-4 min-w-0 rounded-3xl p-4 min-[380px]:mx-0 sm:p-7">
           <div
             role="group"
             aria-label="Choose an example split"
@@ -166,7 +157,7 @@ export const LandingPage = () => {
           </div>
           <p
             id="example-description"
-            className="text-brand-800 dark:text-brand-200 mb-3 text-center text-xs"
+            className="text-brand-800 dark:text-brand-200 mb-3 text-center text-xs leading-relaxed"
           >
             Example split · Scroll to explore
           </p>
@@ -184,7 +175,7 @@ export const LandingPage = () => {
           >
             <SplitExample example={example} />
           </div>
-          <p className="text-brand-800 dark:text-brand-200 mt-4 text-center text-xs">
+          <p className="text-brand-800 dark:text-brand-200 mt-4 text-center text-xs leading-relaxed">
             {selected === 0 ?
               "GBP, EUR & USD → one total in EUR. Illustrative rates."
             : "Everyone’s share, without the spreadsheet."}
