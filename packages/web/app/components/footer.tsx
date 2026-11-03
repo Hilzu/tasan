@@ -20,13 +20,46 @@ export function Footer({ className, showSettings }: FooterProps) {
     >
       <div className="container space-y-2">
         <p>© {year} Santeri Consulting Oy and Tasan.app developers</p>
-        {showSettings && (
-          <p>
-            <Link to={href("/settings")} variant="plain" className="underline">
-              Settings
-            </Link>
-          </p>
-        )}
+        <nav aria-label="Footer">
+          <ul className="flex flex-wrap gap-x-6 gap-y-2">
+            <li>
+              <a
+                className="underline underline-offset-4"
+                href="https://github.com/Hilzu/tasan/issues"
+              >
+                Feedback
+              </a>
+            </li>
+            <li>
+              <a
+                className="underline underline-offset-4"
+                href="https://github.com/Hilzu/tasan"
+              >
+                Source code
+              </a>
+            </li>
+            <li>
+              <Link
+                to={href("/privacy")}
+                variant="plain"
+                className="underline underline-offset-4"
+              >
+                Privacy
+              </Link>
+            </li>
+            {showSettings && (
+              <li>
+                <Link
+                  to={href("/settings")}
+                  variant="plain"
+                  className="underline underline-offset-4"
+                >
+                  Settings
+                </Link>
+              </li>
+            )}
+          </ul>
+        </nav>
         <p>Version {version}</p>
       </div>
     </footer>

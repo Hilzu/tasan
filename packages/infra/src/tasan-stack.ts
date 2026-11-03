@@ -20,6 +20,8 @@ import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import type { Asset } from "aws-cdk-lib/aws-s3-assets";
 import type { Construct } from "constructs";
 
+import { configureEdgeLogRetention, logRetention } from "./log-retention.js";
+
 const publicRootFiles = ["favicon.ico", "robots.txt"];
 
 export class TasanStack extends Stack {
@@ -165,7 +167,7 @@ export class TasanStack extends Stack {
 
     new logs.LogGroup(this, "AppLogGroup", {
       logGroupName: `/aws/lambda/${appFunction.functionName}`,
-      retention: logs.RetentionDays.THIRTEEN_MONTHS,
+      retention: logRetention,
     });
 
     const appFunctionUrl = appFunction.addFunctionUrl({
@@ -278,6 +280,12 @@ export class TasanStack extends Stack {
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       enableLogging: false,
     });
+
+    configureEdgeLogRetention(
+      this,
+      "AppOriginRequestFn",
+      distribution.distributionId,
+    );
 
     const assetOrigin =
       origins.S3BucketOrigin.withOriginAccessControl(assetsBucket);
