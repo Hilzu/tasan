@@ -16,7 +16,9 @@ import { parseItem, type SessionItem, sessionItemSchema } from "../items.js";
 export interface Session {
   id: SessionID;
   userID?: UserID;
+  /** Current expiry; activity may extend it up to absoluteExpiresAt. */
   expiresAt: Date;
+  /** Fixed deadline set at sign-in; activity cannot extend it. */
   absoluteExpiresAt?: Date;
   authState?: string;
   authNonce?: string;
