@@ -26,7 +26,7 @@ const idleLifetime = 7 * day;
 const absoluteLifetime = 30 * day;
 const loginLifetime = 10 * 60;
 const refreshInterval = 60 * 60;
-const records = new WeakMap<AppSession, StoredSession>();
+const loadedSessionRecords = new WeakMap<AppSession, StoredSession>();
 
 // TODO: make the cookies work when using the local site from phone
 const cookie = createCookie("__session", {
@@ -63,12 +63,12 @@ export async function getSession(
     },
     record.id,
   );
-  records.set(session, record);
+  loadedSessionRecords.set(session, record);
   return session;
 }
 
 export async function commitSession(session: AppSession): Promise<string> {
-  const previous = records.get(session);
+  const previous = loadedSessionRecords.get(session);
   const now = Date.now();
   const userID = session.get("userID");
   // A successful sign-in gets a fresh ID and a new absolute deadline. Legacy
@@ -99,7 +99,7 @@ export async function commitSession(session: AppSession): Promise<string> {
 export async function refreshSessionCookie(
   session: AppSession,
 ): Promise<string | undefined> {
-  const record = records.get(session);
+  const record = loadedSessionRecords.get(session);
   if (!record?.userID) return;
   const now = Date.now();
   const expiresAt = new Date(
@@ -117,7 +117,7 @@ export async function refreshSessionCookie(
 }
 
 export async function destroySession(session: AppSession): Promise<string> {
-  const record = records.get(session);
+  const record = loadedSessionRecords.get(session);
   if (record) await deleteSession(record.id);
   return cookie.serialize("", { expires: new Date(0) });
 }
