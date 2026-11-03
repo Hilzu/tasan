@@ -1,13 +1,13 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import type { UserID } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 
 const invalidCalculation = (
   currency: CurrencySymbol,
   ids: UserID[],
-  total: D.Money | undefined,
+  total: M.Money | undefined,
 ) => {
-  const zero = D.create("0", currency);
+  const zero = M.create("0", currency);
   return {
     amount: total ?? zero,
     participants: new Map(ids.map((id) => [id, zero])),
@@ -21,43 +21,43 @@ const invalidCalculation = (
 
 // Undefined means automatic; specific amounts must be positive.
 export const calculateExpenseAmounts = (
-  total: D.Money | undefined,
-  inputs: ReadonlyMap<UserID, D.Money | undefined>,
+  total: M.Money | undefined,
+  inputs: ReadonlyMap<UserID, M.Money | undefined>,
   currency: CurrencySymbol,
   payer: UserID,
 ) => {
   try {
-    const zero = D.create("0", currency);
-    if (total) D.assertCurrency(total, currency);
+    const zero = M.create("0", currency);
+    if (total) M.assertCurrency(total, currency);
     const participants = new Map(
       [...inputs].map(([id, value]) => {
-        if (value) D.assertCurrency(value, currency);
+        if (value) M.assertCurrency(value, currency);
         return [id, value ?? zero] as const;
       }),
     );
-    const explicitTotal = [...participants.values()].reduce(D.add, zero);
+    const explicitTotal = [...participants.values()].reduce(M.add, zero);
     const amount = total ?? explicitTotal;
     const automatic = [...inputs.keys()].filter(
       (id) => inputs.get(id) === undefined,
     );
-    const remaining = D.sub(amount, explicitTotal);
+    const remaining = M.sub(amount, explicitTotal);
     // Preserve the form's payer-then-input-order tie policy.
     const order =
       automatic.includes(payer) ?
         [payer, ...automatic.filter((id) => id !== payer)]
       : automatic;
-    const allocated = D.allocate(
-      D.gt(remaining, 0) ? remaining : zero,
+    const allocated = M.allocate(
+      M.gt(remaining, 0) ? remaining : zero,
       order.map(() => "1"),
     );
     order.forEach((id, index) => participants.set(id, allocated[index]));
-    const difference = D.sub(
+    const difference = M.sub(
       amount,
-      [...participants.values()].reduce(D.add, zero),
+      [...participants.values()].reduce(M.add, zero),
     );
     const invalidAmounts = new Set(
       [...participants]
-        .filter(([, value]) => !D.gt(value, 0))
+        .filter(([, value]) => !M.gt(value, 0))
         .map(([id]) => id),
     );
     return {
@@ -68,8 +68,8 @@ export const calculateExpenseAmounts = (
       difference,
       valid:
         participants.size > 0 &&
-        D.gt(amount, 0) &&
-        D.equals(difference, 0) &&
+        M.gt(amount, 0) &&
+        M.equals(difference, 0) &&
         invalidAmounts.size === 0,
       hasAmounts:
         total !== undefined ||
@@ -86,20 +86,20 @@ export const calculateExpenseAmounts = (
 
 export interface ShareInput {
   shares: string | undefined;
-  adjustment: D.Money | undefined;
+  adjustment: M.Money | undefined;
 }
 
 // Apply signed adjustments, then allocate the remainder by exact decimal weights.
 export const calculateShareAmounts = (
-  total: D.Money | undefined,
+  total: M.Money | undefined,
   inputs: ReadonlyMap<UserID, ShareInput>,
   currency: CurrencySymbol,
   payer: UserID,
 ) => {
   try {
-    const zero = D.create("0", currency);
+    const zero = M.create("0", currency);
     const amount = total ?? zero;
-    D.assertCurrency(amount, currency);
+    M.assertCurrency(amount, currency);
     const invalidShares = new Set(
       [...inputs]
         .filter(
@@ -110,15 +110,15 @@ export const calculateShareAmounts = (
     );
     const adjustments = new Map(
       [...inputs].map(([id, { adjustment }]) => {
-        if (adjustment) D.assertCurrency(adjustment, currency);
+        if (adjustment) M.assertCurrency(adjustment, currency);
         return [id, adjustment ?? zero] as const;
       }),
     );
-    const base = D.sub(amount, [...adjustments.values()].reduce(D.add, zero));
+    const base = M.sub(amount, [...adjustments.values()].reduce(M.add, zero));
     const order = [...inputs.keys()].sort(
       (a, b) => Number(b === payer) - Number(a === payer),
     );
-    const allocated = D.allocate(
+    const allocated = M.allocate(
       base,
       order.map((id) =>
         invalidShares.has(id) ? "0" : (inputs.get(id)?.shares ?? "0"),
@@ -128,16 +128,16 @@ export const calculateShareAmounts = (
     const participants = new Map(
       [...inputs.keys()].map((id) => [
         id,
-        D.add(shares.get(id) ?? zero, adjustments.get(id) ?? zero),
+        M.add(shares.get(id) ?? zero, adjustments.get(id) ?? zero),
       ]),
     );
-    const difference = D.sub(
+    const difference = M.sub(
       amount,
-      [...participants.values()].reduce(D.add, zero),
+      [...participants.values()].reduce(M.add, zero),
     );
     const invalidAmounts = new Set(
       [...participants]
-        .filter(([, value]) => !D.gt(value, 0))
+        .filter(([, value]) => !M.gt(value, 0))
         .map(([id]) => id),
     );
     return {
@@ -150,8 +150,8 @@ export const calculateShareAmounts = (
       valid:
         total !== undefined &&
         participants.size > 0 &&
-        D.gt(amount, 0) &&
-        D.equals(difference, 0) &&
+        M.gt(amount, 0) &&
+        M.equals(difference, 0) &&
         invalidShares.size === 0 &&
         invalidAmounts.size === 0,
     };
@@ -166,7 +166,7 @@ export const calculateShareAmounts = (
 
 export const parseShares = (text: string): string | undefined => {
   try {
-    return D.weight(text);
+    return M.weight(text);
   } catch {
     return undefined;
   }
@@ -174,7 +174,7 @@ export const parseShares = (text: string): string | undefined => {
 export const stepShares = (text: string, delta: number): string => {
   const current = parseShares(text) ?? "0";
   try {
-    return D.stepWeight(current, delta);
+    return M.stepWeight(current, delta);
   } catch {
     return current;
   }

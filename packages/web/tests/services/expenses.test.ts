@@ -9,7 +9,7 @@ import {
   genSplitID,
   genUserID,
 } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import type {
   createSplitExpense,
   deleteSplitExpense,
@@ -72,8 +72,8 @@ const persistenceMock = {
         splitID,
         createdBy: actorID,
         createdAt: new Date(),
-        amount: D.create("10", "EUR"),
-        participants: new Map([[actorID, D.create("10", "EUR")]]),
+        amount: M.create("10", "EUR"),
+        participants: new Map([[actorID, M.create("10", "EUR")]]),
       }),
     ),
     findExpenseRevisions: mock.fn<typeof findExpenseRevisions>(() =>
@@ -577,7 +577,7 @@ await test("recording a repayment reverses the debt in the home currency", async
   assert.equal(saved.kind, "repayment");
   assert.equal(saved.currency, "EUR");
   assert.equal(saved.payer, actorID);
-  assert.deepEqual([...saved.participants], [[payerID, D.create("25", "EUR")]]);
+  assert.deepEqual([...saved.participants], [[payerID, M.create("25", "EUR")]]);
   assert.equal(saved.createdBy, actorID);
   assert.equal(rate.mock.callCount(), 0);
 });

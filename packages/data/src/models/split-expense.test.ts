@@ -17,7 +17,7 @@ import {
   genSplitID,
   genUserID,
 } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 
 process.env.TABLE_NAME = "TestTable";
 const {
@@ -41,9 +41,9 @@ const expense = {
   createdBy: actorID,
   name: "Dinner",
   currency: "JPY" as const,
-  amount: D.create("1000", "JPY"),
+  amount: M.create("1000", "JPY"),
   payer: actorID,
-  participants: new Map([[actorID, D.create("1000", "JPY")]]),
+  participants: new Map([[actorID, M.create("1000", "JPY")]]),
 };
 const operation = genOperationID;
 const low = asOperationID("op_00000000000000000000000001");
@@ -412,8 +412,8 @@ await test("returning to the split currency removes the previous rate only from 
       Promise.resolve({
         ...expense,
         currency: "EUR",
-        amount: D.create("1000", "EUR"),
-        participants: new Map([[actorID, D.create("1000", "EUR")]]),
+        amount: M.create("1000", "EUR"),
+        participants: new Map([[actorID, M.create("1000", "EUR")]]),
         conversionRate: undefined,
       }),
   );
@@ -529,11 +529,11 @@ await test("decimal amounts and participant maps round-trip in currencies with f
   const value = {
     ...expense,
     currency: "EUR" as const,
-    amount: D.create("12.34", "EUR"),
+    amount: M.create("12.34", "EUR"),
     conversionRate: Rate.create("163.25"),
     participants: new Map([
-      [actorID, D.create("6.17", "EUR")],
-      [otherUser, D.create("6.17", "EUR")],
+      [actorID, M.create("6.17", "EUR")],
+      [otherUser, M.create("6.17", "EUR")],
     ]),
   };
   await createSplitExpense(value);

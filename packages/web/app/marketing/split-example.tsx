@@ -1,5 +1,5 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import classNames from "classnames";
 
 import { AmountRender, AmountWithConversion } from "~/components/amount";
@@ -22,12 +22,12 @@ export interface ExampleSplit {
 const people = ["Alex", "Sam", "Jo"];
 
 export function SplitExample({ example }: { example: ExampleSplit }) {
-  const euros = (value: number) => D.create(String(value), "EUR");
+  const euros = (value: number) => M.create(String(value), "EUR");
   const total = example.expenses.reduce(
-    (sum, expense) => D.add(sum, euros(expense.amount)),
+    (sum, expense) => M.add(sum, euros(expense.amount)),
     euros(0),
   );
-  const shares = D.allocate(
+  const shares = M.allocate(
     total,
     people.map(() => "1"),
   );
@@ -36,12 +36,12 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
     .map((name, index) => {
       const paid = example.expenses
         .filter((expense) => expense.paidBy === name)
-        .reduce((sum, expense) => D.add(sum, euros(expense.amount)), euros(0));
+        .reduce((sum, expense) => M.add(sum, euros(expense.amount)), euros(0));
       const allocated = shares[index];
-      return { name, paid, balance: D.sub(paid, allocated) };
+      return { name, paid, balance: M.sub(paid, allocated) };
     })
     .sort(
-      (a, b) => D.compare(a.balance, b.balance) || a.name.localeCompare(b.name),
+      (a, b) => M.compare(a.balance, b.balance) || a.name.localeCompare(b.name),
     );
   const alexPaid =
     participants.find(({ name }) => name === "Alex")?.paid ?? euros(0);
@@ -83,7 +83,7 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
               <span
                 className={classNames(
                   "tabular-nums",
-                  D.gt(balance, 0) && "text-green-700 dark:text-green-400",
+                  M.gt(balance, 0) && "text-green-700 dark:text-green-400",
                   balance.minorUnits < 0n && "text-red-700 dark:text-red-400",
                 )}
               >
@@ -134,7 +134,7 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
               </p>
               <p>
                 <AmountWithConversion
-                  amount={D.create(
+                  amount={M.create(
                     String(expense.original?.amount ?? expense.amount),
                     expense.original?.currency ?? "EUR",
                   )}

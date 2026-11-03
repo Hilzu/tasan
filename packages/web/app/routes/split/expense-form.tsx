@@ -1,6 +1,6 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import { genExpenseID, genOperationID, type UserID } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import { currencySymbolSchema } from "@tasan/common/validation";
 import type { SplitExpense } from "@tasan/data";
 import classNames from "classnames";
@@ -92,7 +92,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const [currency, setCurrency] = useState(expense?.currency ?? split.currency);
   const [total, setTotal] = useState<AmountInput>(() =>
     expense ?
-      { text: D.toString(expense.amount), expressionMode: false }
+      { text: M.toString(expense.amount), expressionMode: false }
     : emptyAmountInput,
   );
   const [payer, setPayer] = useState(expense?.payer ?? session.userID);
@@ -102,7 +102,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
         expense ?
           [...expense.participants].map(([id, amount]) => [
             id,
-            { text: D.toString(amount), expressionMode: false },
+            { text: M.toString(amount), expressionMode: false },
           ])
         : users.map(({ id }) => [id, emptyAmountInput]),
       ),
@@ -160,19 +160,19 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const amountError =
     byShares ?
       amount === undefined ? "Enter a total to split by shares."
-      : !D.gt(amount, 0) ? "Enter a positive total."
+      : !M.gt(amount, 0) ? "Enter a positive total."
       : undefined
-    : calculated.hasAmounts && !D.gt(calculated.amount, 0) ?
+    : calculated.hasAmounts && !M.gt(calculated.amount, 0) ?
       "Enter a positive total or participant amounts."
     : undefined;
   const calculationError = byShares ? shared.error : calculated.error;
   const allocationError =
     calculationError ??
     (byShares && amount === undefined ? undefined
-    : D.gt(difference, 0) ?
+    : M.gt(difference, 0) ?
       `${formatAmount(difference, currency)} left to allocate.${byShares ? " Set shares or adjustments." : ""}`
-    : D.gt(D.create("0", currency), difference) ?
-      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(D.negate(difference), currency)}.`
+    : M.gt(M.create("0", currency), difference) ?
+      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(M.negate(difference), currency)}.`
     : undefined);
 
   return (
@@ -257,7 +257,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
           }
           placeholder={
             !byShares && calculated.hasAmounts && amount === undefined ?
-              D.toString(calculated.amount)
+              M.toString(calculated.amount)
             : undefined
           }
           name="amount"
@@ -360,7 +360,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
           [...participants.keys()].map((userID) => {
             const input = shareInputFor(userID);
             const participantAmount =
-              shared.participants.get(userID) ?? D.create("0", currency);
+              shared.participants.get(userID) ?? M.create("0", currency);
             return (
               <fieldset
                 key={userID}
@@ -373,7 +373,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
                 <input
                   type="hidden"
                   name={`participants.${userID}`}
-                  value={D.toString(participantAmount)}
+                  value={M.toString(participantAmount)}
                 />
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2">
                   <InputField
@@ -421,7 +421,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
                     label="Adjustment"
                     currencySymbol={currency}
                     allowNegative
-                    placeholder={D.toString(D.create("0", currency))}
+                    placeholder={M.toString(M.create("0", currency))}
                     value={input.adjustment}
                     onValueChange={(adjustment) => {
                       updateShareInput(userID, { adjustment });
@@ -430,7 +430,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
                 </div>
                 {/* Until the total is allocated, the remainder error says enough. */}
                 {amount !== undefined &&
-                  D.equals(shared.difference, 0) &&
+                  M.equals(shared.difference, 0) &&
                   !shared.invalidShares.has(userID) &&
                   shared.invalidAmounts.has(userID) && (
                     <FieldError
@@ -458,9 +458,9 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
               automaticAmount={calculated.participants.get(userID)}
               placeholder={
                 input.text.trim() === "" && calculated.hasAmounts ?
-                  D.toString(
+                  M.toString(
                     calculated.participants.get(userID) ??
-                      D.create("0", currency),
+                      M.create("0", currency),
                   )
                 : undefined
               }

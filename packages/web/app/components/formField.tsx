@@ -1,5 +1,5 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import classNames from "classnames";
 import {
   type ComponentProps,
@@ -92,7 +92,7 @@ type CurrencyInputFieldProps = Omit<
   currencySymbol: CurrencySymbol;
   onValueChange: (value: AmountInput) => void;
   value: AmountInput;
-  automaticAmount?: D.Money;
+  automaticAmount?: M.Money;
   // Shows a sign toggle, since mobile decimal keypads may lack a minus key.
   allowNegative?: boolean;
 };
@@ -125,12 +125,12 @@ export const resolveAmount = (
   value: string,
   expressionMode: boolean,
   currency: CurrencySymbol,
-): D.Money | undefined => {
+): M.Money | undefined => {
   if (value.trim() === "") return undefined;
   try {
     return expressionMode ?
-        D.calculate(value, currency)
-      : D.round(parseNumber(value), currency);
+        M.calculate(value, currency)
+      : M.round(parseNumber(value), currency);
   } catch {
     return undefined;
   }
@@ -144,7 +144,7 @@ export const normalizeAmountInput = (
 ): AmountInput => {
   const amount = resolveAmount(input.text, input.expressionMode, currency);
   return amount && (allowNegative || amount.minorUnits >= 0n) ?
-      { ...input, text: D.toString(amount) }
+      { ...input, text: M.toString(amount) }
     : input;
 };
 
@@ -180,7 +180,7 @@ export function CurrencyInputField({
     if (invalid) return false;
     onValueChange({
       ...value,
-      text: resolved ? D.toString(resolved) : "",
+      text: resolved ? M.toString(resolved) : "",
     });
     return true;
   };
@@ -194,7 +194,7 @@ export function CurrencyInputField({
         <input
           type="hidden"
           name={name}
-          value={submittedAmount ? D.toString(submittedAmount) : ""}
+          value={submittedAmount ? M.toString(submittedAmount) : ""}
         />
       )}
       <InputField
@@ -216,8 +216,8 @@ export function CurrencyInputField({
               /[+\-*/]/.test(text) && (
                 <span className="pr-1 whitespace-nowrap text-gray-400">
                   ={" "}
-                  {D.formatDecimal(
-                    D.toString(resolved),
+                  {M.formatDecimal(
+                    M.toString(resolved),
                     new Intl.NumberFormat(language, {
                       minimumFractionDigits: fractions,
                       maximumFractionDigits: fractions,
@@ -234,7 +234,7 @@ export function CurrencyInputField({
                   onValueChange({
                     ...value,
                     text:
-                      resolved ? D.toString(D.negate(resolved))
+                      resolved ? M.toString(M.negate(resolved))
                       : empty ? "-"
                       : text,
                   });

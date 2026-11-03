@@ -4,12 +4,12 @@ import { test } from "node:test";
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import type { Graph } from "@tasan/common/graph";
 import type { UserID } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 
 import { calculateBalances, simplifyDebts } from "~/domain/expense-graph";
 // Integer accounting is independent of both the production balance calculator
 // and its arithmetic helpers, so the two cannot hide the same accounting error.
-const minorUnits = (amount: D.Money) => amount.minorUnits;
+const minorUnits = (amount: M.Money) => amount.minorUnits;
 const account = (graph: Graph, users: UserID[]) => {
   const balances = new Map(users.map((id) => [id, 0n]));
   for (const [from, edges] of graph) {
@@ -103,7 +103,7 @@ await test("exhaustive integer accounting for all 3-person graphs with edge weig
           const edges = graph.get(testUser(from)) ?? [];
           edges.push({
             to: testUser(to),
-            amount: D.round(String(units / 10 ** fractions), currency),
+            amount: M.round(String(units / 10 ** fractions), currency),
           });
           graph.set(testUser(from), edges);
         }
@@ -131,7 +131,7 @@ await test("seeded larger graphs preserve exact balances in every supported curr
         const edges = graph.get(from) ?? [];
         edges.push({
           to,
-          amount: D.round(
+          amount: M.round(
             String((random(2000001) - 1000000) / 10 ** fractions),
             currency,
           ),

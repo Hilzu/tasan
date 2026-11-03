@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import * as Rate from "@tasan/common/exchange-rate";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import {
   createRequestHandler,
   type ServerBuild,
@@ -11,8 +11,8 @@ import {
 
 await test("React Router preserves Money, rates, and Maps in document hydration, loaders, and actions", async () => {
   const original = {
-    amount: D.create("9007199254740993.01", "EUR"),
-    participants: new Map([["participant", D.create("-0.03", "EUR")]]),
+    amount: M.create("9007199254740993.01", "EUR"),
+    participants: new Map([["participant", M.create("-0.03", "EUR")]]),
     conversionRate: Rate.create("0.12345678901234567890123456789012345678"),
   };
   const build: ServerBuild = {

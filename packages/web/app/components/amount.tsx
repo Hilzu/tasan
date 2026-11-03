@@ -1,5 +1,5 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
-import type * as D from "@tasan/common/money";
+import type * as M from "@tasan/common/money";
 
 import { useLanguage } from "~/context";
 import { formatAmount } from "~/domain/format-amount";
@@ -7,14 +7,14 @@ import { formatAmount } from "~/domain/format-amount";
 export function useFormatAmount() {
   const language = useLanguage();
   return (
-    amount: D.Money,
+    amount: M.Money,
     currency: CurrencySymbol,
     signDisplay?: Intl.NumberFormatOptions["signDisplay"],
   ) => formatAmount(amount, currency, language, signDisplay);
 }
 
 interface AmountRenderProps {
-  amount: D.Money;
+  amount: M.Money;
   currency: CurrencySymbol;
   signDisplay?: Intl.NumberFormatOptions["signDisplay"];
 }
@@ -34,7 +34,7 @@ export function AmountWithConversion({
   convertedAmount,
   convertedCurrency,
 }: Pick<AmountRenderProps, "amount" | "currency"> & {
-  convertedAmount?: D.Money;
+  convertedAmount?: M.Money;
   convertedCurrency: CurrencySymbol;
 }) {
   return (

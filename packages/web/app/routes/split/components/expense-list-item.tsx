@@ -1,6 +1,6 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import type { SplitID, UserID } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import type { SplitExpense, User } from "@tasan/data";
 import { href } from "react-router";
 
@@ -25,7 +25,7 @@ export default function ExpenseListItem({
   splitID,
 }: ExpenseListItemProps) {
   const yourShare =
-    expense.participants.get(currentUserID) ?? D.create("0", expense.currency);
+    expense.participants.get(currentUserID) ?? M.create("0", expense.currency);
   const converted =
     expense.conversionRate ? convertExpense(expense, currency) : undefined;
   return (
@@ -55,7 +55,7 @@ export default function ExpenseListItem({
       </div>
       {expense.kind !== "repayment" && (
         <div>
-          {D.equals(yourShare, 0) ?
+          {M.equals(yourShare, 0) ?
             "You didn't participate"
           : <>
               Your share is{" "}

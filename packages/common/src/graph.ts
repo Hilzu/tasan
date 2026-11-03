@@ -1,9 +1,9 @@
 import type { UserID } from "./id.js";
-import * as D from "./money.js";
+import * as M from "./money.js";
 
 export interface Edge {
   to: UserID;
-  amount: D.Money;
+  amount: M.Money;
 }
 
 export type Graph = Map<UserID, Edge[]>;
@@ -14,11 +14,11 @@ export const upsertEdge = (
   graph: Graph,
   from: UserID,
   to: UserID,
-  amount: D.Money,
+  amount: M.Money,
 ): Graph => {
   const edges = graph.get(from) ?? [];
   const existingEdge = edges.find((edge) => edge.to === to);
-  if (existingEdge) existingEdge.amount = D.add(existingEdge.amount, amount);
+  if (existingEdge) existingEdge.amount = M.add(existingEdge.amount, amount);
   else edges.push({ to, amount });
   return new Map(graph).set(from, edges);
 };

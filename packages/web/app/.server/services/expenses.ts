@@ -10,7 +10,7 @@ import {
   type UserID,
 } from "@tasan/common/id";
 import { getLogger } from "@tasan/common/logging";
-import type * as D from "@tasan/common/money";
+import type * as M from "@tasan/common/money";
 import {
   createSplitExpense,
   deleteSplitExpense,
@@ -157,7 +157,7 @@ const validateExpense = (
     invalidField("payer", "Payer must be in the split.");
   if (input.participants.size === 0)
     invalidField("participants", "Participants are required.");
-  const participants = new Map<UserID, D.Money>();
+  const participants = new Map<UserID, M.Money>();
   for (const [userID, value] of input.participants) {
     if (!members.has(userID))
       invalidField("participants", "Participants must be in the split.");

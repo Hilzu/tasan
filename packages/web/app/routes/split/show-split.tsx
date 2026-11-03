@@ -1,6 +1,6 @@
 import { compareByKey, compareByTo } from "@tasan/common/compare";
 import { genExpenseID } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import classNames from "classnames";
 import { useState } from "react";
 import { href, useRouteLoaderData } from "react-router";
@@ -98,7 +98,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
                 <span
                   className={classNames(
                     "tabular-nums",
-                    D.gt(balance, 0) && "text-green-700 dark:text-green-400",
+                    M.gt(balance, 0) && "text-green-700 dark:text-green-400",
                     balance.minorUnits < 0n && "text-red-700 dark:text-red-400",
                   )}
                 >

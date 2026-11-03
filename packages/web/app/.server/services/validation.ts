@@ -1,5 +1,5 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 
 import { ApplicationError } from "./errors";
 
@@ -23,8 +23,8 @@ export const toAmount = (
   field: string,
 ) => {
   try {
-    const amount = D.create(value, currency);
-    if (D.gt(amount, 0)) return amount;
+    const amount = M.create(value, currency);
+    if (M.gt(amount, 0)) return amount;
   } catch {
     /* Report domain validation as a field error. */
   }

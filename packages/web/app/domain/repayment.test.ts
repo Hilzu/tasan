@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { genExpenseID, genSplitID, genUserID } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import type { SplitExpense, SplitWithData } from "@tasan/data";
 
 import {
@@ -34,20 +34,20 @@ await test("recording simplified payments settles indirect debts and deleting re
     createdBy: a,
     kind,
     payer,
-    amount: D.round(String(amount), "EUR"),
-    participants: new Map([[recipient, D.round(String(amount), "EUR")]]),
+    amount: M.round(String(amount), "EUR"),
+    participants: new Map([[recipient, M.round(String(amount), "EUR")]]),
   });
   // A owes B and B owes C. Simplification asks A to pay C directly.
   split.expenses = [entry(b, a, 25), entry(c, b, 25)];
   const original = calculateExpenseGraph(split);
   assert.deepEqual(
     [...original],
-    [[a, [{ to: c, amount: D.create("25", "EUR") }]]],
+    [[a, [{ to: c, amount: M.create("25", "EUR") }]]],
   );
   split.expenses.push(entry(a, c, 10, "repayment"));
   assert.deepEqual(
     calculateBalances(calculateExpenseGraph(split), [a, b, c], "EUR").map(
-      (x) => [x.userID, Number(D.toString(x.balance))],
+      (x) => [x.userID, Number(M.toString(x.balance))],
     ),
     [
       [a, -15],

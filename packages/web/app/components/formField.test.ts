@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 
 import {
   normalizeAmountInput,
@@ -18,13 +18,13 @@ await test("currency normalization keeps displayed and resolved amounts consiste
     assert.equal(yen.text, "101");
     assert.deepEqual(
       resolveAmount(yen.text, yen.expressionMode, "JPY"),
-      D.create("101", "JPY"),
+      M.create("101", "JPY"),
     );
     const euros = normalizeAmountInput(yen, "EUR");
     assert.equal(euros.text, "101.00");
     assert.deepEqual(
       resolveAmount(euros.text, euros.expressionMode, "EUR"),
-      D.create("101", "EUR"),
+      M.create("101", "EUR"),
     );
   }
 });
@@ -78,11 +78,11 @@ await test("calculations use exact arithmetic and round only the final result", 
   ]) {
     const amount = resolveAmount(input, true, "EUR");
     assert.ok(amount);
-    assert.equal(D.toString(amount), expected);
+    assert.equal(M.toString(amount), expected);
   }
   assert.deepEqual(
     resolveAmount("100 / 3", true, "JPY"),
-    D.create("33", "JPY"),
+    M.create("33", "JPY"),
   );
 });
 
@@ -106,6 +106,6 @@ await test("invalid calculations remain unresolved", () => {
     );
   assert.deepEqual(
     resolveAmount("€ 12,5", false, "EUR"),
-    D.create("12.5", "EUR"),
+    M.create("12.5", "EUR"),
   );
 });

@@ -15,7 +15,7 @@ import {
   type SplitID,
   type UserID,
 } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -34,7 +34,7 @@ export interface SplitExpense {
   id: ExpenseID;
   splitID: SplitID;
   name: string;
-  amount: D.Money;
+  amount: M.Money;
   createdBy: UserID;
   createdAt: Date;
   updatedAt?: Date;
@@ -42,7 +42,7 @@ export interface SplitExpense {
   currency: CurrencySymbol;
   conversionRate?: Rate.ExchangeRate;
   payer: UserID;
-  participants: Map<UserID, D.Money>;
+  participants: Map<UserID, M.Money>;
 }
 
 interface ExpenseReadOptions {
@@ -60,7 +60,7 @@ const fromItem = (item: SplitExpenseItem): SplitExpense => {
     updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
     updatedBy: item.updatedBy,
     name: item.name,
-    amount: D.round(item.amount, item.currency),
+    amount: M.round(item.amount, item.currency),
     createdBy: item.createdBy,
     createdAt: new Date(item.createdAt),
     currency: item.currency,
@@ -69,7 +69,7 @@ const fromItem = (item: SplitExpenseItem): SplitExpense => {
     participants: new Map(
       Object.entries(item.participants)
         .sort(compareByKey)
-        .map(([id, amount]) => [asUserID(id), D.round(amount, item.currency)]),
+        .map(([id, amount]) => [asUserID(id), M.round(amount, item.currency)]),
     ),
   };
 };
@@ -166,17 +166,17 @@ export type EditSplitExpense = Pick<
 >;
 
 const storedChanges = (expense: EditSplitExpense) => {
-  D.assertCurrency(expense.amount, expense.currency);
+  M.assertCurrency(expense.amount, expense.currency);
   for (const amount of expense.participants.values())
-    D.assertCurrency(amount, expense.currency);
+    M.assertCurrency(amount, expense.currency);
   return {
     name: expense.name,
-    amount: D.toString(expense.amount),
+    amount: M.toString(expense.amount),
     currency: expense.currency,
     conversionRate: expense.conversionRate,
     payer: expense.payer,
     participants: Object.fromEntries(
-      [...expense.participants].map(([id, amount]) => [id, D.toString(amount)]),
+      [...expense.participants].map(([id, amount]) => [id, M.toString(amount)]),
     ),
   };
 };

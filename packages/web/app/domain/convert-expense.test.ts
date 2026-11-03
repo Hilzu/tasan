@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { currencies } from "@tasan/common/currency";
 import * as Rate from "@tasan/common/exchange-rate";
 import { genExpenseID, genSplitID, genUserID } from "@tasan/common/id";
-import * as D from "@tasan/common/money";
+import * as M from "@tasan/common/money";
 import type { SplitExpense } from "@tasan/data";
 
 import { convertExpense } from "~/domain/convert-expense";
@@ -26,11 +26,11 @@ const expense = (overrides: Partial<SplitExpense> = {}): SplitExpense => ({
   payer,
   currency: overrides.amount?.currency ?? "USD",
   conversionRate: Rate.create("0.9"),
-  amount: D.create("1", "USD"),
+  amount: M.create("1", "USD"),
   participants: new Map([
-    [payer, D.create("0.34", "USD")],
-    [second, D.create("0.33", "USD")],
-    [third, D.create("0.33", "USD")],
+    [payer, M.create("0.34", "USD")],
+    [second, M.create("0.33", "USD")],
+    [third, M.create("0.33", "USD")],
   ]),
   ...overrides,
 });
@@ -38,18 +38,18 @@ const expense = (overrides: Partial<SplitExpense> = {}): SplitExpense => ({
 await test("rounding shares down preserves the converted total and the payer's balance", () => {
   const entry = expense();
   assert.deepEqual(convertExpense(entry, "EUR"), {
-    amount: D.create("0.9", "EUR"),
+    amount: M.create("0.9", "EUR"),
     participants: new Map([
-      [payer, D.create("0.3", "EUR")],
-      [second, D.create("0.3", "EUR")],
-      [third, D.create("0.3", "EUR")],
+      [payer, M.create("0.3", "EUR")],
+      [second, M.create("0.3", "EUR")],
+      [third, M.create("0.3", "EUR")],
     ]),
   });
   const summary = calculateExpenseSummary([entry], "EUR", payer);
   assert.deepEqual(summary, {
-    total: D.create("0.9", "EUR"),
-    paid: D.create("0.9", "EUR"),
-    share: D.create("0.3", "EUR"),
+    total: M.create("0.9", "EUR"),
+    paid: M.create("0.9", "EUR"),
+    share: M.create("0.3", "EUR"),
   });
   assert.deepEqual(
     calculateBalances(
@@ -57,7 +57,7 @@ await test("rounding shares down preserves the converted total and the payer's b
       users,
       "EUR",
     ).find((b) => b.userID === payer)?.balance,
-    D.create("0.6", "EUR"),
+    M.create("0.6", "EUR"),
   );
 });
 
@@ -73,12 +73,12 @@ await test("converted expense totals round exact decimal half units up", () => {
   ] as const) {
     const entry = expense({
       currency: "JPY",
-      amount: D.round(String(source), "JPY"),
+      amount: M.round(String(source), "JPY"),
       conversionRate: Rate.create(String(rate)),
-      participants: new Map([[second, D.round(String(source), "JPY")]]),
+      participants: new Map([[second, M.round(String(source), "JPY")]]),
     });
     const converted = convertExpense(entry, currency);
-    const amount = D.round(
+    const amount = M.round(
       String(expected),
       currencies[currency].fractions === 0 ? "JPY" : "EUR",
     );
@@ -87,7 +87,7 @@ await test("converted expense totals round exact decimal half units up", () => {
     assert.deepEqual(calculateExpenseSummary([entry], currency, payer), {
       total: amount,
       paid: amount,
-      share: D.round(String(0), amount.currency),
+      share: M.round(String(0), amount.currency),
     });
   }
 });
@@ -98,69 +98,69 @@ await test("conversion distinguishes exact half units from values just below the
     [1.0049999999999997, 1],
   ]) {
     const entry = expense({
-      amount: D.create("1", "EUR"),
+      amount: M.create("1", "EUR"),
       conversionRate: Rate.create(String(rate)),
-      participants: new Map([[second, D.create("1", "EUR")]]),
+      participants: new Map([[second, M.create("1", "EUR")]]),
     });
     assert.deepEqual(
       convertExpense(entry, "EUR").amount,
-      D.round(String(expected), "EUR"),
+      M.round(String(expected), "EUR"),
     );
   }
 });
 
 await test("rounding remainders favour the payer on ties, independent of participant order", () => {
   const entry = expense({
-    amount: D.create("0.03", "EUR"),
+    amount: M.create("0.03", "EUR"),
     conversionRate: Rate.create("0.5"),
-    participants: new Map(users.map((id) => [id, D.create("0.01", "EUR")])),
+    participants: new Map(users.map((id) => [id, M.create("0.01", "EUR")])),
   });
   const result = convertExpense(entry, "EUR");
   const [tieWinner, tieLoser] = [second, third].sort();
-  assert.deepEqual(result.amount, D.create("0.02", "EUR"));
-  assert.deepEqual(result.participants.get(payer), D.create("0.01", "EUR"));
-  assert.deepEqual(result.participants.get(tieWinner), D.create("0.01", "EUR"));
-  assert.deepEqual(result.participants.get(tieLoser), D.create("0", "EUR"));
+  assert.deepEqual(result.amount, M.create("0.02", "EUR"));
+  assert.deepEqual(result.participants.get(payer), M.create("0.01", "EUR"));
+  assert.deepEqual(result.participants.get(tieWinner), M.create("0.01", "EUR"));
+  assert.deepEqual(result.participants.get(tieLoser), M.create("0", "EUR"));
   const reversed = new Map([...entry.participants].reverse());
   const reordered = convertExpense({ ...entry, participants: reversed }, "EUR");
   assert.deepEqual(reordered, result);
   assert.deepEqual([...reordered.participants.keys()], [...reversed.keys()]);
   assert.deepEqual(
     createGraphWithCurrency("EUR", [entry]),
-    new Map([[tieWinner, [{ to: payer, amount: D.create("0.01", "EUR") }]]]),
+    new Map([[tieWinner, [{ to: payer, amount: M.create("0.01", "EUR") }]]]),
   );
 });
 
 await test("tiny converted expenses produce no zero-value repayment suggestions", () => {
   const entry = expense({
-    amount: D.create("0.01", "EUR"),
+    amount: M.create("0.01", "EUR"),
     conversionRate: Rate.create("0.1"),
-    participants: new Map([[second, D.create("0.01", "EUR")]]),
+    participants: new Map([[second, M.create("0.01", "EUR")]]),
   });
-  assert.deepEqual(convertExpense(entry, "JPY").amount, D.create("0", "JPY"));
+  assert.deepEqual(convertExpense(entry, "JPY").amount, M.create("0", "JPY"));
   assert.equal(createGraphWithCurrency("JPY", [entry]).size, 0);
 });
 
 await test("distinct decimal remainders are not treated as ties", () => {
   const entry = expense({
-    amount: D.create("0.04", "EUR"),
+    amount: M.create("0.04", "EUR"),
     conversionRate: Rate.create("0.5000000001"),
     participants: new Map([
-      [payer, D.create("0.01", "EUR")],
-      [second, D.create("0.03", "EUR")],
+      [payer, M.create("0.01", "EUR")],
+      [second, M.create("0.03", "EUR")],
     ]),
   });
   const converted = convertExpense(entry, "EUR");
-  assert.deepEqual(converted.amount, D.create("0.02", "EUR"));
-  assert.deepEqual(converted.participants.get(payer), D.create("0", "EUR"));
-  assert.deepEqual(converted.participants.get(second), D.create("0.02", "EUR"));
+  assert.deepEqual(converted.amount, M.create("0.02", "EUR"));
+  assert.deepEqual(converted.participants.get(payer), M.create("0", "EUR"));
+  assert.deepEqual(converted.participants.get(second), M.create("0.02", "EUR"));
 });
 
 await test("converted totals, summaries and simplified balances agree across rounding cases", () => {
   for (const currency of ["EUR", "USD", "JPY", "KRW"] as const) {
     const fractions = currencies[currency].fractions;
-    const units = (value: D.Money) =>
-      Math.round(Number(D.toString(value)) * 10 ** fractions);
+    const units = (value: M.Money) =>
+      Math.round(Number(M.toString(value)) * 10 ** fractions);
     for (const source of ["EUR", "JPY"] as const) {
       for (const rate of [0.006, 0.7, 0.9, 1, 1.234567, 160]) {
         for (let seed = 1; seed <= 30; seed++) {
@@ -169,7 +169,7 @@ await test("converted totals, summaries and simplified balances agree across rou
           const entry = expense({
             currency: source,
             conversionRate: Rate.create(String(rate)),
-            amount: D.round(
+            amount: M.round(
               String(
                 sourceUnits.reduce((a, b) => a + b, 0) / 10 ** sourceFractions,
               ),
@@ -179,7 +179,7 @@ await test("converted totals, summaries and simplified balances agree across rou
             participants: new Map(
               users.map((id, i) => [
                 id,
-                D.round(
+                M.round(
                   String(sourceUnits[i] / 10 ** sourceFractions),
                   sourceFractions === 0 ? "JPY" : "EUR",
                 ),
@@ -199,14 +199,14 @@ await test("converted totals, summaries and simplified balances agree across rou
             const exact =
               ((entry.participants.get(id) &&
                 Number(
-                  D.toString(
-                    entry.participants.get(id) ?? D.create("0", source),
+                  M.toString(
+                    entry.participants.get(id) ?? M.create("0", source),
                   ),
                 )) ??
                 0) *
               rate *
               10 ** fractions;
-            assert.ok(Number(D.toString(share)) >= 0);
+            assert.ok(Number(M.toString(share)) >= 0);
             assert.ok(Math.abs(units(share) - exact) <= 1 + 1e-9);
           }
           assert.deepEqual(
