@@ -1,4 +1,6 @@
 // Internal persistence schemas. Do not export these through the package entry point.
+import { NumberValue } from "@aws-sdk/lib-dynamodb";
+import * as Rate from "@tasan/common/exchange-rate";
 import {
   asExpenseID,
   asInviteID,
@@ -8,6 +10,7 @@ import {
   type ExpenseID,
   type OperationID,
 } from "@tasan/common/id";
+import * as Money from "@tasan/common/money";
 import {
   cognitoIDSchema,
   currencySymbolSchema,
@@ -32,10 +35,33 @@ const splitIDSchema = idSchema(asSplitID);
 const sessionIDSchema = idSchema(asSessionID);
 const inviteIDSchema = idSchema(asInviteID);
 const timestamp = z.iso.datetime();
-const expiry = z
-  .number()
-  .int()
-  .refine((value) => Number.isFinite(new Date(value * 1000).getTime()));
+const numericText = z
+  .instanceof(NumberValue)
+  .transform((value) => value.toString());
+const storedDecimal = z.union([
+  numericText,
+  z.string(),
+  z.number().transform(String),
+]);
+const storedRate = storedDecimal.transform((text, ctx) => {
+  try {
+    return Rate.create(text);
+  } catch {
+    ctx.addIssue({ code: "custom", message: "Invalid rate" });
+    return z.NEVER;
+  }
+});
+const expiry = z.preprocess(
+  (value) => (value instanceof NumberValue ? Number(value.toString()) : value),
+  z
+    .number()
+    .int()
+    .refine(
+      (value) =>
+        Number.isSafeInteger(value) &&
+        Number.isFinite(new Date(value * 1000).getTime()),
+    ),
+);
 
 export const userItemSchema = z
   .object({
@@ -133,27 +159,40 @@ const expenseFields = z.object({
   name: z.string(),
   createdAt: timestamp,
   createdBy: userIDSchema,
-  amount: z.number(),
+  amount: storedDecimal,
   currency: currencySymbolSchema,
-  conversionRate: z.number().positive().optional(),
+  conversionRate: storedRate.optional(),
   payer: userIDSchema,
-  participants: z.record(userIDSchema, z.number()),
+  participants: z.record(userIDSchema, storedDecimal),
   // Legacy baseline soft deletions did not always record deletedBy.
   deletedAt: timestamp.optional(),
   deletedBy: userIDSchema.optional(),
 });
-export const splitExpenseItemSchema = z.union([
-  expenseFields.extend({
-    sk: expenseIDSchema,
-    updatedAt: timestamp.optional(),
-    updatedBy: userIDSchema.optional(),
-  }),
-  expenseFields.extend({
-    sk: operationKeySchema,
-    updatedAt: timestamp,
-    updatedBy: userIDSchema,
-  }),
-]);
+export const splitExpenseItemSchema = z
+  .union([
+    expenseFields.extend({
+      sk: expenseIDSchema,
+      updatedAt: timestamp.optional(),
+      updatedBy: userIDSchema.optional(),
+    }),
+    expenseFields.extend({
+      sk: operationKeySchema,
+      updatedAt: timestamp,
+      updatedBy: userIDSchema,
+    }),
+  ])
+  .superRefine((item, ctx) => {
+    try {
+      Money.round(item.amount, item.currency);
+      for (const amount of Object.values(item.participants))
+        Money.round(amount, item.currency);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Invalid stored monetary amount",
+      });
+    }
+  });
 export type SplitExpenseItem = z.infer<typeof splitExpenseItemSchema>;
 
 export const expenseIDOf = (item: SplitExpenseItem) =>

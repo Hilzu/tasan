@@ -27,8 +27,8 @@ await test("expense form preserves precision and ignores client home currency", 
   data.set("splitCurrency", "USD");
   const parsed = newExpenseFormSchema.parse(data);
   assert.equal(parsed.expenseName, "Dinner");
-  assert.equal(parsed.amount, 10.005);
-  assert.equal(parsed.participants[payer], 10.005);
+  assert.equal(parsed.amount, "10.005");
+  assert.equal(parsed.participants[payer], "10.005");
   assert.equal("splitCurrency" in parsed, false);
 });
 

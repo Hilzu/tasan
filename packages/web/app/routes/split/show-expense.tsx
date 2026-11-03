@@ -1,5 +1,7 @@
 import { compareByKey } from "@tasan/common/compare";
+import * as Rate from "@tasan/common/exchange-rate";
 import { asExpenseID, asSplitID, genOperationID } from "@tasan/common/id";
+import { formatDecimal } from "@tasan/common/money";
 import { Fragment, useEffect, useState } from "react";
 import {
   data,
@@ -100,10 +102,13 @@ function ExpenseDetails({
   const repayment = expense.kind === "repayment";
   const exchangeRate =
     expense.conversionRate ?
-      new Intl.NumberFormat(language, {
-        minimumFractionDigits: 5,
-        maximumFractionDigits: 5,
-      }).format(1 / expense.conversionRate)
+      formatDecimal(
+        Rate.reciprocal(expense.conversionRate, 5),
+        new Intl.NumberFormat(language, {
+          minimumFractionDigits: 5,
+          maximumFractionDigits: 5,
+        }),
+      )
     : "-";
   return (
     <Card

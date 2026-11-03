@@ -1,9 +1,9 @@
-import * as D from "./decimal.js";
 import type { UserID } from "./id.js";
+import * as D from "./money.js";
 
 export interface Edge {
   to: UserID;
-  amount: D.Decimal;
+  amount: D.Money;
 }
 
 export type Graph = Map<UserID, Edge[]>;
@@ -14,7 +14,7 @@ export const upsertEdge = (
   graph: Graph,
   from: UserID,
   to: UserID,
-  amount: D.Decimal,
+  amount: D.Money,
 ): Graph => {
   const edges = graph.get(from) ?? [];
   const existingEdge = edges.find((edge) => edge.to === to);

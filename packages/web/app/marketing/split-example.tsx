@@ -1,5 +1,5 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import * as D from "@tasan/common/money";
 import classNames from "classnames";
 
 import { AmountRender, AmountWithConversion } from "~/components/amount";
@@ -22,20 +22,29 @@ export interface ExampleSplit {
 const people = ["Alex", "Sam", "Jo"];
 
 export function SplitExample({ example }: { example: ExampleSplit }) {
+  const euros = (value: number) => D.create(String(value), "EUR");
   const total = example.expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0,
+    (sum, expense) => D.add(sum, euros(expense.amount)),
+    euros(0),
   );
-  const share = total / people.length;
+  const shares = D.allocate(
+    total,
+    people.map(() => "1"),
+  );
+  const share = shares[0];
   const participants = people
-    .map((name) => {
+    .map((name, index) => {
       const paid = example.expenses
         .filter((expense) => expense.paidBy === name)
-        .reduce((sum, expense) => sum + expense.amount, 0);
-      return { name, paid, balance: paid - share };
+        .reduce((sum, expense) => D.add(sum, euros(expense.amount)), euros(0));
+      const allocated = shares[index];
+      return { name, paid, balance: D.sub(paid, allocated) };
     })
-    .sort((a, b) => a.balance - b.balance || a.name.localeCompare(b.name));
-  const alexPaid = participants.find(({ name }) => name === "Alex")?.paid ?? 0;
+    .sort(
+      (a, b) => D.compare(a.balance, b.balance) || a.name.localeCompare(b.name),
+    );
+  const alexPaid =
+    participants.find(({ name }) => name === "Alex")?.paid ?? euros(0);
 
   return (
     <div className="space-y-5">
@@ -51,18 +60,9 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
         <DescriptionList
           className="mt-2 gap-y-1 text-sm"
           items={[
-            [
-              "Total expenses",
-              <AmountRender amount={D.create(total)} currency="EUR" />,
-            ],
-            [
-              "Your share",
-              <AmountRender amount={D.create(share)} currency="EUR" />,
-            ],
-            [
-              "You paid",
-              <AmountRender amount={D.create(alexPaid)} currency="EUR" />,
-            ],
+            ["Total expenses", <AmountRender amount={total} currency="EUR" />],
+            ["Your share", <AmountRender amount={share} currency="EUR" />],
+            ["You paid", <AmountRender amount={alexPaid} currency="EUR" />],
           ]}
         />
       </Card>
@@ -83,12 +83,12 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
               <span
                 className={classNames(
                   "tabular-nums",
-                  balance > 0 && "text-green-700 dark:text-green-400",
-                  balance < 0 && "text-red-700 dark:text-red-400",
+                  D.gt(balance, 0) && "text-green-700 dark:text-green-400",
+                  balance.minorUnits < 0n && "text-red-700 dark:text-red-400",
                 )}
               >
                 <AmountRender
-                  amount={D.create(balance)}
+                  amount={balance}
                   currency="EUR"
                   signDisplay="exceptZero"
                 />
@@ -116,10 +116,7 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
                 <span className="sr-only">pays</span> Alex
               </span>
               <span className="text-right font-medium whitespace-nowrap tabular-nums">
-                <AmountRender
-                  amount={D.create(payment.amount)}
-                  currency="EUR"
-                />
+                <AmountRender amount={euros(payment.amount)} currency="EUR" />
               </span>
             </li>
           ))}
@@ -137,10 +134,13 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
               </p>
               <p>
                 <AmountWithConversion
-                  amount={D.create(expense.original?.amount ?? expense.amount)}
+                  amount={D.create(
+                    String(expense.original?.amount ?? expense.amount),
+                    expense.original?.currency ?? "EUR",
+                  )}
                   currency={expense.original?.currency ?? "EUR"}
                   convertedAmount={
-                    expense.original ? D.create(expense.amount) : undefined
+                    expense.original ? euros(expense.amount) : undefined
                   }
                   convertedCurrency="EUR"
                 />

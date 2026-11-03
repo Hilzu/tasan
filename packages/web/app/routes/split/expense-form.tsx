@@ -1,6 +1,6 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
 import { genExpenseID, genOperationID, type UserID } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 import { currencySymbolSchema } from "@tasan/common/validation";
 import type { SplitExpense } from "@tasan/data";
 import classNames from "classnames";
@@ -90,7 +90,6 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const [preferredCurrency, setPreferredCurrency] =
     useStorage<CurrencySymbol>("preferredCurrency");
   const [currency, setCurrency] = useState(expense?.currency ?? split.currency);
-  const fractionDigits = currencies[currency].fractions;
   const [total, setTotal] = useState<AmountInput>(() =>
     expense ?
       { text: D.toString(expense.amount), expressionMode: false }
@@ -122,20 +121,16 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   useLayoutEffect(() => {
     if (!expense && preferredCurrency) setCurrency(preferredCurrency);
   }, []);
-  const amount = resolveAmount(
-    total.text,
-    total.expressionMode,
-    fractionDigits,
-  );
+  const amount = resolveAmount(total.text, total.expressionMode, currency);
   const calculated = calculateExpenseAmounts(
     amount,
     new Map(
       [...participants].map(([id, input]) => [
         id,
-        resolveAmount(input.text, input.expressionMode, fractionDigits),
+        resolveAmount(input.text, input.expressionMode, currency),
       ]),
     ),
-    fractionDigits,
+    currency,
     payer,
   );
   const shared = calculateShareAmounts(
@@ -150,13 +145,13 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
             adjustment: resolveAmount(
               input.adjustment.text,
               input.adjustment.expressionMode,
-              fractionDigits,
+              currency,
             ),
           },
         ];
       }),
     ),
-    fractionDigits,
+    currency,
     payer,
   );
   const byShares = mode === "shares";
@@ -170,13 +165,15 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
     : calculated.hasAmounts && !D.gt(calculated.amount, 0) ?
       "Enter a positive total or participant amounts."
     : undefined;
+  const calculationError = byShares ? shared.error : calculated.error;
   const allocationError =
-    byShares && amount === undefined ? undefined
+    calculationError ??
+    (byShares && amount === undefined ? undefined
     : D.gt(difference, 0) ?
       `${formatAmount(difference, currency)} left to allocate.${byShares ? " Set shares or adjustments." : ""}`
-    : D.gt(D.create(0, fractionDigits), difference) ?
-      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(D.mul(difference, -1), currency)}.`
-    : undefined;
+    : D.gt(D.create("0", currency), difference) ?
+      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(D.negate(difference), currency)}.`
+    : undefined);
 
   return (
     <div>
@@ -216,14 +213,13 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
           value={currency}
           onChange={(event) => {
             const currency = currencySymbolSchema.parse(event.target.value);
-            const fractions = currencies[currency].fractions;
-            setTotal((input) => normalizeAmountInput(input, fractions));
+            setTotal((input) => normalizeAmountInput(input, currency));
             setParticipants(
               (inputs) =>
                 new Map(
                   [...inputs].map(([id, input]) => [
                     id,
-                    normalizeAmountInput(input, fractions),
+                    normalizeAmountInput(input, currency),
                   ]),
                 ),
             );
@@ -236,7 +232,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
                       ...input,
                       adjustment: normalizeAmountInput(
                         input.adjustment,
-                        fractions,
+                        currency,
                         true,
                       ),
                     },
@@ -364,7 +360,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
           [...participants.keys()].map((userID) => {
             const input = shareInputFor(userID);
             const participantAmount =
-              shared.participants.get(userID) ?? D.create(0, fractionDigits);
+              shared.participants.get(userID) ?? D.create("0", currency);
             return (
               <fieldset
                 key={userID}
@@ -390,7 +386,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
                       <StepButton
                         label="Fewer shares"
                         leading
-                        disabled={(parseShares(input.shares) ?? 0) <= 0}
+                        disabled={(parseShares(input.shares) ?? "0") === "0"}
                         onClick={() => {
                           updateShareInput(userID, {
                             shares: stepShares(input.shares, -1),
@@ -425,7 +421,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
                     label="Adjustment"
                     currencySymbol={currency}
                     allowNegative
-                    placeholder={D.toString(D.create(0, fractionDigits))}
+                    placeholder={D.toString(D.create("0", currency))}
                     value={input.adjustment}
                     onValueChange={(adjustment) => {
                       updateShareInput(userID, { adjustment });
@@ -464,7 +460,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
                 input.text.trim() === "" && calculated.hasAmounts ?
                   D.toString(
                     calculated.participants.get(userID) ??
-                      D.create(0, fractionDigits),
+                      D.create("0", currency),
                   )
                 : undefined
               }

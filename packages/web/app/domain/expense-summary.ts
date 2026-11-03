@@ -1,6 +1,6 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
 import type { UserID } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 import type { SplitExpense } from "@tasan/data";
 
 import { convertExpense } from "~/domain/convert-expense";
@@ -10,10 +10,9 @@ export const calculateExpenseSummary = (
   currency: CurrencySymbol,
   userID: UserID,
 ) => {
-  const fractions = currencies[currency].fractions;
-  let total = D.create(0, fractions);
-  let paid = D.create(0, fractions);
-  let share = D.create(0, fractions);
+  let total = D.create("0", currency);
+  let paid = D.create("0", currency);
+  let share = D.create("0", currency);
 
   for (const expense of expenses) {
     if (expense.kind === "repayment") continue;

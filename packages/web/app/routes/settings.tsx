@@ -1,4 +1,4 @@
-import { create } from "@tasan/common/decimal";
+import { create } from "@tasan/common/money";
 import {
   data,
   Form,
@@ -88,7 +88,8 @@ export default function Settings({
         <div className="rounded border border-gray-300 p-3 dark:border-gray-700">
           <p className="font-semibold">Current format ({locale})</p>
           <p>
-            Amount: <AmountRender amount={create(1234.56, 2)} currency="EUR" />
+            Amount:{" "}
+            <AmountRender amount={create("1234.56", "EUR")} currency="EUR" />
           </p>
           <p>
             Date:{" "}

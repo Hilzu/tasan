@@ -1,6 +1,6 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
 import type { SplitID, UserID } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 import type { SplitExpense, User } from "@tasan/data";
 import { href } from "react-router";
 
@@ -24,7 +24,8 @@ export default function ExpenseListItem({
   currentUserID,
   splitID,
 }: ExpenseListItemProps) {
-  const yourShare = expense.participants.get(currentUserID) ?? D.create(0);
+  const yourShare =
+    expense.participants.get(currentUserID) ?? D.create("0", expense.currency);
   const converted =
     expense.conversionRate ? convertExpense(expense, currency) : undefined;
   return (

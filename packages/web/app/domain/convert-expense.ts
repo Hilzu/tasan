@@ -1,5 +1,6 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
+import * as Rate from "@tasan/common/exchange-rate";
+import * as D from "@tasan/common/money";
 import type { SplitExpense } from "@tasan/data";
 
 // Convert decimal amounts and rates exactly, then round the total half up once
@@ -9,6 +10,7 @@ export const convertExpense = (
   expense: SplitExpense,
   currency: CurrencySymbol,
 ) => {
+  D.assertCurrency(expense.amount, expense.currency);
   const participants = [...expense.participants]
     .map(([userID, amount], index) => ({ userID, amount, index }))
     .sort(
@@ -17,11 +19,11 @@ export const convertExpense = (
           Number(a.userID === expense.payer) ||
         a.userID.localeCompare(b.userID),
     );
-  const converted = D.mulAndAllocate(
+  const converted = D.convertAndAllocate(
     expense.amount,
     participants.map(({ amount }) => amount),
-    expense.conversionRate ?? 1,
-    currencies[currency].fractions,
+    expense.conversionRate ?? Rate.create("1"),
+    currency,
   );
   return {
     amount: converted.total,

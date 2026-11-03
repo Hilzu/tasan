@@ -1,7 +1,7 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
 import * as G from "@tasan/common/graph";
 import type { UserID } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 import type { SplitExpense, SplitWithData } from "@tasan/data";
 
 import { convertExpense } from "~/domain/convert-expense";
@@ -32,7 +32,7 @@ export const calculateExpenseGraph = (split: SplitWithData) => {
 
 export interface Balance {
   userID: UserID;
-  balance: D.Decimal;
+  balance: D.Money;
 }
 
 /**
@@ -44,8 +44,8 @@ export const calculateBalances = (
   userIDs: UserID[],
   currency: CurrencySymbol,
 ): Balance[] => {
-  const zero = D.create(0, currencies[currency].fractions);
-  const balances = new Map<UserID, D.Decimal>(userIDs.map((id) => [id, zero]));
+  const zero = D.create("0", currency);
+  const balances = new Map<UserID, D.Money>(userIDs.map((id) => [id, zero]));
   for (const [from, edges] of graph) {
     for (const { to, amount } of edges) {
       balances.set(from, D.sub(balances.get(from) ?? zero, amount));
@@ -56,7 +56,7 @@ export const calculateBalances = (
     .map(([userID, balance]) => ({ userID, balance }))
     .sort(
       (a, b) =>
-        a.balance.value - b.balance.value || a.userID.localeCompare(b.userID),
+        D.compare(a.balance, b.balance) || a.userID.localeCompare(b.userID),
     );
 };
 
@@ -72,11 +72,11 @@ export const simplifyDebts = (
 ): G.Graph => {
   const balances = calculateBalances(graph, [], currency);
   const debtors = balances
-    .filter(({ balance }) => balance.value < 0)
-    .map(({ userID, balance }) => ({ userID, balance: D.mul(balance, -1) }));
+    .filter(({ balance }) => balance.minorUnits < 0n)
+    .map(({ userID, balance }) => ({ userID, balance: D.negate(balance) }));
   const creditors = balances.filter(({ balance }) => D.gt(balance, 0));
   const largestFirst = (a: Balance, b: Balance) =>
-    b.balance.value - a.balance.value || a.userID.localeCompare(b.userID);
+    D.compare(b.balance, a.balance) || a.userID.localeCompare(b.userID);
   let repayments = G.create();
 
   while (true) {

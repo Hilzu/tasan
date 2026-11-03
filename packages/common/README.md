@@ -1,11 +1,11 @@
 # `@tasan/common`
 
-Shared, platform-independent domain utilities for Tasan. The package contains comparison helpers, currency and decimal operations, currency conversion, expense graph logic, branded IDs, tracing, and validation schemas.
+Shared, platform-independent domain utilities for Tasan. The package contains comparison helpers, exact Money and exchange-rate operations, currency conversion, expense graph logic, branded IDs, tracing, and validation schemas.
 
 Import individual modules through the package exports:
 
 ```ts
-import { create } from "@tasan/common/decimal";
+import { create } from "@tasan/common/money";
 import { asSplitID } from "@tasan/common/id";
 ```
 

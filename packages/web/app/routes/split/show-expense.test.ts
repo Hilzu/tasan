@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 
 import { genExpenseID, genSplitID, genUserID } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -48,11 +49,11 @@ for (const [name, errors, message] of [
           splitID,
           name: "Dinner",
           currency: "JPY",
-          amount: { value: 1000, fractions: 0 },
+          amount: D.create("1000", "JPY"),
           payer: userID,
           createdBy: userID,
           createdAt: new Date("2026-10-17T00:00:00Z"),
-          participants: new Map([[userID, { value: 1000, fractions: 0 }]]),
+          participants: new Map([[userID, D.create("1000", "JPY")]]),
         },
         history: [],
       },

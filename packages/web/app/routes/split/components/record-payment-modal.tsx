@@ -1,6 +1,6 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
-import type { Decimal } from "@tasan/common/decimal";
 import type { ExpenseID, SplitID, UserID } from "@tasan/common/id";
+import { type Money, toString } from "@tasan/common/money";
 import { useEffect, useState } from "react";
 import { href, useFetcher } from "react-router";
 
@@ -16,7 +16,7 @@ export interface PaymentDraft {
   recipient: UserID;
   payerName: string;
   recipientName: string;
-  amount: Decimal;
+  amount: Money;
 }
 
 export function RecordPaymentModal({
@@ -76,7 +76,7 @@ export function RecordPaymentModal({
                   id: payment.id,
                   payer: payment.payer,
                   recipient: payment.recipient,
-                  amount: payment.amount.value,
+                  amount: toString(payment.amount),
                 },
                 {
                   method: "post",

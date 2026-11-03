@@ -5,10 +5,11 @@ import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
+  NumberValue,
   PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
-import * as D from "@tasan/common/decimal";
+import * as Rate from "@tasan/common/exchange-rate";
 import {
   asOperationID,
   genExpenseID,
@@ -16,6 +17,7 @@ import {
   genSplitID,
   genUserID,
 } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 
 process.env.TABLE_NAME = "TestTable";
 const {
@@ -39,9 +41,9 @@ const expense = {
   createdBy: actorID,
   name: "Dinner",
   currency: "JPY" as const,
-  amount: D.create(1000, 0),
+  amount: D.create("1000", "JPY"),
   payer: actorID,
-  participants: new Map([[actorID, D.create(1000, 0)]]),
+  participants: new Map([[actorID, D.create("1000", "JPY")]]),
 };
 const operation = genOperationID;
 const low = asOperationID("op_00000000000000000000000001");
@@ -49,9 +51,22 @@ const high = asOperationID("op_00000000000000000000000002");
 afterEach(() => {
   mock.restoreAll();
 });
-
 // Conditional puts are local to this store. Separate stores below represent
 // Regions accepting distinct operations before replication.
+const clone = <T>(value: T): T =>
+  value === undefined ? value : (
+    (JSON.parse(
+      JSON.stringify(value, (_key, child: unknown) =>
+        child instanceof NumberValue ?
+          { numericText: child.toString() }
+        : child,
+      ),
+      (_key, child: unknown) =>
+        child && typeof child === "object" && "numericText" in child ?
+          NumberValue.from(String(child.numericText))
+        : child,
+    ) as T)
+  );
 const storage = (missEventualReads = false) => {
   const items = new Map<string, Record<string, unknown>>();
   const reads: boolean[] = [];
@@ -65,7 +80,7 @@ const storage = (missEventualReads = false) => {
       return Promise.resolve({
         Item:
           missEventualReads && !consistent ? undefined : (
-            structuredClone(items.get(key(command.input.Key ?? {})))
+            clone(items.get(key(command.input.Key ?? {})))
           ),
       });
     }
@@ -93,7 +108,7 @@ const storage = (missEventualReads = false) => {
         : 0;
       const page = all.slice(start, start + 1);
       return Promise.resolve({
-        Items: structuredClone(page),
+        Items: clone(page),
         LastEvaluatedKey:
           start + 1 < all.length ?
             { pk: page[0].pk, sk: page[0].sk }
@@ -102,7 +117,7 @@ const storage = (missEventualReads = false) => {
     }
     assert.ok(command instanceof PutCommand);
     assert.equal(command.input.ConditionExpression, "attribute_not_exists(pk)");
-    const item = structuredClone(command.input.Item ?? {});
+    const item = clone(command.input.Item ?? {});
     if (items.has(key(item)))
       throw new ConditionalCheckFailedException({
         $metadata: {},
@@ -125,7 +140,6 @@ const storage = (missEventualReads = false) => {
     },
   };
 };
-
 await test("concurrent and sequential creation retries insert only one baseline", async () => {
   const db = storage();
   assert.deepEqual(
@@ -159,7 +173,7 @@ await test("eventual creation lookup misses are resolved by a strong read after 
 await test("edits retain the original snapshot and creation metadata", async () => {
   const db = storage();
   await createSplitExpense(expense);
-  const baseline = structuredClone(db.baseline);
+  const baseline = clone(db.baseline);
   const edit = operation();
   await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
     Promise.resolve({ ...expense, name: "Lunch" }),
@@ -244,7 +258,7 @@ await test("edit retries preserve their snapshot even after later edits and dele
   );
   const deletion = operation();
   await deleteSplitExpense(expense.splitID, expense.id, actorID, deletion);
-  const before = structuredClone([...db.items.values()]);
+  const before = clone([...db.items.values()]);
   assert.deepEqual(
     await editSplitExpense(expense.splitID, expense.id, actorID, edit, () => {
       assert.fail("A retry must not prepare a new payload");
@@ -282,7 +296,7 @@ await test("concurrent edit and deletion both persist while deletion is terminal
 await test("independently accepted regional snapshots converge in any replication order", async () => {
   const db = storage();
   await createSplitExpense(expense);
-  const baseline = structuredClone(db.baseline);
+  const baseline = clone(db.baseline);
   await editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
     Promise.resolve({ ...expense, name: "Region A" }),
   );
@@ -385,7 +399,10 @@ await test("operation IDs cannot be reused by another actor or action", async ()
 
 await test("returning to the split currency removes the previous rate only from the new snapshot", async () => {
   const db = storage();
-  await createSplitExpense({ ...expense, conversionRate: 0.006 });
+  await createSplitExpense({
+    ...expense,
+    conversionRate: Rate.create("0.006"),
+  });
   await editSplitExpense(
     expense.splitID,
     expense.id,
@@ -395,6 +412,8 @@ await test("returning to the split currency removes the previous rate only from 
       Promise.resolve({
         ...expense,
         currency: "EUR",
+        amount: D.create("1000", "EUR"),
+        participants: new Map([[actorID, D.create("1000", "EUR")]]),
         conversionRate: undefined,
       }),
   );
@@ -402,7 +421,7 @@ await test("returning to the split currency removes the previous rate only from 
     (await getSplitExpense(expense.splitID, expense.id))?.conversionRate,
     undefined,
   );
-  assert.equal(db.baseline.conversionRate, 0.006);
+  assert.equal(String(db.baseline.conversionRate), "0.006");
 });
 
 await test("concurrent retries prepare independently but insert only one snapshot", async () => {
@@ -459,7 +478,7 @@ await test("a lost write response can be retried without replacing the committed
         $metadata: {},
         message: "Exists",
       });
-    items.set(key, structuredClone(item));
+    items.set(key, clone(item));
     if (loseResponse) {
       loseResponse = false;
       throw lost;
@@ -510,11 +529,11 @@ await test("decimal amounts and participant maps round-trip in currencies with f
   const value = {
     ...expense,
     currency: "EUR" as const,
-    amount: D.create(12.34, 2),
-    conversionRate: 163.25,
+    amount: D.create("12.34", "EUR"),
+    conversionRate: Rate.create("163.25"),
     participants: new Map([
-      [actorID, D.create(6.17, 2)],
-      [otherUser, D.create(6.17, 2)],
+      [actorID, D.create("6.17", "EUR")],
+      [otherUser, D.create("6.17", "EUR")],
     ]),
   };
   await createSplitExpense(value);

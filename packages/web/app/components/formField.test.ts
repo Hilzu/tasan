@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import * as D from "@tasan/common/money";
+
 import {
-  evaluateExpression,
   normalizeAmountInput,
   parseNumber,
   resolveAmount,
@@ -13,14 +14,17 @@ await test("currency normalization keeps displayed and resolved amounts consiste
     { text: "100.50", expressionMode: false },
     { text: "100 + 0.50", expressionMode: true },
   ]) {
-    const yen = normalizeAmountInput(input, 0);
+    const yen = normalizeAmountInput(input, "JPY");
     assert.equal(yen.text, "101");
-    assert.equal(resolveAmount(yen.text, yen.expressionMode, 0)?.value, 101);
-    const euros = normalizeAmountInput(yen, 2);
+    assert.deepEqual(
+      resolveAmount(yen.text, yen.expressionMode, "JPY"),
+      D.create("101", "JPY"),
+    );
+    const euros = normalizeAmountInput(yen, "EUR");
     assert.equal(euros.text, "101.00");
-    assert.equal(
-      resolveAmount(euros.text, euros.expressionMode, 2)?.value,
-      101,
+    assert.deepEqual(
+      resolveAmount(euros.text, euros.expressionMode, "EUR"),
+      D.create("101", "EUR"),
     );
   }
 });
@@ -28,69 +32,80 @@ await test("currency normalization keeps displayed and resolved amounts consiste
 await test("currency normalization preserves blank and invalid input", () => {
   for (const text of ["", "  ", "1 +", "1 / 0", "-1"]) {
     const input = { text, expressionMode: true };
-    assert.strictEqual(normalizeAmountInput(input, 0), input);
+    assert.strictEqual(normalizeAmountInput(input, "JPY"), input);
   }
 });
 
 await test("currency normalization can keep negative adjustments", () => {
   const input = { text: "-100.50", expressionMode: false };
-  assert.strictEqual(normalizeAmountInput(input, 0), input);
-  assert.equal(normalizeAmountInput(input, 0, true).text, "-101");
+  assert.strictEqual(normalizeAmountInput(input, "JPY"), input);
+  assert.equal(normalizeAmountInput(input, "JPY", true).text, "-101");
 });
 
 await test("empty amounts stay automatic", () => {
-  for (const expressionMode of [false, true]) {
-    assert.equal(resolveAmount("", expressionMode, 2), undefined);
-    assert.equal(resolveAmount("  ", expressionMode, 0), undefined);
+  for (const expressionMode of [false, true])
+    for (const currency of ["EUR", "JPY"] as const) {
+      assert.equal(resolveAmount("", expressionMode, currency), undefined);
+      assert.equal(resolveAmount("  ", expressionMode, currency), undefined);
+    }
+});
+
+await test("parseNumber retains decimal input text while accepting currency notation", () => {
+  for (const [input, expected] of [
+    ["12,5", "12.5"],
+    ["€ 1 234,5", "1234.5"],
+    ["abc", "0"],
+    ["-12,5", "-12.5"],
+    [" -100 ", "-100"],
+    ["9007199254740993.01", "9007199254740993.01"],
+  ])
+    assert.equal(parseNumber(input), expected);
+});
+
+await test("calculations use exact arithmetic and round only the final result", () => {
+  for (const [input, expected] of [
+    ["12.5", "12.50"],
+    ["10 + 2,5 * (4 - 2) / 5", "11.00"],
+    ["2 + 3 * 4 - 6 / 2", "11.00"],
+    ["10 - 2 - 3", "5.00"],
+    ["-(1,5 + .5) * -2", "4.00"],
+    ["7,", "7.00"],
+    ["1 / 3 * 3", "1.00"],
+    ["10 / 3", "3.33"],
+    ["1.005", "1.01"],
+    ["0.03 / 2", "0.02"],
+    ["9007199254740993.01 + 0.01", "9007199254740993.02"],
+  ]) {
+    const amount = resolveAmount(input, true, "EUR");
+    assert.ok(amount);
+    assert.equal(D.toString(amount), expected);
   }
+  assert.deepEqual(
+    resolveAmount("100 / 3", true, "JPY"),
+    D.create("33", "JPY"),
+  );
 });
 
-await test("parseNumber leniently parses numbers", () => {
-  assert.equal(parseNumber("12,5"), 12.5);
-  assert.equal(parseNumber("€ 1 234,5"), 1234.5);
-  assert.equal(parseNumber("abc"), 0);
-  assert.equal(parseNumber("-12,5"), -12.5);
-  assert.equal(parseNumber(" -100 "), -100);
-});
-
-await test("evaluateExpression evaluates arithmetic expressions", () => {
-  assert.equal(evaluateExpression("12.5"), 12.5);
-  assert.equal(evaluateExpression(" 10 + 2,5 * (4 - 2) / 5 "), 11);
-  assert.equal(evaluateExpression("1 +"), undefined);
-  assert.equal(evaluateExpression("1 / 0"), undefined);
-  assert.equal(evaluateExpression("alert(1)"), undefined);
-  assert.equal(evaluateExpression("2 + 3 * 4 - 6 / 2"), 11);
-  assert.equal(evaluateExpression("10 - 2 - 3"), 5);
-  assert.equal(evaluateExpression("-(1,5 + .5) * -2"), 4);
-  assert.equal(evaluateExpression("7,"), 7);
-  assert.equal(evaluateExpression(""), undefined);
-  assert.equal(evaluateExpression("(1 + 2"), undefined);
-  assert.equal(evaluateExpression("1 + 2)"), undefined);
-  assert.equal(evaluateExpression("1 2"), undefined);
-  assert.equal(evaluateExpression("1.2.3"), undefined);
-  assert.equal(evaluateExpression("(".repeat(100_000) + "1"), undefined);
-});
-
-await test("resolveAmount rounds only the final result", () => {
-  assert.deepEqual(resolveAmount("1 / 3 * 3", true, 2), {
-    value: 1,
-    fractions: 2,
-  });
-  assert.deepEqual(resolveAmount("10 / 3", true, 2), {
-    value: 3.33,
-    fractions: 2,
-  });
-  assert.deepEqual(resolveAmount("100 / 3", true, 0), {
-    value: 33,
-    fractions: 0,
-  });
-});
-
-await test("resolveAmount keeps invalid calculations unresolved", () => {
-  for (const input of ["1 +", "1 / 0", "(2", "abc", ""])
-    assert.equal(resolveAmount(input, true, 2), undefined, input);
-  assert.deepEqual(resolveAmount("€ 12,5", false, 2), {
-    value: 12.5,
-    fractions: 2,
-  });
+await test("invalid calculations remain unresolved", () => {
+  for (const input of [
+    "1 +",
+    "1 / 0",
+    "(2",
+    "abc",
+    "",
+    "alert(1)",
+    "1 + 2)",
+    "1 2",
+    "1.2.3",
+    "(".repeat(100_000) + "1",
+  ])
+    assert.equal(
+      resolveAmount(input, true, "EUR"),
+      undefined,
+      input.slice(0, 20),
+    );
+  assert.deepEqual(
+    resolveAmount("€ 12,5", false, "EUR"),
+    D.create("12.5", "EUR"),
+  );
 });

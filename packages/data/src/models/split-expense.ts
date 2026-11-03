@@ -1,8 +1,13 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { GetCommand, paginateQuery, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  GetCommand,
+  NumberValue,
+  paginateQuery,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
+import type * as Rate from "@tasan/common/exchange-rate";
 import {
   asUserID,
   type ExpenseID,
@@ -10,6 +15,7 @@ import {
   type SplitID,
   type UserID,
 } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -28,23 +34,25 @@ export interface SplitExpense {
   id: ExpenseID;
   splitID: SplitID;
   name: string;
-  amount: D.Decimal;
+  amount: D.Money;
   createdBy: UserID;
   createdAt: Date;
   updatedAt?: Date;
   updatedBy?: UserID;
   currency: CurrencySymbol;
-  conversionRate?: number;
+  conversionRate?: Rate.ExchangeRate;
   payer: UserID;
-  participants: Map<UserID, D.Decimal>;
+  participants: Map<UserID, D.Money>;
 }
 
 interface ExpenseReadOptions {
   consistentRead?: boolean;
 }
 
+// Legacy records may contain excess fractional digits. Keep the historical
+// read-time quantization boundary explicit; never rewrite stored snapshots.
+// Digits already lost before storage cannot be reconstructed.
 const fromItem = (item: SplitExpenseItem): SplitExpense => {
-  const fractionDigits = currencies[item.currency].fractions;
   return {
     kind: item.kind ?? "expense",
     id: expenseIDOf(item),
@@ -52,7 +60,7 @@ const fromItem = (item: SplitExpenseItem): SplitExpense => {
     updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
     updatedBy: item.updatedBy,
     name: item.name,
-    amount: D.create(item.amount, fractionDigits),
+    amount: D.round(item.amount, item.currency),
     createdBy: item.createdBy,
     createdAt: new Date(item.createdAt),
     currency: item.currency,
@@ -61,10 +69,7 @@ const fromItem = (item: SplitExpenseItem): SplitExpense => {
     participants: new Map(
       Object.entries(item.participants)
         .sort(compareByKey)
-        .map(([id, amount]) => [
-          asUserID(id),
-          D.create(amount, fractionDigits),
-        ]),
+        .map(([id, amount]) => [asUserID(id), D.round(amount, item.currency)]),
     ),
   };
 };
@@ -160,14 +165,34 @@ export type EditSplitExpense = Pick<
   "name" | "amount" | "currency" | "conversionRate" | "payer" | "participants"
 >;
 
-const storedChanges = (expense: EditSplitExpense) => ({
-  name: expense.name,
-  amount: expense.amount.value,
-  currency: expense.currency,
-  conversionRate: expense.conversionRate,
-  payer: expense.payer,
+const storedChanges = (expense: EditSplitExpense) => {
+  D.assertCurrency(expense.amount, expense.currency);
+  for (const amount of expense.participants.values())
+    D.assertCurrency(amount, expense.currency);
+  return {
+    name: expense.name,
+    amount: D.toString(expense.amount),
+    currency: expense.currency,
+    conversionRate: expense.conversionRate,
+    payer: expense.payer,
+    participants: Object.fromEntries(
+      [...expense.participants].map(([id, amount]) => [id, D.toString(amount)]),
+    ),
+  };
+};
+
+const toDynamoItem = (item: SplitExpenseItem) => ({
+  ...item,
+  amount: NumberValue.from(item.amount),
+  conversionRate:
+    item.conversionRate === undefined ?
+      undefined
+    : NumberValue.from(item.conversionRate),
   participants: Object.fromEntries(
-    [...expense.participants].map(([id, amount]) => [id, amount.value]),
+    Object.entries(item.participants).map(([id, amount]) => [
+      id,
+      NumberValue.from(amount),
+    ]),
   ),
 });
 
@@ -175,7 +200,9 @@ const insertItem = (Item: SplitExpenseItem) => {
   return documentClient().send(
     new PutCommand({
       TableName,
-      Item: parseItem(splitExpenseItemSchema, Item, "split-expense"),
+      Item: toDynamoItem(
+        parseItem(splitExpenseItemSchema, Item, "split-expense"),
+      ),
       ConditionExpression: "attribute_not_exists(pk)",
     }),
   );

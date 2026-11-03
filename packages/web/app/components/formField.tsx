@@ -1,5 +1,5 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as Decimal from "@tasan/common/decimal";
+import * as D from "@tasan/common/money";
 import classNames from "classnames";
 import {
   type ComponentProps,
@@ -92,7 +92,7 @@ type CurrencyInputFieldProps = Omit<
   currencySymbol: CurrencySymbol;
   onValueChange: (value: AmountInput) => void;
   value: AmountInput;
-  automaticAmount?: Decimal.Decimal;
+  automaticAmount?: D.Money;
   // Shows a sign toggle, since mobile decimal keypads may lack a minus key.
   allowNegative?: boolean;
 };
@@ -107,57 +107,14 @@ export const emptyAmountInput: AmountInput = {
   expressionMode: false,
 };
 
-export const parseNumber = (valueParam: string) => {
+// Keep the existing lenient currency input, retaining decimal text throughout.
+export const parseNumber = (valueParam: string): string => {
   let value = valueParam;
   const commaIndex = value.lastIndexOf(",");
   if (commaIndex !== -1)
     value = value.slice(0, commaIndex) + "." + value.slice(commaIndex + 1);
-
-  const number = Number(value.replace(/[^0-9.]/g, ""));
-  return value.trim().startsWith("-") ? -number : number;
-};
-
-// Evaluates simple arithmetic like "12,50 + 3*2"; undefined if invalid.
-export const evaluateExpression = (value: string) => {
-  const tokens = value.match(/\d+[.,]?\d*|[.,]\d+|[-+*/()]|\S/g) ?? [];
-  let pos = 0;
-
-  // expr = term (("+" | "-") term)*
-  const expr = (): number => {
-    let result = term();
-    while (tokens[pos] === "+" || tokens[pos] === "-")
-      result = tokens[pos++] === "+" ? result + term() : result - term();
-    return result;
-  };
-  // term = factor (("*" | "/") factor)*
-  const term = (): number => {
-    let result = factor();
-    while (tokens[pos] === "*" || tokens[pos] === "/")
-      result = tokens[pos++] === "*" ? result * factor() : result / factor();
-    return result;
-  };
-  // factor = ("+" | "-") factor | "(" expr ")" | number
-  const factor = (): number => {
-    const token = tokens.at(pos++);
-    if (token === "+") return factor();
-    if (token === "-") return -factor();
-    if (token === "(") {
-      const result = expr();
-      return tokens[pos++] === ")" ? result : NaN;
-    }
-    return token !== undefined && /^[\d.,]+$/.test(token) ?
-        Number(token.replace(",", "."))
-      : NaN;
-  };
-
-  try {
-    const result = expr();
-    return pos === tokens.length && Number.isFinite(result) ?
-        result
-      : undefined;
-  } catch {
-    return undefined; // e.g. stack overflow on absurdly nested input
-  }
+  const digits = value.replace(/[^0-9.]/g, "") || "0";
+  return value.trim().startsWith("-") ? `-${digits}` : digits;
 };
 
 const invalidExpressionError = "Invalid calculation";
@@ -167,25 +124,27 @@ const invalidExpressionError = "Invalid calculation";
 export const resolveAmount = (
   value: string,
   expressionMode: boolean,
-  fractions: number,
-) => {
+  currency: CurrencySymbol,
+): D.Money | undefined => {
   if (value.trim() === "") return undefined;
-  const number =
-    expressionMode ? evaluateExpression(value) : parseNumber(value);
-  return number === undefined || !Number.isFinite(number) ?
-      undefined
-    : Decimal.create(number, fractions);
+  try {
+    return expressionMode ?
+        D.calculate(value, currency)
+      : D.round(parseNumber(value), currency);
+  } catch {
+    return undefined;
+  }
 };
 
 // Currency changes normalize valid input while leaving blanks and errors intact.
 export const normalizeAmountInput = (
   input: AmountInput,
-  fractions: number,
+  currency: CurrencySymbol,
   allowNegative = false,
 ): AmountInput => {
-  const amount = resolveAmount(input.text, input.expressionMode, fractions);
-  return amount && (allowNegative || amount.value >= 0) ?
-      { ...input, text: Decimal.toString(amount) }
+  const amount = resolveAmount(input.text, input.expressionMode, currency);
+  return amount && (allowNegative || amount.minorUnits >= 0n) ?
+      { ...input, text: D.toString(amount) }
     : input;
 };
 
@@ -204,11 +163,11 @@ export function CurrencyInputField({
   const inputRef = useRef<HTMLInputElement>(null);
   const { fractions } = currencies[currencySymbol];
   const { text, expressionMode } = value;
-  const resolved = resolveAmount(text, expressionMode, fractions);
+  const resolved = resolveAmount(text, expressionMode, currencySymbol);
   const empty = text.trim() === "";
   const validationError =
     !empty && resolved === undefined ? invalidExpressionError
-    : !allowNegative && resolved && resolved.value < 0 ?
+    : !allowNegative && resolved && resolved.minorUnits < 0n ?
       "Amount must not be negative."
     : "";
   const invalid = validationError !== "";
@@ -221,7 +180,7 @@ export function CurrencyInputField({
     if (invalid) return false;
     onValueChange({
       ...value,
-      text: resolved ? Decimal.toString(resolved) : "",
+      text: resolved ? D.toString(resolved) : "",
     });
     return true;
   };
@@ -235,7 +194,7 @@ export function CurrencyInputField({
         <input
           type="hidden"
           name={name}
-          value={submittedAmount ? Decimal.toString(submittedAmount) : ""}
+          value={submittedAmount ? D.toString(submittedAmount) : ""}
         />
       )}
       <InputField
@@ -257,10 +216,13 @@ export function CurrencyInputField({
               /[+\-*/]/.test(text) && (
                 <span className="pr-1 whitespace-nowrap text-gray-400">
                   ={" "}
-                  {resolved.value.toLocaleString(language, {
-                    minimumFractionDigits: fractions,
-                    maximumFractionDigits: fractions,
-                  })}
+                  {D.formatDecimal(
+                    D.toString(resolved),
+                    new Intl.NumberFormat(language, {
+                      minimumFractionDigits: fractions,
+                      maximumFractionDigits: fractions,
+                    }),
+                  )}
                 </span>
               )}
             {allowNegative && (
@@ -272,7 +234,7 @@ export function CurrencyInputField({
                   onValueChange({
                     ...value,
                     text:
-                      resolved ? Decimal.toString(Decimal.mul(resolved, -1))
+                      resolved ? D.toString(D.negate(resolved))
                       : empty ? "-"
                       : text,
                   });

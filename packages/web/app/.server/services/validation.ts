@@ -1,5 +1,5 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import * as D from "@tasan/common/money";
 
 import { ApplicationError } from "./errors";
 
@@ -18,15 +18,18 @@ export const validateCurrency = (currency: CurrencySymbol) => {
 };
 
 export const toAmount = (
-  value: number,
+  value: string,
   currency: CurrencySymbol,
   field: string,
 ) => {
-  const amount = D.create(value, currencies[currency].fractions);
-  if (!Number.isFinite(value) || value <= 0 || !D.equals(amount, value))
-    invalidField(
-      field,
-      `Amount must be positive and use ${String(currencies[currency].fractions)} decimal places at most.`,
-    );
-  return amount;
+  try {
+    const amount = D.create(value, currency);
+    if (D.gt(amount, 0)) return amount;
+  } catch {
+    /* Report domain validation as a field error. */
+  }
+  return invalidField(
+    field,
+    `Amount must be positive, within the supported range, and use ${String(currencies[currency].fractions)} decimal places at most.`,
+  );
 };

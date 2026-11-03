@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 
 import type { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
+import * as Rate from "@tasan/common/exchange-rate";
 import {
   genExpenseID,
   genOperationID,
   genSplitID,
   genUserID,
 } from "@tasan/common/id";
+import * as D from "@tasan/common/money";
 import type {
   createSplitExpense,
   deleteSplitExpense,
@@ -42,9 +44,9 @@ const expense: NewExpense = {
   id: genExpenseID(),
   name: "Dinner",
   currency: "EUR",
-  amount: 10,
+  amount: "10",
   payer: payerID,
-  participants: new Map([[actorID, 10]]),
+  participants: new Map([[actorID, "10"]]),
 };
 const savedChanges: EditSplitExpense[] = [];
 const persistenceMock = {
@@ -70,8 +72,8 @@ const persistenceMock = {
         splitID,
         createdBy: actorID,
         createdAt: new Date(),
-        amount: { value: 10, fractions: 2 },
-        participants: new Map([[actorID, { value: 10, fractions: 2 }]]),
+        amount: D.create("10", "EUR"),
+        participants: new Map([[actorID, D.create("10", "EUR")]]),
       }),
     ),
     findExpenseRevisions: mock.fn<typeof findExpenseRevisions>(() =>
@@ -107,7 +109,7 @@ const splitMock = {
   },
 };
 const rate = mock.fn<typeof fetchCurrencyConversionRate>(() =>
-  Promise.resolve(0.8),
+  Promise.resolve(Rate.create("0.8")),
 );
 const currencyMock = {
   cache: true,
@@ -154,8 +156,8 @@ await test("expense creation uses the stored split currency and stamps the actor
   const [saved] = save.mock.calls[0].arguments;
   assert.equal(saved.createdBy, actorID);
   assert.equal(saved.splitID, splitID);
-  assert.equal(saved.conversionRate, 0.8);
-  assert.equal(saved.participants.get(actorID)?.value, 10);
+  assert.equal(saved.conversionRate, "0.8");
+  assert.equal(saved.participants.get(actorID)?.minorUnits, 1000n);
 });
 
 await test("same-currency expenses do not call the rate provider", async () => {
@@ -186,37 +188,37 @@ await test("expense validation rejects invalid members, totals, and precision wi
     ["payer outside split", { payer: outsiderID }, "payer"],
     [
       "participant outside split",
-      { participants: new Map([[outsiderID, 10]]) },
+      { participants: new Map([[outsiderID, "10"]]) },
       "participants",
     ],
     ["empty participants", { participants: new Map() }, "participants"],
     [
       "unbalanced shares",
-      { participants: new Map([[actorID, 9]]) },
+      { participants: new Map([[actorID, "9"]]) },
       "participants",
     ],
     [
       "negative share",
-      { participants: new Map([[actorID, -10]]) },
+      { participants: new Map([[actorID, "-10"]]) },
       "participants",
     ],
     [
       "zero participant amount",
       {
         participants: new Map([
-          [actorID, 0],
-          [payerID, 10],
+          [actorID, "0"],
+          [payerID, "10"],
         ]),
       },
       "participants",
     ],
-    ["zero amount", { amount: 0 }, "amount"],
-    ["non-finite amount", { amount: Infinity }, "amount"],
-    ["excess precision", { amount: 10.001 }, "amount"],
-    ["fractional JPY", { currency: "JPY", amount: 10.5 }, "amount"],
+    ["zero amount", { amount: "0" }, "amount"],
+    ["non-finite amount", { amount: "Infinity" }, "amount"],
+    ["excess precision", { amount: "10.001" }, "amount"],
+    ["fractional JPY", { currency: "JPY", amount: "10.5" }, "amount"],
     [
       "fractional JPY share",
-      { currency: "JPY", participants: new Map([[actorID, 10.5]]) },
+      { currency: "JPY", participants: new Map([[actorID, "10.5"]]) },
       "participants",
     ],
     ["empty name", { name: "" }, "name"],
@@ -239,8 +241,8 @@ await test("expense validation rejects invalid members, totals, and precision wi
 await test("provider failures and invalid rates cannot persist an expense", async () => {
   for (const provider of [
     () => Promise.reject(new Error("Provider unavailable")),
-    () => Promise.resolve(NaN),
-    () => Promise.resolve(0),
+    () => Promise.resolve("NaN" as Rate.ExchangeRate),
+    () => Promise.resolve("0" as Rate.ExchangeRate),
   ]) {
     rate.mock.mockImplementation(provider);
     await assert.rejects(() =>
@@ -271,7 +273,7 @@ await test("existing IDs return the first result without validating replacement 
     await createExpense(actorID, splitID, {
       ...expense,
       name: "",
-      amount: 0,
+      amount: "0",
       participants: new Map(),
     }),
     { id: expense.id },
@@ -402,7 +404,11 @@ await test("edits preserve the recorded rate when currency is unchanged", async 
   const original = await edits.getSplitExpense(splitID, expense.id);
   assert.ok(original);
   edits.getSplitExpense.mock.mockImplementation(() =>
-    Promise.resolve({ ...original, currency: "USD", conversionRate: 0.75 }),
+    Promise.resolve({
+      ...original,
+      currency: "USD",
+      conversionRate: Rate.create("0.75"),
+    }),
   );
   await editExpense(actorID, splitID, expense.id, operation(), {
     ...expense,
@@ -410,7 +416,7 @@ await test("edits preserve the recorded rate when currency is unchanged", async 
     name: "Corrected",
   });
   assert.equal(rate.mock.callCount(), 0);
-  assert.equal(savedChanges[0].conversionRate, 0.75);
+  assert.equal(savedChanges[0].conversionRate, "0.75");
   assert.equal(edits.editSplitExpense.mock.calls[0].arguments[2], actorID);
 });
 
@@ -423,7 +429,11 @@ await test("changing currency obtains a rate and returning home removes it", asy
   const original = await edits.getSplitExpense(splitID, expense.id);
   assert.ok(original);
   edits.getSplitExpense.mock.mockImplementation(() =>
-    Promise.resolve({ ...original, currency: "USD", conversionRate: 0.75 }),
+    Promise.resolve({
+      ...original,
+      currency: "USD",
+      conversionRate: Rate.create("0.75"),
+    }),
   );
   await editExpense(actorID, splitID, expense.id, operation(), expense);
   assert.equal(savedChanges[1].conversionRate, undefined);
@@ -437,7 +447,7 @@ await test("edit retries bypass replacement payload validation and rate lookup",
     await editExpense(actorID, splitID, expense.id, operation(), {
       ...expense,
       name: "",
-      amount: 0,
+      amount: "0",
     }),
     { id: expense.id },
   );
@@ -479,7 +489,7 @@ await test("edit validation rejects invalid allocation and invalid operation IDs
     () =>
       editExpense(actorID, splitID, expense.id, operation(), {
         ...expense,
-        participants: new Map([[outsiderID, 10]]),
+        participants: new Map([[outsiderID, "10"]]),
       }),
     { code: "invalid_input" },
   );
@@ -560,17 +570,14 @@ await test("recording a repayment reverses the debt in the home currency", async
     id,
     payer: actorID,
     recipient: payerID,
-    amount: 25,
+    amount: "25",
   });
   const saved = save.mock.calls[0].arguments[0];
   assert.equal(saved.id, id);
   assert.equal(saved.kind, "repayment");
   assert.equal(saved.currency, "EUR");
   assert.equal(saved.payer, actorID);
-  assert.deepEqual(
-    [...saved.participants],
-    [[payerID, { value: 25, fractions: 2 }]],
-  );
+  assert.deepEqual([...saved.participants], [[payerID, D.create("25", "EUR")]]);
   assert.equal(saved.createdBy, actorID);
   assert.equal(rate.mock.callCount(), 0);
 });
@@ -581,16 +588,16 @@ await test("repayments reject invalid participants and amounts", async () => {
     id: genExpenseID(),
     payer: actorID,
     recipient: payerID,
-    amount: 25,
+    amount: "25",
   };
   for (const changes of [
     { recipient: actorID },
     { payer: outsiderID },
     { recipient: outsiderID },
-    { amount: 0 },
-    { amount: -1 },
-    { amount: 1.001 },
-    { amount: Infinity },
+    { amount: "0" },
+    { amount: "-1" },
+    { amount: "1.001" },
+    { amount: "Infinity" },
   ])
     await assert.rejects(
       () => recordRepayment(actorID, splitID, { ...input, ...changes }),
@@ -610,7 +617,7 @@ await test("repayment retry returns the existing record without writing again", 
       id,
       payer: actorID,
       recipient: payerID,
-      amount: 25,
+      amount: "25",
     }),
     { id },
   );
@@ -628,7 +635,7 @@ await test("nonmembers cannot record repayments", async () => {
         id: genExpenseID(),
         payer: actorID,
         recipient: payerID,
-        amount: 25,
+        amount: "25",
       }),
     { code: "not_found" },
   );
