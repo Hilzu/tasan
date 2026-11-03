@@ -150,3 +150,22 @@ await test("both modes ship the new wordmark and SVG/ICO favicons", () => {
     }
   }
 });
+
+await test("form logos satisfy Cognito's 1:1 to 4:1 aspect-ratio limit", () => {
+  const logos = properties().Assets.filter(
+    (asset) => asset.Category === "FORM_LOGO",
+  );
+  assert.equal(logos.length, 2);
+  for (const logo of logos) {
+    const svg = Buffer.from(logo.Bytes, "base64").toString("utf8");
+    const root = /<svg\b[^>]*>/.exec(svg)?.[0];
+    assert.ok(root);
+    const width = Number(/\bwidth="([\d.]+)"/.exec(root)?.[1]);
+    const height = Number(/\bheight="([\d.]+)"/.exec(root)?.[1]);
+    const ratio = width / height;
+    assert.ok(
+      Number.isFinite(ratio) && ratio >= 1 && ratio <= 4,
+      `${logo.ColorMode} logo must have a ratio between 1:1 and 4:1; got ${String(width)}×${String(height)}`,
+    );
+  }
+});

@@ -58,7 +58,7 @@ Generated output is written to `dist/` and `cdk.out/`; edit files in `src/` and 
 
 ## Login branding configuration
 
-CDK manages the existing Cognito login style using `assets/login/settings.json` and the logo and favicon files alongside it. Light and dark artwork is encoded at synthesis time. The source SVGs match the web app's branding; keep these copies aligned when the brand changes.
+CDK manages the existing Cognito login style using `assets/login/settings.json` and the logo and favicon files alongside it. Light and dark artwork is encoded at synthesis time. The source SVGs match the web app's branding; keep these copies aligned when the brand changes. The login logo adds transparent vertical padding to fit Cognito's maximum 4:1 aspect ratio.
 
 `assets/managed-login-branding.json` is the AWS CLI baseline exported on 2026-11-03. To refresh it from AWS (read only), run from the repository root:
 
