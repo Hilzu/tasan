@@ -9,7 +9,7 @@ export function meta(_: Route.MetaArgs) {
     {
       name: "description",
       content:
-        "How Tasan handles your account, shared expenses and technical data, and how to exercise your privacy rights.",
+        "How Tasan uses personal data and how to exercise your privacy rights.",
     },
   ];
 }
@@ -20,283 +20,145 @@ export default function Privacy() {
       <header className="space-y-2">
         <MainHeading>Privacy notice</MainHeading>
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          Last updated: <time dateTime="2026-11-02">2 November 2026</time>
+          Last updated: <time dateTime="2026-11-03">3 November 2026</time>
         </p>
         <p>
-          Tasan helps you split bills with friends and keep track of balances.
-          This notice explains how personal data is used when you visit
-          tasan.app, create an account or take part in a split.
-        </p>
-      </header>
-
-      <section className="space-y-3" aria-labelledby="controller">
-        <SubHeading>
-          <span id="controller">Who is responsible?</span>
-        </SubHeading>
-        <p>
-          Santeri Consulting Oy, Finland, is the data controller. For privacy
-          questions, account deletion or any of the requests below, email{" "}
+          Santeri Consulting Oy, Finland, is the controller of personal data
+          processed through Tasan. Contact:{" "}
           <Link to="mailto:tasan@santeri.consulting">
             tasan@santeri.consulting
           </Link>
-          . The same contact handles data protection matters.
+          .
         </p>
-        <p>
-          Please use email for private questions. GitHub issues are public: do
-          not post personal expense details, passwords or invitation links
-          there.
-        </p>
-      </section>
+      </header>
 
       <section className="space-y-3" aria-labelledby="data">
         <SubHeading>
-          <span id="data">What we collect and where it comes from</span>
+          <span id="data">Data and purposes</span>
         </SubHeading>
+        <p>
+          We process account and contact details, settings, authentication
+          information, shared financial records and their change history,
+          technical information (including IP addresses, request information and
+          diagnostics), and support messages. Data comes from you, other
+          participants in your splits, our authentication provider and your use
+          of the service.
+        </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong>Account information:</strong> contact and profile details,
-            such as your name and email address, account identifiers, account
-            settings and authentication information.
+            <strong>Providing the service (GDPR Article 6(1)(b)):</strong>
+            managing your account and shared financial records, applying
+            settings and calculating balances.
           </li>
           <li>
-            <strong>Shared financial records:</strong> information you and other
-            participants provide to organize shared expenses and settle
-            balances, including group membership, descriptions, amounts,
-            currencies, payments and allocations. We also keep a history of
-            changes and who made them.
+            <strong>Legitimate interests (Article 6(1)(f)):</strong> maintaining
+            accurate shared records, resolving disputed entries, providing
+            support, diagnosing problems and protecting the service against
+            abuse. These are our interests and, for shared records, those of
+            other participants.
           </li>
           <li>
-            <strong>Session and access information:</strong> information needed
-            to sign you in, maintain your session, manage invitations and
-            control access to shared records.
-          </li>
-          <li>
-            <strong>Technical information:</strong> IP addresses, browser and
-            request information, usage and performance diagnostics, account and
-            record identifiers, and error details needed to operate and protect
-            the service.
-          </li>
-          <li>
-            <strong>Support information:</strong> messages, reports and
-            diagnostic information you choose to send us, which may be
-            associated with your account.
+            <strong>Legal obligations (Article 6(1)(c)):</strong> handling
+            privacy requests and complying with applicable legal requirements.
           </li>
         </ul>
         <p>
-          You provide account details, preferences and records directly. Other
-          members of your splits can enter expenses and repayments involving
-          you. Account details also come from our authentication provider, and
-          technical information is generated when you use the service. Please
-          avoid including sensitive information, such as health details, in
-          descriptions or reports.
-        </p>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="purposes">
-        <SubHeading>
-          <span id="purposes">Why we use data and our legal bases</span>
-        </SubHeading>
-        <ul className="list-disc space-y-2 pl-6">
-          <li>
-            <strong>Providing Tasan (GDPR Article 6(1)(b)):</strong> creating
-            and managing your account, applying your settings, organizing shared
-            financial records and calculating and settling balances are
-            necessary to provide the service you request.
-          </li>
-          <li>
-            <strong>Legitimate interests (Article 6(1)(f)):</strong> we process
-            security logs, diagnostics and support reports to prevent abuse,
-            investigate failures and keep Tasan reliable. Maintaining shared
-            records and their history also serves our and split members’
-            interests in accurate balances and resolving disputed entries,
-            including information entered about you by another member.
-          </li>
-          <li>
-            <strong>Legal obligations (Article 6(1)(c)):</strong> where
-            applicable, we process data to respond to statutory privacy requests
-            and comply with binding legal requirements.
-          </li>
-        </ul>
-        <p>
-          Providing data is not a statutory requirement. Account and sign-in
-          details are needed to use an account; shared financial information is
-          needed to calculate and settle balances. Without the necessary data we
-          cannot provide the relevant service. Support messages and diagnostic
-          reports are optional. We do not rely on consent for the processing
-          described here.
-        </p>
-        <p>
-          Tasan does not sell personal data or use it for advertising. Balance
-          and repayment calculations do not make legal or similarly significant
-          automated decisions about you, and we do not profile you for such
-          decisions.
+          Account and shared financial information is necessary to provide the
+          corresponding service; without it those functions cannot be provided.
+          Providing it is not a statutory requirement. Support messages and
+          diagnostic reports you submit are optional.
         </p>
       </section>
 
       <section className="space-y-3" aria-labelledby="sharing">
         <SubHeading>
-          <span id="sharing">Who can see your information</span>
+          <span id="sharing">Recipients and international transfers</span>
         </SubHeading>
         <p>
-          Members of the same split can see its shared records, revision
-          history, balances and member information, including names and email
-          addresses. Anyone with a valid invitation link can use it to join that
-          split, so share links only with intended participants. Members may
-          keep their own copies of information they have seen.
+          Split members can see shared records and member details, including
+          names and email addresses. People with a valid invitation link can
+          join the split. Authorized maintainers, Amazon Web Services (AWS) and
+          its subprocessors, and email service providers process data for
+          operation and support. Data may also be disclosed where required by
+          law or necessary for legal claims.
         </p>
         <p>
-          Authorized people maintaining Tasan can access data where needed for
-          operation, support, security and privacy requests. Amazon Web Services
-          (AWS) and its subprocessors provide hosting, databases,
-          authentication, email verification, logging and diagnostics on our
-          behalf. Email service providers process correspondence when you
-          contact us. We may disclose information to authorities where legally
-          required, or where necessary to establish, exercise or defend legal
-          claims.
-        </p>
-        <p>
-          Following an external link takes you to a separate service with its
-          own privacy practices. For example, GitHub links lead to a service
-          governed by{" "}
-          <Link to="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">
-            GitHub’s privacy statement
+          Data is hosted and replicated in Germany and Singapore and may also be
+          hosted in the United States. Request data and logs are processed
+          across the AWS regions and global delivery locations used to operate
+          Tasan, including outside the European Economic Area. Transfers to
+          countries without an applicable adequacy decision rely on the European
+          Commission’s Standard Contractual Clauses incorporated into AWS’s data
+          processing terms. The safeguards are described in{" "}
+          <Link to="https://aws.amazon.com/compliance/gdpr-center/">
+            AWS’s GDPR information
           </Link>
           .
         </p>
       </section>
 
-      <section className="space-y-3" aria-labelledby="transfers">
-        <SubHeading>
-          <span id="transfers">Where data is processed</span>
-        </SubHeading>
-        <p>
-          Tasan uses AWS to host and replicate data in Germany and Singapore,
-          and may also use locations in the United States. Data may be stored
-          and processed in more than one of these countries for availability and
-          performance. AWS’s global delivery network also processes request data
-          in locations worldwide. This involves transfers outside the European
-          Economic Area (EEA).
-        </p>
-        <p>
-          AWS’s Data Processing Addendum incorporates the European Commission’s
-          Standard Contractual Clauses for transfers to countries without an
-          applicable adequacy decision, including Singapore. These clauses
-          provide contractual safeguards and enforceable rights for your data.
-          See{" "}
-          <Link to="https://aws.amazon.com/compliance/gdpr-center/">
-            AWS’s information about these safeguards
-          </Link>{" "}
-          or contact us for a copy of the relevant safeguards.
-        </p>
-      </section>
-
       <section className="space-y-3" aria-labelledby="retention">
         <SubHeading>
-          <span id="retention">How long data is kept</span>
+          <span id="retention">Retention</span>
         </SubHeading>
         <p>
-          Account data is kept while your account is in use. Shared records and
-          their history are kept while needed to maintain the split’s balances,
-          let members check previous entries or resolve disputes. They currently
-          have no automatic expiry. Deleting an expense hides it from the active
-          balance calculation but keeps its earlier revisions and a deletion
-          record; it does not erase the underlying personal data.
+          Account data is retained while the account is in use. Shared records
+          and their history are retained for ongoing group recordkeeping,
+          checking balances and resolving disputes, with no automatic expiry.
+          Deleting an expense removes it from active balances but retains its
+          history and deletion record.
         </p>
         <p>
-          You can request deletion by email. We assess whether data can be
-          erased or anonymized, taking into account other members’ rights and
-          any specific legal obligation or unresolved claim. We do not retain
-          data merely because it might be useful someday. If we need to keep
-          some information, we explain the reason and applicable retention
-          criteria when responding to your request.
-        </p>
-        <p>
-          Signing out deletes the app session. Session and invitation records
-          are retained until they expire or are revoked; expired records are
-          removed asynchronously. Application and edge logs, including submitted
-          error reports, are stored across the AWS regions used to operate
-          Tasan. Retention currently varies by log group: some application logs
-          expire after 13 months, while other application and edge logs have no
-          configured automatic expiry. Retention is assessed based on incident
-          investigation, security and troubleshooting needs. Support
-          correspondence is kept for handling your request and any related
-          follow-up or dispute, then deleted when no longer needed.
+          Sessions and invitations are retained until expiry or revocation;
+          expired database records are removed asynchronously. Log retention
+          varies: some application logs expire after 13 months; other
+          application and edge logs have no configured automatic expiry. Their
+          retention depends on security, troubleshooting and incident
+          investigation needs. Support correspondence is retained for handling
+          the request and related follow-up or disputes. Applicable legal
+          obligations or specific legal claims may require longer retention.
         </p>
       </section>
 
       <section className="space-y-3" aria-labelledby="cookies">
         <SubHeading>
-          <span id="cookies">Cookies and browser storage</span>
+          <span id="cookies">Cookies</span>
         </SubHeading>
         <p>
-          Tasan and its sign-in service use first-party cookies to maintain your
-          session, authenticate you and protect against forged requests. The
-          app’s <code>__session</code> cookie contains a signed session
-          identifier and lasts up to 14 days after it is set or renewed. These
-          cookies are necessary to provide sign-in and do not require cookie
-          consent. Blocking them prevents sign-in from working.
-        </p>
-        <p>
-          We do not use advertising cookies or visitor analytics. Account
-          settings are saved with your account. Your browser may also store
-          information needed to display and navigate the app. You can clear
-          cookies and site data in your browser; doing so does not delete your
-          account or shared records.
+          Tasan and its sign-in service use necessary first-party cookies for
+          authentication, sessions and request security. The app’s{" "}
+          <code>__session</code> cookie lasts up to 14 days after it is set or
+          renewed. Blocking these cookies prevents sign-in from working.
         </p>
       </section>
 
       <section className="space-y-3" aria-labelledby="rights">
         <SubHeading>
-          <span id="rights">Your rights and how to use them</span>
+          <span id="rights">Your rights</span>
         </SubHeading>
         <p>
-          Under the GDPR, subject to its conditions, you can request access to
-          your personal data and a copy, correction of inaccurate data, erasure,
-          restriction of processing, and portability of data you provided where
-          processing is automated and based on a contract or consent.
+          Subject to the GDPR’s conditions, you can request access to and a copy
+          of your personal data, correction, erasure, restriction of processing,
+          and portability of data you provided that is processed automatically
+          under a contract.
         </p>
         <p>
           <strong>
             You can object to processing based on legitimate interests on
             grounds relating to your particular situation.
-          </strong>{" "}
-          We will stop that processing unless we demonstrate compelling
-          legitimate grounds that override your interests, rights and freedoms,
-          or need the data for legal claims.
+          </strong>
         </p>
         <p>
-          Email{" "}
+          To exercise your rights, contact{" "}
           <Link to="mailto:tasan@santeri.consulting">
             tasan@santeri.consulting
-          </Link>{" "}
-          to exercise these rights, including requesting account deletion. We
-          may need proportionate information to verify your identity. Requests
-          are normally free and answered within one month. If a request is
-          complex or there are many requests, we may extend this by up to two
-          further months and will explain the extension within the first month.
-          If we cannot fulfil a request, we explain why and how you can
-          challenge the decision.
-        </p>
-        <p>
-          You may lodge a complaint with the{" "}
+          </Link>
+          . You can also lodge a complaint with the{" "}
           <Link to="https://tietosuoja.fi/en/notification-to-the-data-protection-ombudsman">
             Finnish Data Protection Ombudsman
           </Link>{" "}
-          or the supervisory authority in the EEA country where you live, work
-          or believe an infringement occurred. You do not have to contact us
-          first. You also have the right to seek a judicial remedy.
-        </p>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="changes">
-        <SubHeading>
-          <span id="changes">Changes to this notice</span>
-        </SubHeading>
-        <p>
-          We keep this notice up to date and show its revision date above. If
-          our processing changes in a way that requires new information, we will
-          provide it before the change takes effect and obtain consent where
-          required.
+          or the supervisory authority where you live or work in the EEA or
+          where an alleged infringement occurred.
         </p>
       </section>
     </article>
