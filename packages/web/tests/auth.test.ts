@@ -13,7 +13,13 @@ import type { getSession } from "~/.server/sessions";
 const readSession = mock.fn<typeof getSession>(() =>
   Promise.resolve(createSession()),
 );
-const sessionMock = { cache: true, exports: { getSession: readSession } };
+const refreshCookie = mock.fn(
+  (): Promise<string | undefined> => Promise.resolve(undefined),
+);
+const sessionMock = {
+  cache: true,
+  exports: { getSession: readSession, refreshSessionCookie: refreshCookie },
+};
 mock.module("~/.server/sessions", sessionMock);
 const {
   sessionMiddleware,
@@ -25,6 +31,8 @@ const {
 beforeEach(() => {
   readSession.mock.restore();
   readSession.mock.resetCalls();
+  refreshCookie.mock.restore();
+  refreshCookie.mock.resetCalls();
 });
 
 const args = (
@@ -93,3 +101,49 @@ await test("anonymous public requests work and request contexts remain isolated"
   first.context.get(sessionContext).set("userID", genUserID());
   assert.equal(second.context.get(sessionContext).get("userID"), undefined);
 });
+
+await test("renewal appends the cookie without replacing unrelated cookies and prevents caching", async () => {
+  refreshCookie.mock.mockImplementation(() =>
+    Promise.resolve("__session=renewed"),
+  );
+  const response = await sessionMiddleware(
+    args(new Request("https://tasan.app/splits")),
+    () =>
+      Promise.resolve(
+        new Response(null, {
+          status: 302,
+          headers: {
+            Location: "/splits/123",
+            "Set-Cookie": "preference=light",
+            "Cache-Control": "public, max-age=3600",
+          },
+        }),
+      ),
+  );
+  assert.ok(response instanceof Response);
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get("location"), "/splits/123");
+  assert.deepEqual(response.headers.getSetCookie(), [
+    "preference=light",
+    "__session=renewed",
+  ]);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+});
+
+for (const cookie of [
+  "__session=logged-in",
+  "__session=; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+]) {
+  await test(`explicit session cookie takes precedence: ${cookie}`, async () => {
+    const response = await sessionMiddleware(
+      args(new Request("https://tasan.app/logout")),
+      () =>
+        Promise.resolve(
+          new Response(null, { headers: { "Set-Cookie": cookie } }),
+        ),
+    );
+    assert.ok(response instanceof Response);
+    assert.deepEqual(response.headers.getSetCookie(), [cookie]);
+    assert.equal(refreshCookie.mock.callCount(), 0);
+  });
+}

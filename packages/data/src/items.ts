@@ -73,6 +73,7 @@ export const sessionItemSchema = z
     sk: sessionIDSchema,
     createdAt: timestamp,
     expiresAt: expiry,
+    absoluteExpiresAt: expiry.optional(),
     forUser: userIDSchema.optional(),
     authState: z.string().optional(),
     authNonce: z.string().optional(),

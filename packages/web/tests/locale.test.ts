@@ -23,6 +23,7 @@ mock.module("@tasan/data", persistenceMock);
 const sessionMock = {
   cache: true,
   exports: {
+    refreshSessionCookie: mock.fn(),
     getSession: mock.fn<typeof getSession>(() =>
       Promise.resolve(createSession()),
     ),
