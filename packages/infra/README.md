@@ -55,3 +55,20 @@ Manage later role changes through `access:diff` and `access:deploy` using SSO; t
 `deploy` changes live AWS resources and uploads production assets. Run it only when an intentional deployment has been requested and the diff has been reviewed.
 
 Generated output is written to `dist/` and `cdk.out/`; edit files in `src/` and `assets/` instead.
+
+## Login branding configuration
+
+CDK manages the existing Cognito login style using `assets/login/settings.json` and the logo and favicon files alongside it. Light and dark artwork is encoded at synthesis time. The source SVGs match the web app's branding; keep these copies aligned when the brand changes.
+
+`assets/managed-login-branding.json` is the AWS CLI baseline exported on 2026-11-03. To refresh it from AWS (read only), run from the repository root:
+
+```sh
+aws --profile SCOy-TasanApp --region eu-central-1 \
+  cognito-idp describe-managed-login-branding-by-client \
+  --user-pool-id eu-central-1_IZpw4ziIq \
+  --client-id q3s2pre9jnpb96o5es526nh5m \
+  --no-return-merged-resources --output json \
+  > packages/infra/assets/managed-login-branding.json
+```
+
+The export is a reference snapshot; edits to the deployed style belong in `assets/login/`. Synthesis and diff do not apply the branding. Verify the hosted login, sign-up, and recovery pages on mobile and desktop in both color modes after deployment.
