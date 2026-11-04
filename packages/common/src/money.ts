@@ -1,6 +1,6 @@
 import { currencies, type CurrencySymbol } from "./currency.js";
-import * as E from "./exact.js";
 import { create as rateFromText, type ExchangeRate } from "./exchange-rate.js";
+import * as R from "./rational.js";
 
 declare const money: unique symbol;
 /** Signed, quantized minor units in a validated currency. Plain data supports
@@ -43,14 +43,14 @@ export const fromMinorUnits = (
   const scale = fractions(currency);
   if (typeof minorUnits !== "bigint" || minorUnits.toString().length > 129)
     throw new RangeError("Invalid minor units.");
-  E.storageDecimal(E.fixed(minorUnits, scale));
+  R.storageDecimal(R.fixed(minorUnits, scale));
   return fromComputedUnits(minorUnits, currency);
 };
 /** Parse an already quantized major-unit decimal, rejecting excess precision. */
 export const create = (text: string, currency: CurrencySymbol): Money => {
-  const scaled = E.multiply(
-    E.parse(text),
-    E.rational(10n ** BigInt(fractions(currency))),
+  const scaled = R.multiply(
+    R.parse(text),
+    R.rational(10n ** BigInt(fractions(currency))),
   );
   if (scaled.denominator !== 1n)
     throw new RangeError("Amount has excess precision.");
@@ -58,10 +58,10 @@ export const create = (text: string, currency: CurrencySymbol): Money => {
 };
 /** Explicit quantization boundary; signed ties round away from zero. */
 export const round = (text: string, currency: CurrencySymbol): Money =>
-  fromRational(E.parse(text), currency);
-const fromRational = (value: E.Rational, currency: CurrencySymbol): Money =>
+  fromRational(R.parse(text), currency);
+const fromRational = (value: R.Rational, currency: CurrencySymbol): Money =>
   fromMinorUnits(
-    E.round(E.multiply(value, E.rational(10n ** BigInt(fractions(currency))))),
+    R.round(R.multiply(value, R.rational(10n ** BigInt(fractions(currency))))),
     currency,
   );
 /** Quantize legacy decimal parts against their rounded total. Equal remainders
@@ -72,9 +72,9 @@ export const roundAndAllocate = (
   total: Money,
   parts: readonly string[],
 ): Money[] => {
-  const scale = E.rational(10n ** BigInt(fractions(total.currency)));
-  const values = parts.map((text) => E.multiply(E.parse(text), scale));
-  return E.allocate(total.minorUnits, values).map((units, index) => {
+  const scale = R.rational(10n ** BigInt(fractions(total.currency)));
+  const values = parts.map((text) => R.multiply(R.parse(text), scale));
+  return R.allocate(total.minorUnits, values).map((units, index) => {
     const { numerator, denominator } = values[index];
     const difference = units * denominator - numerator;
     if (difference <= -denominator || difference >= denominator)
@@ -83,7 +83,7 @@ export const roundAndAllocate = (
   });
 };
 export const toString = (amount: Money): string =>
-  E.fixed(amount.minorUnits, fractions(amount.currency));
+  R.fixed(amount.minorUnits, fractions(amount.currency));
 export const assertCurrency = (
   amount: Money,
   currency: CurrencySymbol,
@@ -114,14 +114,14 @@ export const negate = (a: Money): Money =>
   fromComputedUnits(-a.minorUnits, a.currency);
 /** Evaluate exact arithmetic, quantizing only the final result. */
 export const calculate = (text: string, currency: CurrencySymbol): Money =>
-  fromRational(E.expression(text), currency);
+  fromRational(R.expression(text), currency);
 export const convert = (
   amount: Money,
   rate: ExchangeRate,
   currency: CurrencySymbol,
 ): Money =>
   fromRational(
-    E.multiply(E.parse(toString(amount)), E.parse(rateFromText(rate))),
+    R.multiply(R.parse(toString(amount)), R.parse(rateFromText(rate))),
     currency,
   );
 export const convertAndAllocate = (
@@ -137,43 +137,43 @@ export const convertAndAllocate = (
   if (sum !== total.minorUnits)
     throw new RangeError("Allocated parts must sum to the total.");
   const converted = convert(total, rate, currency);
-  const multiplier = E.multiply(
-    E.parse(rateFromText(rate)),
-    E.rational(
+  const multiplier = R.multiply(
+    R.parse(rateFromText(rate)),
+    R.rational(
       10n ** BigInt(fractions(currency)),
       10n ** BigInt(fractions(total.currency)),
     ),
   );
   return {
     total: converted,
-    parts: E.allocate(
+    parts: R.allocate(
       converted.minorUnits,
-      parts.map((part) => E.multiply(E.rational(part.minorUnits), multiplier)),
+      parts.map((part) => R.multiply(R.rational(part.minorUnits), multiplier)),
     ).map((units) => fromMinorUnits(units, currency)),
   };
 };
 /** Nonnegative decimal weights; blanks count as zero. */
 export const weight = (text: string): string => {
-  const value = E.parse(text.trim().replace(",", ".") || "0");
+  const value = R.parse(text.trim().replace(",", ".") || "0");
   if (value.numerator < 0n) throw new RangeError("Weight must be nonnegative.");
-  return E.storageDecimal(E.decimalText(value));
+  return R.storageDecimal(R.decimalText(value));
 };
 export const stepWeight = (text: string, delta: number): string => {
   if (!Number.isSafeInteger(delta))
     throw new RangeError("Invalid weight step.");
-  const value = E.add(E.parse(weight(text)), E.rational(BigInt(delta)));
-  return value.numerator < 0n ? "0" : weight(E.decimalText(value));
+  const value = R.add(R.parse(weight(text)), R.rational(BigInt(delta)));
+  return value.numerator < 0n ? "0" : weight(R.decimalText(value));
 };
 /** Caller supplies tie priority through weight order. Zero weights get no units. */
 export const allocate = (total: Money, weights: readonly string[]): Money[] => {
-  const values = weights.map((value) => E.parse(weight(value)));
-  const sum = values.reduce(E.add, E.rational(0n));
+  const values = weights.map((value) => R.parse(weight(value)));
+  const sum = values.reduce(R.add, R.rational(0n));
   if (sum.numerator === 0n)
     return values.map(() => fromMinorUnits(0n, total.currency));
-  return E.allocate(
+  return R.allocate(
     total.minorUnits,
     values.map((value) =>
-      E.divide(E.multiply(E.rational(total.minorUnits), value), sum),
+      R.divide(R.multiply(R.rational(total.minorUnits), value), sum),
     ),
   ).map((units) => fromMinorUnits(units, total.currency));
 };

@@ -1,4 +1,4 @@
-import * as E from "./exact.js";
+import * as R from "./rational.js";
 
 declare const exchangeRate: unique symbol;
 /** A positive decimal string: <=38 significant digits, exponent -130..125.
@@ -7,8 +7,8 @@ declare const exchangeRate: unique symbol;
  */
 export type ExchangeRate = string & { readonly [exchangeRate]: true };
 export const create = (text: string): ExchangeRate => {
-  const canonical = E.storageDecimal(text);
-  if (E.parse(canonical).numerator <= 0n)
+  const canonical = R.storageDecimal(text);
+  if (R.parse(canonical).numerator <= 0n)
     throw new RangeError("Exchange rate must be positive.");
   return canonical as ExchangeRate;
 };
@@ -16,9 +16,9 @@ export const create = (text: string): ExchangeRate => {
 export const reciprocal = (rate: ExchangeRate, fractions: number): string => {
   if (!Number.isInteger(fractions) || fractions < 0 || fractions > 38)
     throw new RangeError("Invalid precision.");
-  return E.fixed(
-    E.round(
-      E.divide(E.rational(10n ** BigInt(fractions)), E.parse(create(rate))),
+  return R.fixed(
+    R.round(
+      R.divide(R.rational(10n ** BigInt(fractions)), R.parse(create(rate))),
     ),
     fractions,
   );

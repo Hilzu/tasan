@@ -1,4 +1,4 @@
-// Internal exact arithmetic. Public Money/rate APIs validate their own domains.
+// Internal rational arithmetic. Public Money/rate APIs validate their own domains.
 export interface Rational {
   numerator: bigint;
   denominator: bigint;
