@@ -115,13 +115,27 @@ export const negate = (a: Money): Money =>
 /** Evaluate exact arithmetic, quantizing only the final result. */
 export const calculate = (text: string, currency: CurrencySymbol): Money =>
   fromRational(R.expression(text), currency);
+const conversionMultiplier = (
+  from: CurrencySymbol,
+  rate: ExchangeRate,
+  to: CurrencySymbol,
+): R.Rational =>
+  R.multiply(
+    R.parse(rateFromText(rate)),
+    R.rational(10n ** BigInt(fractions(to)), 10n ** BigInt(fractions(from))),
+  );
 export const convert = (
   amount: Money,
   rate: ExchangeRate,
   currency: CurrencySymbol,
 ): Money =>
-  fromRational(
-    R.multiply(R.parse(toString(amount)), R.parse(rateFromText(rate))),
+  fromMinorUnits(
+    R.round(
+      R.multiply(
+        R.rational(amount.minorUnits),
+        conversionMultiplier(amount.currency, rate, currency),
+      ),
+    ),
     currency,
   );
 export const convertAndAllocate = (
@@ -136,13 +150,10 @@ export const convertAndAllocate = (
   }, 0n);
   if (sum !== total.minorUnits)
     throw new RangeError("Allocated parts must sum to the total.");
-  const converted = convert(total, rate, currency);
-  const multiplier = R.multiply(
-    R.parse(rateFromText(rate)),
-    R.rational(
-      10n ** BigInt(fractions(currency)),
-      10n ** BigInt(fractions(total.currency)),
-    ),
+  const multiplier = conversionMultiplier(total.currency, rate, currency);
+  const converted = fromMinorUnits(
+    R.round(R.multiply(R.rational(total.minorUnits), multiplier)),
+    currency,
   );
   return {
     total: converted,
