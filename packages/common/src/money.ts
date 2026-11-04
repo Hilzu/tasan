@@ -5,9 +5,11 @@ import { create as rateFromText, type ExchangeRate } from "./exchange-rate.js";
 declare const money: unique symbol;
 /** Signed, quantized minor units in a validated currency. Plain data supports
  * React Router transport. No implicit number conversion or scale conversion.
- * Supported amounts use <=38 significant decimal digits and magnitude <1e126
- * major units (the existing persistence range). All operations reject overflow
- * with RangeError. Invalid decimal syntax/currency, excess precision, mismatched
+ * Constructors, conversion, and allocation enforce <=38 significant decimal
+ * digits and magnitude <1e126 major units (the existing persistence range).
+ * Addition, subtraction, and negation allow wider computed totals and balances,
+ * up to 4096 minor-unit digits; persistence still validates individual amounts.
+ * Invalid decimal syntax/currency, excess precision, mismatched
  * currencies, and division by zero also throw RangeError. Amount constructors
  * do not accept number inputs.
  * Text inputs are limited to 1024 characters; exact intermediates to 4096 digits.
@@ -22,6 +24,18 @@ const fractions = (currency: CurrencySymbol) => {
     throw new RangeError("Invalid currency.");
   return currencies[currency].fractions;
 };
+const fromComputedUnits = (
+  minorUnits: bigint,
+  currency: CurrencySymbol,
+): Money => {
+  fractions(currency);
+  if (
+    typeof minorUnits !== "bigint" ||
+    minorUnits.toString().replace(/^-/, "").length > 4096
+  )
+    throw new RangeError("Invalid minor units.");
+  return Object.freeze({ minorUnits, currency }) as Money;
+};
 export const fromMinorUnits = (
   minorUnits: bigint,
   currency: CurrencySymbol,
@@ -30,7 +44,7 @@ export const fromMinorUnits = (
   if (typeof minorUnits !== "bigint" || minorUnits.toString().length > 129)
     throw new RangeError("Invalid minor units.");
   E.storageDecimal(E.fixed(minorUnits, scale));
-  return Object.freeze({ minorUnits, currency }) as Money;
+  return fromComputedUnits(minorUnits, currency);
 };
 /** Parse an already quantized major-unit decimal, rejecting excess precision. */
 export const create = (text: string, currency: CurrencySymbol): Money => {
@@ -50,6 +64,24 @@ const fromRational = (value: E.Rational, currency: CurrencySymbol): Money =>
     E.round(E.multiply(value, E.rational(10n ** BigInt(fractions(currency))))),
     currency,
   );
+/** Quantize legacy decimal parts against their rounded total. Equal remainders
+ * favour earlier parts. Each part must stay within one minor unit of its stored
+ * value, allowing historical rounding differences and floating-point noise.
+ */
+export const roundAndAllocate = (
+  total: Money,
+  parts: readonly string[],
+): Money[] => {
+  const scale = E.rational(10n ** BigInt(fractions(total.currency)));
+  const values = parts.map((text) => E.multiply(E.parse(text), scale));
+  return E.allocate(total.minorUnits, values).map((units, index) => {
+    const { numerator, denominator } = values[index];
+    const difference = units * denominator - numerator;
+    if (difference <= -denominator || difference >= denominator)
+      throw new RangeError("Allocated parts must sum to the total.");
+    return fromMinorUnits(units, total.currency);
+  });
+};
 export const toString = (amount: Money): string =>
   E.fixed(amount.minorUnits, fractions(amount.currency));
 export const assertCurrency = (
@@ -72,14 +104,14 @@ export const equals = (a: Money, b: Money | 0): boolean => compare(a, b) === 0;
 export const gt = (a: Money, b: Money | 0): boolean => compare(a, b) > 0;
 export const add = (a: Money, b: Money): Money => {
   assertCurrency(b, a.currency);
-  return fromMinorUnits(a.minorUnits + b.minorUnits, a.currency);
+  return fromComputedUnits(a.minorUnits + b.minorUnits, a.currency);
 };
 export const sub = (a: Money, b: Money): Money => {
   assertCurrency(b, a.currency);
-  return fromMinorUnits(a.minorUnits - b.minorUnits, a.currency);
+  return fromComputedUnits(a.minorUnits - b.minorUnits, a.currency);
 };
 export const negate = (a: Money): Money =>
-  fromMinorUnits(-a.minorUnits, a.currency);
+  fromComputedUnits(-a.minorUnits, a.currency);
 /** Evaluate exact arithmetic, quantizing only the final result. */
 export const calculate = (text: string, currency: CurrencySymbol): Money =>
   fromRational(E.expression(text), currency);

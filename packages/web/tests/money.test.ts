@@ -68,7 +68,11 @@ await test("constructors reject invalid amounts, currencies, and implicit precis
 await test("supported decimal precision and magnitude boundaries are enforced", () => {
   const largest = M.create(`${"9".repeat(38)}e88`, "EUR");
   assert.equal(M.toString(largest), `${"9".repeat(38)}${"0".repeat(88)}.00`);
-  assert.throws(() => M.add(largest, M.create("1e88", "EUR")), RangeError);
+  const wider = M.add(largest, M.create("1e88", "EUR"));
+  assert.equal(M.toString(wider), `1${"0".repeat(126)}.00`);
+  assert.deepEqual(M.sub(wider, largest), M.create("1e88", "EUR"));
+  assert.deepEqual(M.negate(M.negate(wider)), wider);
+  assert.throws(() => M.create(M.toString(wider), "EUR"), RangeError);
   assert.equal(Rate.create("1e-130"), `0.${"0".repeat(129)}1`);
   assert.throws(() => Rate.create("1e-131"), RangeError);
   assert.equal(

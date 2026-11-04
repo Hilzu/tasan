@@ -129,6 +129,117 @@ await test("legacy numeric records remain readable and malformed amounts become 
     );
 });
 
+await test("legacy fractional shares conserve the rounded total without rewriting snapshots", () => {
+  const users = [genUserID(), genUserID()].sort();
+  for (const [currency, total, shares] of [
+    ["EUR", "0.02", ["0.015", "0.005"]],
+    ["EUR", "0.01", ["0.005", "0.005"]],
+    ["JPY", "2", ["1.5", "0.5"]],
+    ["EUR", "0.3", ["0.1", "0.20000000000000004"]],
+    ["EUR", "0.01", ["-0.005", "0.015"]],
+    ["EUR", "1.00", ["1.005", "0"]],
+  ] as const) {
+    const item = {
+      pk: genSplitID(),
+      sk: genExpenseID(),
+      name: "Legacy rounding",
+      currency,
+      amount: total,
+      participants: Object.fromEntries(
+        users.map((id, index) => [id, shares[index]]),
+      ),
+      createdAt: new Date().toISOString(),
+      createdBy: users[0],
+      payer: users[0],
+    };
+    const original = structuredClone(item);
+    const [expense] = expensesFromItems([item]);
+    assert.equal(
+      [...expense.participants.values()].reduce(
+        (sum, amount) => sum + amount.minorUnits,
+        0n,
+      ),
+      expense.amount.minorUnits,
+    );
+    assert.deepEqual(item, original);
+    const [reordered] = expensesFromItems([
+      {
+        ...item,
+        participants: Object.fromEntries(
+          Object.entries(item.participants).reverse(),
+        ),
+      },
+    ]);
+    assert.deepEqual(reordered.participants, expense.participants);
+    const converted = Money.convertAndAllocate(
+      expense.amount,
+      [...expense.participants.values()],
+      Rate.create("1"),
+      currency,
+    );
+    assert.deepEqual(converted.total, expense.amount);
+    assert.deepEqual(converted.parts, [...expense.participants.values()]);
+  }
+});
+
+await test("legacy reconciliation rejects inconsistent quantized totals", () => {
+  const user = genUserID();
+  for (const [amount, shares] of [
+    ["0.03", ["0.01", "0.01"]],
+    ["0.04", ["0.015", "0.005"]],
+  ] as const) {
+    assert.throws(
+      () =>
+        expensesFromItems([
+          {
+            pk: genSplitID(),
+            sk: genExpenseID(),
+            name: "Inconsistent total",
+            currency: "EUR",
+            amount,
+            participants: Object.fromEntries(
+              [user, genUserID()].map((id, index) => [id, shares[index]]),
+            ),
+            createdAt: new Date().toISOString(),
+            createdBy: user,
+            payer: user,
+          },
+        ]),
+      DataIntegrityError,
+    );
+  }
+});
+
+await test("computed totals outside storage precision cannot be persisted", async () => {
+  const send = mock.method(
+    dynamoClient().config.requestHandler,
+    "handle",
+    () => {
+      assert.fail("Invalid amounts must be rejected before a DynamoDB request");
+    },
+  );
+  const user = genUserID();
+  const amount = Money.add(
+    Money.create("1e36", "EUR"),
+    Money.create("0.01", "EUR"),
+  );
+  await assert.rejects(
+    () =>
+      createSplitExpense({
+        id: genExpenseID(),
+        splitID: genSplitID(),
+        name: "Wide computed total",
+        currency: "EUR",
+        amount,
+        payer: user,
+        createdBy: user,
+        participants: new Map([[user, amount]]),
+      }),
+    DataIntegrityError,
+  );
+  assert.equal(send.mock.callCount(), 0);
+});
+
 await test("wrapped numeric attributes still decode session and invitation expiry as safe integers", async () => {
   const { NumberValue } = await import("@aws-sdk/lib-dynamodb");
   const { sessionItemSchema, inviteSplitItemSchema, parseItem } =

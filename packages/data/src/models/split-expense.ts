@@ -53,6 +53,12 @@ interface ExpenseReadOptions {
 // read-time quantization boundary explicit; never rewrite stored snapshots.
 // Digits already lost before storage cannot be reconstructed.
 const fromItem = (item: SplitExpenseItem): SplitExpense => {
+  const amount = M.round(item.amount, item.currency);
+  const entries = Object.entries(item.participants).sort(compareByKey);
+  const allocated = M.roundAndAllocate(
+    amount,
+    entries.map(([, value]) => value),
+  );
   return {
     kind: item.kind ?? "expense",
     id: expenseIDOf(item),
@@ -60,16 +66,14 @@ const fromItem = (item: SplitExpenseItem): SplitExpense => {
     updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
     updatedBy: item.updatedBy,
     name: item.name,
-    amount: M.round(item.amount, item.currency),
+    amount,
     createdBy: item.createdBy,
     createdAt: new Date(item.createdAt),
     currency: item.currency,
     conversionRate: item.conversionRate,
     payer: item.payer,
     participants: new Map(
-      Object.entries(item.participants)
-        .sort(compareByKey)
-        .map(([id, amount]) => [asUserID(id), M.round(amount, item.currency)]),
+      entries.map(([id], index) => [asUserID(id), allocated[index]]),
     ),
   };
 };

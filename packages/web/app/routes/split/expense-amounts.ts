@@ -23,6 +23,8 @@ const allocationResult = (
   amount: M.Money,
   participants: Map<UserID, M.Money>,
 ) => {
+  // Calculated split totals may be wider than storage; an expense must fit.
+  M.fromMinorUnits(amount.minorUnits, amount.currency);
   const zero = M.create("0", amount.currency);
   const difference = M.sub(
     amount,
