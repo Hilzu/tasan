@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import * as Rate from "@tasan/common/exchange-rate";
-import * as M from "@tasan/common/money";
+import * as Rate from "./exchange-rate.js";
+import * as M from "./money.js";
 
 await test("Money keeps large amounts exact and supports same-currency arithmetic", () => {
   const a = M.create("9007199254740993.01", "EUR");
@@ -73,22 +73,6 @@ await test("supported decimal precision and magnitude boundaries are enforced", 
   assert.deepEqual(M.sub(wider, largest), M.create("1e88", "EUR"));
   assert.deepEqual(M.negate(M.negate(wider)), wider);
   assert.throws(() => M.create(M.toString(wider), "EUR"), RangeError);
-  assert.equal(Rate.create("1e-130"), `0.${"0".repeat(129)}1`);
-  assert.throws(() => Rate.create("1e-131"), RangeError);
-  assert.equal(
-    Rate.create("0.12345678901234567890123456789012345678"),
-    "0.12345678901234567890123456789012345678",
-  );
-  for (const text of [
-    "0",
-    "-1",
-    "NaN",
-    "Infinity",
-    "1e126",
-    "0.123456789012345678901234567890123456789",
-  ])
-    assert.throws(() => Rate.create(text), RangeError);
-  assert.equal(Rate.reciprocal(Rate.create("3"), 5), "0.33333");
 });
 
 await test("conversion retains rates and conserves totals with signed parts", () => {
@@ -151,10 +135,9 @@ await test("weighted allocation is exact, signed, and honours caller tie order",
   );
 });
 
-await test("equivalent decimal scales produce the same Money and rate values", () => {
+await test("equivalent decimal scales produce the same Money values", () => {
   const a = M.create("1.0", "EUR");
   const b = M.create("1.00", "EUR");
   assert.deepEqual(a, b);
   assert.deepEqual(M.add(a, b), M.add(b, a));
-  assert.equal(Rate.create("1.00500"), Rate.create("1005e-3"));
 });

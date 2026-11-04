@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 
-import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
+import { fetchCurrencyConversionRate } from "./currency-convert.js";
 
 await test("exchange rates reuse successful requests, expire, and separate currency pairs", async (t) => {
   t.mock.timers.enable({ apis: ["Date"], now: 0 });

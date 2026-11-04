@@ -12,6 +12,7 @@ import { asSplitID } from "@tasan/common/id";
 ## Commands
 
 - `pnpm build` — compile the package.
+- `pnpm test` — run the package tests.
 - `pnpm clean` — remove generated output.
 
 Public modules must be listed in the `exports` map in `package.json`. Generated files are written to `dist/`; edit files in `src/` instead.
