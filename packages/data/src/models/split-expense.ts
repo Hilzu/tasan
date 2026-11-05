@@ -20,6 +20,7 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
+import { DataIntegrityError } from "../errors.js";
 import {
   expenseIDOf,
   expenseOperationKey,
@@ -52,13 +53,20 @@ interface ExpenseReadOptions {
 // Legacy records may contain excess fractional digits. Keep the historical
 // read-time quantization boundary explicit; never rewrite stored snapshots.
 // Digits already lost before storage cannot be reconstructed.
-const fromItem = (item: SplitExpenseItem): SplitExpense => {
+// Current expenses must reconcile with their total. Revision history may show
+// legacy snapshots that never did, so it rounds each part independently.
+const toExpense = (item: SplitExpenseItem, history: boolean): SplitExpense => {
   const amount = M.round(item.amount, item.currency);
   const entries = Object.entries(item.participants).sort(compareByKey);
-  const allocated = M.roundAndAllocate(
-    amount,
-    entries.map(([, value]) => value),
-  );
+  const values = entries.map(([, value]) => value);
+  let allocated: M.Money[];
+  try {
+    allocated = M.roundAndAllocate(amount, values);
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    if (!history) throw new DataIntegrityError("split-expense");
+    allocated = values.map((value) => M.round(value, item.currency));
+  }
   return {
     kind: item.kind ?? "expense",
     id: expenseIDOf(item),
@@ -77,6 +85,8 @@ const fromItem = (item: SplitExpenseItem): SplitExpense => {
     ),
   };
 };
+const fromItem = (item: SplitExpenseItem) => toExpense(item, false);
+const fromHistoryItem = (item: SplitExpenseItem) => toExpense(item, true);
 
 // A tombstone always wins, regardless of its operation ID or arrival order.
 // Otherwise creation is the baseline and the greatest operation ID wins.
@@ -308,7 +318,7 @@ export const findExpenseRevisions = async (
       action: actionOf(item),
       recordedAt: new Date(item.updatedAt ?? item.createdAt),
       recordedBy: item.updatedBy ?? item.createdBy,
-      expense: fromItem(item),
+      expense: fromHistoryItem(item),
     };
   });
 

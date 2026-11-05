@@ -210,6 +210,72 @@ await test("legacy reconciliation rejects inconsistent quantized totals", () => 
   }
 });
 
+await test("superseded inconsistent legacy revisions keep the split and its history readable", async () => {
+  const [user, other] = [genUserID(), genUserID()].sort();
+  const splitID = genSplitID();
+  const id = genExpenseID();
+  const createdAt = new Date().toISOString();
+  const legacy = {
+    pk: splitID,
+    sk: id,
+    name: "Legacy",
+    currency: "EUR",
+    amount: "10",
+    participants: { [user]: "5", [other]: "4.98" },
+    createdAt,
+    createdBy: user,
+    payer: user,
+  };
+  const edited = {
+    ...legacy,
+    sk: `${id}#${genOperationID()}`,
+    participants: { [user]: "5", [other]: "5" },
+    updatedAt: createdAt,
+    updatedBy: user,
+  };
+  const [expense] = expensesFromItems([legacy, edited]);
+  assert.deepEqual([...expense.participants.values()].map(Money.toString), [
+    "5.00",
+    "5.00",
+  ]);
+  assert.throws(() => expensesFromItems([legacy]), DataIntegrityError);
+
+  const wrap = (item: Record<string, unknown>) => ({
+    ...Object.fromEntries(
+      Object.entries(item).map(([key, value]) => [key, { S: value }]),
+    ),
+    amount: { N: item.amount },
+    participants: {
+      M: Object.fromEntries(
+        Object.entries(item.participants as Record<string, string>).map(
+          ([key, value]) => [key, { N: value }],
+        ),
+      ),
+    },
+  });
+  mock.method(dynamoClient().config.requestHandler, "handle", () =>
+    Promise.resolve({
+      response: {
+        statusCode: 200,
+        headers: {},
+        body: new TextEncoder().encode(
+          JSON.stringify({ Items: [wrap(legacy), wrap(edited)] }),
+        ),
+      },
+    }),
+  );
+  const revisions = await findExpenseRevisions(splitID, id);
+  assert.deepEqual(
+    revisions.map(({ expense }) =>
+      [...expense.participants.values()].map(Money.toString),
+    ),
+    [
+      ["5.00", "4.98"],
+      ["5.00", "5.00"],
+    ],
+  );
+});
+
 await test("computed totals outside storage precision cannot be persisted", async () => {
   const send = mock.method(
     dynamoClient().config.requestHandler,

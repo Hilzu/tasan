@@ -1,6 +1,5 @@
 // Internal persistence schemas. Do not export these through the package entry point.
 import { NumberValue } from "@aws-sdk/lib-dynamodb";
-import { compareByKey } from "@tasan/common/compare";
 import * as Rate from "@tasan/common/exchange-rate";
 import {
   asExpenseID,
@@ -182,14 +181,13 @@ export const splitExpenseItemSchema = z
       updatedBy: userIDSchema,
     }),
   ])
+  // Check each stored decimal on its own. Superseded legacy revisions may not
+  // reconcile with their total; the model reconciles only what it reads.
   .superRefine((item, ctx) => {
     try {
-      Money.roundAndAllocate(
-        Money.round(item.amount, item.currency),
-        Object.entries(item.participants)
-          .sort(compareByKey)
-          .map(([, amount]) => amount),
-      );
+      Money.round(item.amount, item.currency);
+      for (const amount of Object.values(item.participants))
+        Money.round(amount, item.currency);
     } catch {
       ctx.addIssue({
         code: "custom",
