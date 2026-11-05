@@ -24,6 +24,7 @@ import {
 } from "@tasan/data";
 
 import { convertExpense } from "~/domain/convert-expense";
+import { expenseAmountLimitError } from "~/domain/expense-limits";
 
 import { ApplicationError } from "./errors";
 import { logAction } from "./logging";
@@ -47,10 +48,12 @@ export interface NewExpense {
 const validateConversion = (
   expense: Parameters<typeof convertExpense>[0],
   currency: CurrencySymbol,
+  limitExpense = true,
 ) => {
   try {
     // Use the same allocation and tie policy as the split's displayed amounts.
-    convertExpense(expense, currency);
+    const converted = convertExpense(expense, currency);
+    if (limitExpense) validateExpenseLimit(converted.amount);
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
     invalidField(
@@ -58,6 +61,11 @@ const validateConversion = (
       `Amount or participant shares exceed the supported range when converted to ${currency}.`,
     );
   }
+};
+
+const validateExpenseLimit = (amount: M.Money) => {
+  const error = expenseAmountLimitError(amount);
+  if (error) invalidField("amount", error);
 };
 
 const createEntry = async (
@@ -102,6 +110,7 @@ const createEntry = async (
         findSplitUsers(splitID),
       ]);
       const { amount, participants } = validateExpense(input, splitUsers);
+      if (kind === "expense") validateExpenseLimit(amount);
       const conversionRate =
         input.currency === split.currency ?
           undefined
@@ -115,7 +124,7 @@ const createEntry = async (
         participants,
         conversionRate,
       };
-      validateConversion(changes, split.currency);
+      validateConversion(changes, split.currency, kind === "expense");
       try {
         return await createSplitExpense({
           ...changes,
@@ -273,6 +282,7 @@ export const editExpense = async (
               findSplitUsers(splitID),
             ]);
             const { amount, participants } = validateExpense(input, members);
+            validateExpenseLimit(amount);
             const conversionRate =
               input.currency === current.currency ? current.conversionRate
               : input.currency === split.currency ? undefined

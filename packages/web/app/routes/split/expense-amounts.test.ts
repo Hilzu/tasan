@@ -14,6 +14,35 @@ import {
 
 const ids = Array.from({ length: 4 }, () => genUserID());
 const [payer, second, third, fourth] = ids;
+await test("both allocation modes reject oversized totals with the expense limit message", () => {
+  const amount = M.create("1000000000000.01", "EUR");
+  for (const result of [
+    calculateExpenseAmounts(
+      amount,
+      new Map([[payer, undefined]]),
+      "EUR",
+      payer,
+    ),
+    calculateExpenseAmounts(
+      undefined,
+      new Map([[payer, amount]]),
+      "EUR",
+      payer,
+    ),
+    calculateShareAmounts(
+      amount,
+      new Map([[payer, { shares: "1", adjustment: undefined }]]),
+      "EUR",
+      payer,
+    ),
+  ]) {
+    assert.equal(result.valid, false);
+    assert.equal(
+      result.error,
+      "Expense amount must not exceed 1 trillion EUR.",
+    );
+  }
+});
 const inputs = (values: (number | undefined)[], fractions = 0) =>
   new Map(
     values.map((value, i) => [
