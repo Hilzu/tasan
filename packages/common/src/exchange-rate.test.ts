@@ -31,6 +31,34 @@ await test("rates enforce positivity and storage precision and magnitude limits"
     assert.throws(() => Rate.create(text), RangeError);
 });
 
+await test("provider rates round to storage precision, half away from zero", () => {
+  for (const [text, expected] of [
+    ["0.9", "0.9"],
+    ["1.25e-7", "0.000000125"],
+    [
+      "0.123456789012345678901234567890123456789",
+      "0.12345678901234567890123456789012345679",
+    ],
+    [
+      "0.123456789012345678901234567890123456784",
+      "0.12345678901234567890123456789012345678",
+    ],
+    [
+      "123456789012345678901234567890123456785",
+      "123456789012345678901234567890123456790",
+    ],
+    [`9.${"9".repeat(38)}`, "10"],
+    [`1${"0".repeat(38)}1`, `1${"0".repeat(39)}`],
+    [
+      `1.${"0".repeat(37)}5e-130`,
+      `0.${"0".repeat(129)}10000000000000000000000000000000000001`,
+    ],
+  ])
+    assert.equal(Rate.round(text), expected, text);
+  for (const text of ["0", "-1", "NaN", "1e-131", `${"9".repeat(39)}e87`])
+    assert.throws(() => Rate.round(text), RangeError, text);
+});
+
 await test("reciprocal display rounds half units away from zero at explicit precision", () => {
   assert.equal(Rate.reciprocal(Rate.create("3"), 5), "0.33333");
   assert.equal(Rate.reciprocal(Rate.create("8"), 2), "0.13");

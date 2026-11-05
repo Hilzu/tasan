@@ -2,6 +2,8 @@ import { currencies, type CurrencySymbol } from "./currency.js";
 import { create as rateFromText, type ExchangeRate } from "./exchange-rate.js";
 import * as R from "./rational.js";
 
+export { OutOfRangeError } from "./rational.js";
+
 declare const money: unique symbol;
 /** Signed, quantized minor units in a validated currency. Plain data supports
  * React Router transport. No implicit number conversion or scale conversion.
@@ -9,6 +11,7 @@ declare const money: unique symbol;
  * digits and magnitude <1e126 major units (the existing persistence range).
  * Addition, subtraction, and negation allow wider computed totals and balances,
  * up to 4096 minor-unit digits; persistence still validates individual amounts.
+ * Range, precision, and size violations throw OutOfRangeError, a RangeError.
  * Invalid decimal syntax/currency, excess precision, mismatched
  * currencies, and division by zero also throw RangeError. Amount constructors
  * do not accept number inputs.
@@ -29,11 +32,10 @@ const fromComputedUnits = (
   currency: CurrencySymbol,
 ): Money => {
   fractions(currency);
-  if (
-    typeof minorUnits !== "bigint" ||
-    minorUnits.toString().replace(/^-/, "").length > 4096
-  )
+  if (typeof minorUnits !== "bigint")
     throw new RangeError("Invalid minor units.");
+  if (minorUnits.toString().replace(/^-/, "").length > 4096)
+    throw new R.OutOfRangeError("Amount is too large.");
   return Object.freeze({ minorUnits, currency }) as Money;
 };
 export const fromMinorUnits = (
@@ -41,8 +43,10 @@ export const fromMinorUnits = (
   currency: CurrencySymbol,
 ): Money => {
   const scale = fractions(currency);
-  if (typeof minorUnits !== "bigint" || minorUnits.toString().length > 129)
+  if (typeof minorUnits !== "bigint")
     throw new RangeError("Invalid minor units.");
+  if (minorUnits.toString().length > 129)
+    throw new R.OutOfRangeError("Amount exceeds the supported range.");
   R.storageDecimal(R.fixed(minorUnits, scale));
   return fromComputedUnits(minorUnits, currency);
 };
@@ -175,12 +179,17 @@ export const stepWeight = (text: string, delta: number): string => {
   const value = R.add(R.parse(weight(text)), R.rational(BigInt(delta)));
   return value.numerator < 0n ? "0" : weight(R.decimalText(value));
 };
-/** Caller supplies tie priority through weight order. Zero weights get no units. */
+/** Caller supplies tie priority through weight order. Zero weights get no units.
+ * Parts always sum to the total, so a nonzero total needs a positive weight.
+ */
 export const allocate = (total: Money, weights: readonly string[]): Money[] => {
   const values = weights.map((value) => R.parse(weight(value)));
   const sum = values.reduce(R.add, R.rational(0n));
-  if (sum.numerator === 0n)
+  if (sum.numerator === 0n) {
+    if (total.minorUnits !== 0n)
+      throw new RangeError("A nonzero total needs a positive weight.");
     return values.map(() => fromMinorUnits(0n, total.currency));
+  }
   return R.allocate(
     total.minorUnits,
     values.map((value) =>

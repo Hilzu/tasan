@@ -135,6 +135,36 @@ await test("weighted allocation is exact, signed, and honours caller tie order",
   );
 });
 
+await test("weighted allocation conserves the total or throws", () => {
+  assert.deepEqual(
+    M.allocate(M.create("0", "EUR"), ["0", "0"]).map(M.toString),
+    ["0.00", "0.00"],
+  );
+  for (const weights of [["0", "0"], []])
+    assert.throws(() => M.allocate(M.create("10", "EUR"), weights), RangeError);
+});
+
+await test("range and size violations are distinguishable from invalid input", () => {
+  for (const operation of [
+    () => M.round("1e126", "EUR"),
+    () => M.round("1".repeat(39), "EUR"),
+    () => M.round("1".repeat(1025), "EUR"),
+    () => M.calculate(`${"9".repeat(500)} * ${"9".repeat(500)}`, "EUR"),
+    () => M.calculate("1+".repeat(600) + "1", "EUR"),
+  ])
+    assert.throws(operation, M.OutOfRangeError);
+  for (const operation of [
+    () => M.round("1.2.3", "EUR"),
+    () => M.calculate("1 +", "EUR"),
+    () => M.calculate("1 / 0", "EUR"),
+  ])
+    assert.throws(operation, (error: unknown) => {
+      assert.ok(error instanceof RangeError);
+      assert.ok(!(error instanceof M.OutOfRangeError));
+      return true;
+    });
+});
+
 await test("equivalent decimal scales produce the same Money values", () => {
   const a = M.create("1.0", "EUR");
   const b = M.create("1.00", "EUR");

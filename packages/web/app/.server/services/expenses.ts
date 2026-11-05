@@ -1,6 +1,5 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
-import * as Rate from "@tasan/common/exchange-rate";
 import {
   asExpenseID,
   asOperationID,
@@ -107,7 +106,6 @@ const createEntry = async (
         input.currency === split.currency ?
           undefined
         : await fetchCurrencyConversionRate(input.currency, split.currency);
-      if (conversionRate !== undefined) Rate.create(conversionRate);
       getLogger().appendKeys({ conversionRate });
       const changes = {
         name: input.name,
@@ -282,7 +280,6 @@ export const editExpense = async (
                   input.currency,
                   split.currency,
                 );
-            if (conversionRate !== undefined) Rate.create(conversionRate);
             getLogger().appendKeys({ conversionRate });
             const changes = {
               name: input.name,

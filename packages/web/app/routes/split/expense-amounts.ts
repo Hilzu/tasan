@@ -2,16 +2,17 @@ import type { CurrencySymbol } from "@tasan/common/currency";
 import type { UserID } from "@tasan/common/id";
 import * as M from "@tasan/common/money";
 
+// Nothing could be calculated, so only the range error is reported; no
+// participant amount or derived total error applies.
 const invalidCalculation = (
   currency: CurrencySymbol,
-  ids: UserID[],
   total: M.Money | undefined,
 ) => {
   const zero = M.create("0", currency);
   return {
     amount: total ?? zero,
-    participants: new Map(ids.map((id) => [id, zero])),
-    invalidAmounts: new Set(ids),
+    participants: new Map<UserID, M.Money>(),
+    invalidAmounts: new Set<UserID>(),
     difference: zero,
     valid: false,
     error:
@@ -74,11 +75,13 @@ export const calculateExpenseAmounts = (
       automatic.includes(payer) ?
         [payer, ...automatic.filter((id) => id !== payer)]
       : automatic;
-    const allocated = M.allocate(
-      M.gt(remaining, 0) ? remaining : zero,
-      order.map(() => "1"),
-    );
-    order.forEach((id, index) => participants.set(id, allocated[index]));
+    if (order.length > 0) {
+      const allocated = M.allocate(
+        M.gt(remaining, 0) ? remaining : zero,
+        order.map(() => "1"),
+      );
+      order.forEach((id, index) => participants.set(id, allocated[index]));
+    }
     return {
       ...allocationResult(amount, participants),
       hasAmounts:
@@ -88,8 +91,8 @@ export const calculateExpenseAmounts = (
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
     return {
-      ...invalidCalculation(currency, [...inputs.keys()], total),
-      hasAmounts: true,
+      ...invalidCalculation(currency, total),
+      hasAmounts: false,
     };
   }
 };
@@ -128,12 +131,16 @@ export const calculateShareAmounts = (
     const order = [...inputs.keys()].sort(
       (a, b) => Number(b === payer) - Number(a === payer),
     );
-    const allocated = M.allocate(
-      base,
-      order.map((id) =>
-        invalidShares.has(id) ? "0" : (inputs.get(id)?.shares ?? "0"),
+    const weights = order.map((id) =>
+      invalidShares.has(id) ? "0" : (
+        (parseShares(inputs.get(id)?.shares ?? "0") ?? "0")
       ),
     );
+    // Without shares nothing is allocated; the difference reports the remainder.
+    const allocated =
+      weights.every((weight) => weight === "0") ?
+        weights.map(() => zero)
+      : M.allocate(base, weights);
     const shares = new Map(order.map((id, index) => [id, allocated[index]]));
     const participants = new Map(
       [...inputs.keys()].map((id) => [
@@ -150,7 +157,7 @@ export const calculateShareAmounts = (
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
     return {
-      ...invalidCalculation(currency, [...inputs.keys()], total),
+      ...invalidCalculation(currency, total),
       invalidShares: new Set<UserID>(),
     };
   }

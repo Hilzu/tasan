@@ -72,3 +72,21 @@ await test("rate ingestion preserves the exact published JSON decimal and expone
     fetch.mock.restore();
   }
 });
+
+await test("rates with more digits than storage allows are rounded, not rejected", async () => {
+  const fetch = mock.method(globalThis, "fetch", () =>
+    Promise.resolve(
+      new Response(
+        '{"base":"CHF","rates":{"EUR":0.123456789012345678901234567890123456789}}',
+      ),
+    ),
+  );
+  try {
+    assert.equal(
+      await fetchCurrencyConversionRate("CHF", "EUR"),
+      "0.12345678901234567890123456789012345679",
+    );
+  } finally {
+    fetch.mock.restore();
+  }
+});

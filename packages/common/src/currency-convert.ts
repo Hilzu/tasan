@@ -12,7 +12,7 @@ const convertResponseSchema = z.looseObject({
     currencySymbolSchema,
     z.string().transform((text, ctx) => {
       try {
-        return Rate.create(text);
+        return Rate.round(text);
       } catch {
         ctx.addIssue({ code: "custom", message: "Invalid exchange rate" });
         return z.NEVER;

@@ -405,6 +405,31 @@ await test("allocation range failures remain recoverable form validation errors"
   );
   assert.equal(explicit.valid, false);
   assert.ok(explicit.error);
+  // Only the range error applies; nothing derived from a failed calculation.
+  assert.equal(explicit.hasAmounts, false);
+  for (const result of [shared, explicit]) {
+    assert.equal(result.participants.size, 0);
+    assert.equal(result.invalidAmounts.size, 0);
+  }
+});
+
+await test("allocation without automatic participants or shares reports the remainder", () => {
+  const explicit = calculateExpenseAmounts(
+    M.create("10", "EUR"),
+    new Map([[payer, M.create("4", "EUR")]]),
+    "EUR",
+    payer,
+  );
+  assert.equal(explicit.error, undefined);
+  assert.equal(M.toString(explicit.difference), "6.00");
+  const shared = calculateShareAmounts(
+    M.create("10", "EUR"),
+    shareInputs([[0], [0, 1]], 2),
+    "EUR",
+    payer,
+  );
+  assert.equal(shared.error, undefined);
+  assert.equal(M.toString(shared.difference), "9.00");
 });
 
 await test("share stepping keeps a valid value when the next step exceeds the range", () => {

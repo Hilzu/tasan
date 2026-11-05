@@ -117,24 +117,40 @@ export const parseNumber = (valueParam: string): string => {
   return value.trim().startsWith("-") ? `-${digits}` : digits;
 };
 
-const invalidExpressionError = "Invalid calculation";
+// Resolves field input into an amount rounded to the currency's precision.
+// Blank input has neither an amount nor an error.
+export const readAmountInput = (
+  value: string,
+  expressionMode: boolean,
+  currency: CurrencySymbol,
+): { amount?: M.Money; error: string } => {
+  if (value.trim() === "") return { error: "" };
+  try {
+    return {
+      amount:
+        expressionMode ?
+          M.calculate(value, currency)
+        : M.round(parseNumber(value), currency),
+      error: "",
+    };
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    return {
+      error:
+        error instanceof M.OutOfRangeError ?
+          "Amount is too large or has too many digits."
+        : expressionMode ? "Invalid calculation"
+        : "Invalid amount",
+    };
+  }
+};
 
-// Resolves field input into an amount rounded to the currency's precision, or
-// undefined if the input is an invalid calculation.
 export const resolveAmount = (
   value: string,
   expressionMode: boolean,
   currency: CurrencySymbol,
-): M.Money | undefined => {
-  if (value.trim() === "") return undefined;
-  try {
-    return expressionMode ?
-        M.calculate(value, currency)
-      : M.round(parseNumber(value), currency);
-  } catch {
-    return undefined;
-  }
-};
+): M.Money | undefined =>
+  readAmountInput(value, expressionMode, currency).amount;
 
 // Currency changes normalize valid input while leaving blanks and errors intact.
 export const normalizeAmountInput = (
@@ -163,10 +179,14 @@ export function CurrencyInputField({
   const inputRef = useRef<HTMLInputElement>(null);
   const { fractions } = currencies[currencySymbol];
   const { text, expressionMode } = value;
-  const resolved = resolveAmount(text, expressionMode, currencySymbol);
+  const { amount: resolved, error: inputError } = readAmountInput(
+    text,
+    expressionMode,
+    currencySymbol,
+  );
   const empty = text.trim() === "";
   const validationError =
-    !empty && resolved === undefined ? invalidExpressionError
+    inputError ? inputError
     : !allowNegative && resolved && resolved.minorUnits < 0n ?
       "Amount must not be negative."
     : "";

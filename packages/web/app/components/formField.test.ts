@@ -6,6 +6,7 @@ import * as M from "@tasan/common/money";
 import {
   normalizeAmountInput,
   parseNumber,
+  readAmountInput,
   resolveAmount,
 } from "~/components/formField";
 
@@ -108,4 +109,22 @@ await test("invalid calculations remain unresolved", () => {
     resolveAmount("€ 12,5", false, "EUR"),
     M.create("12.5", "EUR"),
   );
+});
+
+await test("amount errors distinguish invalid input from unsupported ranges", () => {
+  const tooLarge = "Amount is too large or has too many digits.";
+  for (const [text, expressionMode, error] of [
+    ["", false, ""],
+    ["12,5", false, ""],
+    ["1.2.3", false, "Invalid amount"],
+    ["1 +", true, "Invalid calculation"],
+    ["1 / 0", true, "Invalid calculation"],
+    ["1".repeat(40), false, tooLarge],
+    ["1".repeat(40), true, tooLarge],
+    [`${"9".repeat(500)} * ${"9".repeat(500)}`, true, tooLarge],
+  ] as const) {
+    const result = readAmountInput(text, expressionMode, "EUR");
+    assert.equal(result.error, error, text.slice(0, 20));
+    assert.equal(result.amount === undefined, text === "" || error !== "");
+  }
 });

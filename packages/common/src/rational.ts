@@ -1,4 +1,11 @@
 // Internal rational arithmetic. Public Money/rate APIs validate their own domains.
+/** A well-formed value outside the supported magnitude, precision, or size. */
+export class OutOfRangeError extends RangeError {
+  constructor(message: string) {
+    super(message);
+    this.name = "OutOfRangeError";
+  }
+}
 export interface Rational {
   numerator: bigint;
   denominator: bigint;
@@ -24,12 +31,12 @@ export const rational = (numerator: bigint, denominator = 1n): Rational => {
     numerator.toString().length > 4096 ||
     denominator.toString().length > 4096
   )
-    throw new RangeError("Calculation is too large.");
+    throw new OutOfRangeError("Calculation is too large.");
   return { numerator, denominator };
 };
 export const parse = (text: string): Rational => {
-  if (typeof text !== "string" || text.length > 1024)
-    throw new RangeError("Invalid decimal.");
+  if (typeof text !== "string") throw new RangeError("Invalid decimal.");
+  if (text.length > 1024) throw new OutOfRangeError("Decimal is too long.");
   const match = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:e([+-]?\d+))?$/i.exec(
     text.trim(),
   );
@@ -39,7 +46,7 @@ export const parse = (text: string): Rational => {
   const digits = leadingFraction || fraction;
   const power = Number(exponent) - digits.length;
   if (!Number.isSafeInteger(power) || Math.abs(power) > 1024)
-    throw new RangeError("Decimal exponent is too large.");
+    throw new OutOfRangeError("Decimal exponent is too large.");
   const coefficient = BigInt(`${sign}${whole}${digits}`);
   return power >= 0 ?
       rational(coefficient * 10n ** BigInt(power))
@@ -102,7 +109,9 @@ export const storageDecimal = (text: string): string => {
   const exponent =
     whole !== "0" ? whole.length - 1 : -1 - fraction.search(/[1-9]/);
   if (digits.length > 38 || exponent < -130 || exponent > 125)
-    throw new RangeError("Decimal exceeds the supported range or precision.");
+    throw new OutOfRangeError(
+      "Decimal exceeds the supported range or precision.",
+    );
   return canonical;
 };
 
@@ -138,7 +147,7 @@ export const allocate = (
 };
 
 export const expression = (text: string): Rational => {
-  if (text.length > 1024) throw new RangeError("Calculation is too long.");
+  if (text.length > 1024) throw new OutOfRangeError("Calculation is too long.");
   const tokens = text.match(/\d+[.,]?\d*|[.,]\d+|[-+*/()]|\S/g) ?? [];
   let pos = 0;
   const expr = (): Rational => {
