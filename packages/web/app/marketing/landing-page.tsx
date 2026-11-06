@@ -1,3 +1,4 @@
+import classNames from "classnames";
 import { useState } from "react";
 import { href } from "react-router";
 
@@ -133,25 +134,45 @@ export const LandingPage = () => {
             id="example-description"
             className="text-brand-800 dark:text-brand-200 mb-3 text-center text-xs leading-relaxed"
           >
-            Example split · Scroll to explore
+            Example split
           </p>
           <p role="status" className="sr-only">
             Showing {example.name}
           </p>
+          {/* Every example shares one grid cell, so the card is as tall as the
+              tallest one and switching examples does not shift the page. */}
           <div
-            key={example.name}
             id="split-example"
             role="region"
             aria-label={`${example.name} example split`}
             aria-describedby="example-description"
-            tabIndex={0}
-            className="bg-brand-canvas outline-brand-700 dark:outline-brand-300 max-h-144 overflow-y-auto overscroll-y-contain rounded-lg border border-gray-200 p-4 text-base focus-visible:outline-2 focus-visible:outline-offset-4 sm:p-6 dark:border-gray-700 dark:bg-gray-950"
+            className="bg-brand-canvas grid rounded-lg border border-gray-200 p-4 text-base sm:p-6 dark:border-gray-700 dark:bg-gray-950"
           >
-            <SplitExample example={example} />
+            {examples.map((item) => (
+              <div
+                key={item.name}
+                className={classNames(
+                  "[grid-area:1/1]",
+                  item !== example && "invisible",
+                )}
+              >
+                <SplitExample example={item} />
+              </div>
+            ))}
           </div>
-          <p className="text-brand-800 dark:text-brand-200 mt-4 text-center text-xs leading-relaxed">
-            {example.caption}
-          </p>
+          <div className="mt-4 grid text-center text-xs leading-relaxed">
+            {examples.map((item) => (
+              <p
+                key={item.name}
+                className={classNames(
+                  "text-brand-800 dark:text-brand-200 [grid-area:1/1]",
+                  item !== example && "invisible",
+                )}
+              >
+                {item.caption}
+              </p>
+            ))}
+          </div>
         </div>
       </section>
 

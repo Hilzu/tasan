@@ -8,8 +8,6 @@ import { calculateShareAmounts } from "~/routes/split/expense-amounts";
 
 export const people = ["Alex", "Sam", "Jo"] as const;
 export type Person = (typeof people)[number];
-// The examples are viewed as Alex.
-export const viewer: Person = "Alex";
 
 export interface ExampleExpense {
   name: string;
