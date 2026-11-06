@@ -46,6 +46,9 @@ const pricePerGbSecond: Record<Architecture, number> = {
 // CloudWatch Logs can take a while to deliver the last reports after the run.
 const reportTimeoutMs = 3 * 60 * 1000;
 const reportPollIntervalMs = 15 * 1000;
+// Sample times come from the local clock and report times from AWS, so the log query starts
+// this much earlier in case the local clock runs ahead.
+const reportClockSkewMarginMs = 60 * 1000;
 
 const sessionCookie = process.env.SESSION_COOKIE;
 if (!sessionCookie) throw new Error("SESSION_COOKIE env is required");
@@ -299,11 +302,16 @@ const parseReport = (
 };
 
 // Collects the Lambda platform reports (JSON log format) for the measured requests.
-const fetchReports = async (requestIds: Set<string>, startTime: number) => {
+const fetchReports = async (samples: readonly Sample[]) => {
   const reports = new Map<string, LambdaReport>();
   const deadline = Date.now() + reportTimeoutMs;
+  // Samples are in request order, so the first missing one is the earliest.
+  let missing = [...samples];
   while (true) {
-    const pages = paginateFilterLogEvents(
+    const missingIds = new Set(missing.map((sample) => sample.requestId));
+    // Scan only from the earliest request still without a report instead of the whole run.
+    const startTime = Date.parse(missing[0].time) - reportClockSkewMarginMs;
+    const logPages = paginateFilterLogEvents(
       { client: logs },
       {
         logGroupName,
@@ -312,24 +320,24 @@ const fetchReports = async (requestIds: Set<string>, startTime: number) => {
         endTime: Date.now(),
       },
     );
-    for await (const page of pages) {
-      for (const event of page.events ?? []) {
+    for await (const logPage of logPages) {
+      for (const event of logPage.events ?? []) {
         const parsed = event.message ? parseReport(event.message) : undefined;
-        if (parsed && requestIds.has(parsed[0])) {
+        if (parsed && missingIds.has(parsed[0])) {
           reports.set(...parsed);
         }
       }
     }
 
-    const missing = requestIds.size - reports.size;
-    if (missing === 0) return reports;
+    missing = missing.filter((sample) => !reports.has(sample.requestId));
+    if (missing.length === 0) return reports;
     if (Date.now() >= deadline) {
       console.error(
-        `${missing.toString()} Lambda reports were not found; their server-side columns are empty`,
+        `${missing.length.toString()} Lambda reports were not found; their server-side columns are empty`,
       );
       return reports;
     }
-    console.error(`Waiting for ${missing.toString()} Lambda reports…`);
+    console.error(`Waiting for ${missing.length.toString()} Lambda reports…`);
     await setTimeout(reportPollIntervalMs);
   }
 };
@@ -481,7 +489,6 @@ console.error(
 );
 
 const samples: Sample[] = [];
-const startTime = Date.now();
 try {
   await runBenchmark(samples);
 } catch (error) {
@@ -493,10 +500,7 @@ try {
 if (samples.length === 0) {
   console.error("No samples were collected");
 } else {
-  const reports = await fetchReports(
-    new Set(samples.map((sample) => sample.requestId)),
-    startTime,
-  );
+  const reports = await fetchReports(samples);
   printTsv(samples, reports);
   printSummary(samples, reports);
 }
