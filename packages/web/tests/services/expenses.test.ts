@@ -344,6 +344,7 @@ await test("expense validation rejects invalid members, totals, and precision wi
     ["non-finite amount", { amount: "Infinity" }, "amount"],
     ["excess precision", { amount: "10.001" }, "amount"],
     ["fractional JPY", { currency: "JPY", amount: "10.5" }, "amount"],
+    ["fractional ISK", { currency: "ISK", amount: "10.5" }, "amount"],
     [
       "fractional JPY share",
       { currency: "JPY", participants: new Map([[actorID, "10.5"]]) },
