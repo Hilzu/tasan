@@ -49,6 +49,17 @@ const notFoundResponse = {
   },
 } satisfies CloudFrontResultResponse;
 
+// The app only serves same-origin GET, HEAD, and POST requests. CloudFront's allowed-method sets
+// can't express that, so other methods are answered here. This also keeps a DELETE with a body
+// from reaching the function URL, which rejects it with 403 InvalidSignatureException.
+const allowedMethods = ["GET", "HEAD", "POST"];
+const methodNotAllowedResponse = {
+  status: "405",
+  headers: {
+    allow: [{ value: allowedMethods.join(", ") }],
+  },
+} satisfies CloudFrontResultResponse;
+
 // In the future we should also host in us-east-2
 // Edge caches to serve from: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
 
@@ -64,6 +75,11 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
     () => {
       getLogger().addContext(context);
       getLogger().debug("Edge request received");
+
+      if (!allowedMethods.includes(request.method)) {
+        getLogger().info("Method rejected", { status: 405 });
+        return methodNotAllowedResponse;
+      }
 
       if (probePrefixes.some((p) => request.uri.startsWith(p))) {
         getLogger().info("Probe request blocked", { status: 404 });

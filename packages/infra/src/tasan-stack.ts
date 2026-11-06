@@ -282,6 +282,15 @@ export class TasanStack extends Stack {
       enableLogging: false,
     });
 
+    // FunctionUrlOrigin grants CloudFront only lambda:InvokeFunctionUrl. AWS documents that OAC
+    // also needs lambda:InvokeFunction, limited here to invocations through the function URL.
+    appFunction.addPermission("CloudFrontInvokeFunctionViaUrl", {
+      principal: new iam.ServicePrincipal("cloudfront.amazonaws.com"),
+      action: "lambda:InvokeFunction",
+      sourceArn: distribution.distributionArn,
+      invokedViaFunctionUrl: true,
+    });
+
     configureEdgeLogRetention(
       this,
       "AppOriginRequestFn",

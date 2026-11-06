@@ -22,10 +22,11 @@ const context = {
 const originRequest = async (
   uri: string,
   querystring = "",
+  method = "GET",
 ): Promise<CloudFrontRequestResult> => {
   const request: CloudFrontRequest = {
     clientIp: "192.0.2.1",
-    method: "GET",
+    method,
     uri,
     querystring,
     headers: { host: [{ key: "Host", value: "tasan.app" }] },
@@ -51,6 +52,22 @@ await test("paths the function URL would normalize are answered at the edge", as
     "/assets/../login",
   ]) {
     assert.ok(isRejected(await originRequest(uri)), uri);
+  }
+});
+
+await test("unsupported methods are answered at the edge with 405 and the supported methods", async () => {
+  for (const method of ["DELETE", "PUT", "PATCH", "OPTIONS"]) {
+    const result = await originRequest("/splits", "", method);
+    assert.ok(result && "status" in result, method);
+    assert.equal(result.status, "405", method);
+    assert.deepEqual(result.headers?.allow, [{ value: "GET, HEAD, POST" }]);
+  }
+});
+
+await test("GET, HEAD, and POST reach the origin", async () => {
+  for (const method of ["GET", "HEAD", "POST"]) {
+    const result = await originRequest("/splits", "", method);
+    assert.ok(result && "uri" in result, method);
   }
 });
 
