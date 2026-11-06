@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
 import process from "node:process";
 import { setTimeout } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 
 import {
   CloudWatchLogsClient,
@@ -24,6 +26,8 @@ const logGroupName = `/aws/lambda/${functionName}`;
 const origin = "https://tasan.app";
 // Served from S3 by CloudFront, so it opens the connection without invoking the Lambda.
 const connectionWarmupUrl = `${origin}/favicon.ico`;
+// The package's gitignored out/ folder, resolved from the compiled dist/main.mjs.
+const outDir = new URL("../out/", import.meta.url);
 
 const architectures = [Architecture.arm64, Architecture.x86_64];
 // CPU share scales linearly with memory up to one full vCPU at 1769 MB. The single-threaded
@@ -415,7 +419,11 @@ const formatTable = (header: string[], rows: string[][]) => {
   return [formatRow(header), ...rows.map(formatRow)].join("\n");
 };
 
-const printTsv = (samples: Sample[], reports: Map<string, LambdaReport>) => {
+const writeTsv = async (
+  samples: Sample[],
+  reports: Map<string, LambdaReport>,
+  startedAt: Date,
+) => {
   const columns = [
     "time",
     "round",
@@ -450,7 +458,17 @@ const printTsv = (samples: Sample[], reports: Map<string, LambdaReport>) => {
       ].join("\t"),
     );
   }
-  process.stdout.write(`${lines.join("\n")}\n`);
+  // Same timestamp format as the export package's output files.
+  const date = startedAt
+    .toISOString()
+    .replaceAll(":", "")
+    .replaceAll("-", "")
+    .replace("T", "_")
+    .replace(/\.\d\d\dZ$/, "");
+  const file = new URL(`benchmark-${date}.tsv`, outDir);
+  await mkdir(outDir, { recursive: true });
+  await writeFile(file, `${lines.join("\n")}\n`);
+  return fileURLToPath(file);
 };
 
 const printPageSummary = (
@@ -533,6 +551,7 @@ console.error(
 
 // Errors from the run and the restore are reported without discarding the samples collected so far.
 const samples: Sample[] = [];
+const startedAt = new Date();
 let runFailed = false;
 try {
   await runBenchmark(samples);
@@ -565,8 +584,11 @@ if (samples.length === 0) {
     console.error("Fetching Lambda reports failed:", error);
     return new Map<string, LambdaReport>();
   });
-  printTsv(samples, reports);
   printSummary(samples, reports);
+  const outputPath = await writeTsv(samples, reports, startedAt);
+  console.error(
+    `\nWrote ${samples.length.toString()} samples to ${outputPath}`,
+  );
 }
 
 if (runFailed) {
