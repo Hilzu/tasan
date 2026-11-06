@@ -2,6 +2,8 @@ import { aws_logs as logs } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 
 export const logRetention = logs.RetentionDays.THIRTEEN_MONTHS;
+// CloudFront access logs contain viewer IP addresses and are needed only for recent debugging.
+export const accessLogRetention = logs.RetentionDays.THREE_MONTHS;
 
 // Lambda@Edge execution regions, independent of the application's origin regions:
 // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-edge-permissions.html
