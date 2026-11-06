@@ -169,9 +169,9 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const allocationError =
     byShares && amount === undefined ? undefined
     : M.gt(difference, 0) ?
-      `${formatAmount(difference, currency)} left to allocate.${byShares ? " Set shares or adjustments." : ""}`
+      `${formatAmount(difference)} left to allocate.${byShares ? " Set shares or adjustments." : ""}`
     : M.gt(M.create("0", currency), difference) ?
-      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(M.negate(difference), currency)}.`
+      `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(M.negate(difference))}.`
     : undefined;
 
   return (
@@ -267,7 +267,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
             byShares ?
               "Required when splitting by shares. Adjustments are applied first, and the rest is split by shares."
             : amount === undefined && calculated.hasAmounts ?
-              `Calculated total: ${formatAmount(calculated.amount, currency)}. Enter a total to split the remainder equally.`
+              `Calculated total: ${formatAmount(calculated.amount)}. Enter a total to split the remainder equally.`
             : "Enter a total or individual amounts. Clear the total to calculate it from individual amounts."
 
           }
@@ -367,7 +367,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
               >
                 <legend className="px-1">
                   {users.find((u) => u.id === userID)?.name ?? "Unknown"}:{" "}
-                  {formatAmount(participantAmount, currency)}
+                  {formatAmount(participantAmount)}
                 </legend>
                 <input
                   type="hidden"

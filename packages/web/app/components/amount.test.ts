@@ -8,35 +8,33 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { LanguageContext } from "~/context";
 import { formatAmount } from "~/domain/format-amount";
 
-import { AmountRender, AmountWithConversion } from "./amount";
+import { AmountWithConversion, MoneyRender } from "./amount";
 
 const spaces = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
 await test("amounts localize separators and currency placement", () => {
   const amount = M.create("1234.5", "EUR");
-  assert.equal(spaces(formatAmount(amount, "EUR", "fi-FI")), "1 234,50 EUR");
-  assert.equal(spaces(formatAmount(amount, "EUR", "en-US")), "EUR 1,234.50");
-  assert.equal(spaces(formatAmount(amount, "EUR", "de-DE")), "1.234,50 EUR");
+  assert.equal(spaces(formatAmount(amount, "fi-FI")), "1 234,50 EUR");
+  assert.equal(spaces(formatAmount(amount, "en-US")), "EUR 1,234.50");
+  assert.equal(spaces(formatAmount(amount, "de-DE")), "1.234,50 EUR");
   assert.equal(Number(M.toString(amount)), 1234.5);
   assert.equal(M.toString(amount), "1234.50");
 });
 
 await test("amounts preserve precision, currency codes, and balance signs", () => {
   assert.equal(
-    spaces(formatAmount(M.create("1234", "JPY"), "JPY", "fi-FI")),
+    spaces(formatAmount(M.create("1234", "JPY"), "fi-FI")),
     "1 234 JPY",
   );
   assert.equal(
-    spaces(formatAmount(M.create("0", "EUR"), "EUR", "fi-FI", "exceptZero")),
+    spaces(formatAmount(M.create("0", "EUR"), "fi-FI", "exceptZero")),
     "0,00 EUR",
   );
   assert.equal(
-    spaces(formatAmount(M.create("12.5", "EUR"), "EUR", "fi-FI", "exceptZero")),
+    spaces(formatAmount(M.create("12.5", "EUR"), "fi-FI", "exceptZero")),
     "+12,50 EUR",
   );
   assert.equal(
-    spaces(
-      formatAmount(M.create("-12.5", "EUR"), "EUR", "en-US", "exceptZero"),
-    ),
+    spaces(formatAmount(M.create("-12.5", "EUR"), "en-US", "exceptZero")),
     "-EUR 12.50",
   );
   assert.throws(() => M.create("1.234", "EUR"), RangeError);
@@ -49,9 +47,7 @@ await test("amount components use the existing language context", () => {
       { value: "fi-FI" },
       createElement(AmountWithConversion, {
         amount: M.create("1234.5", "EUR"),
-        currency: "EUR",
         convertedAmount: M.create("2000", "JPY"),
-        convertedCurrency: "JPY",
       }),
     ),
   );
@@ -68,8 +64,6 @@ await test("amounts without a conversion omit the parentheses and separator", ()
       { value: "en-US" },
       createElement(AmountWithConversion, {
         amount: M.create("10", "EUR"),
-        currency: "EUR",
-        convertedCurrency: "EUR",
       }),
     ),
   );
@@ -83,13 +77,10 @@ await test("zero amounts render with the currency precision", () => {
       { value: "en-US" },
       createElement(AmountWithConversion, {
         amount: M.create("0.01", "EUR"),
-        currency: "EUR",
         convertedAmount: M.create("0", "JPY"),
-        convertedCurrency: "JPY",
       }),
-      createElement(AmountRender, {
+      createElement(MoneyRender, {
         amount: M.create("0", "JPY"),
-        currency: "JPY",
       }),
     ),
   );
@@ -99,15 +90,14 @@ await test("zero amounts render with the currency precision", () => {
   );
 });
 
-await test("formatting preserves minor units beyond Number precision and rejects currency mismatches", () => {
+await test("formatting preserves minor units beyond Number precision", () => {
   const amount = M.create("9007199254740993.01", "EUR");
   assert.equal(
-    spaces(formatAmount(amount, "EUR", "en-US")),
+    spaces(formatAmount(amount, "en-US")),
     "EUR 9,007,199,254,740,993.01",
   );
   assert.equal(
-    spaces(formatAmount(M.negate(amount), "EUR", "fi-FI")),
+    spaces(formatAmount(M.negate(amount), "fi-FI")),
     "−9 007 199 254 740 993,01 EUR",
   );
-  assert.throws(() => formatAmount(amount, "USD", "en-US"), RangeError);
 });

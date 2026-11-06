@@ -5,7 +5,7 @@ import classNames from "classnames";
 import { useState } from "react";
 import { href, useRouteLoaderData } from "react-router";
 
-import { AmountRender } from "~/components/amount";
+import { MoneyRender } from "~/components/amount";
 import { Button } from "~/components/button";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
@@ -59,18 +59,9 @@ export default function ShowSplit(_: Route.ComponentProps) {
       <Card heading={<SubHeading>Summary</SubHeading>}>
         <DescriptionList
           items={[
-            [
-              "Total expenses",
-              <AmountRender amount={summary.total} currency={split.currency} />,
-            ],
-            [
-              "Your share",
-              <AmountRender amount={summary.share} currency={split.currency} />,
-            ],
-            [
-              "You paid",
-              <AmountRender amount={summary.paid} currency={split.currency} />,
-            ],
+            ["Total expenses", <MoneyRender amount={summary.total} />],
+            ["Your share", <MoneyRender amount={summary.share} />],
+            ["You paid", <MoneyRender amount={summary.paid} />],
           ]}
         />
       </Card>
@@ -102,11 +93,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
                     balance.minorUnits < 0n && "text-red-700 dark:text-red-400",
                   )}
                 >
-                  <AmountRender
-                    amount={balance}
-                    currency={split.currency}
-                    signDisplay="exceptZero"
-                  />
+                  <MoneyRender amount={balance} signDisplay="exceptZero" />
                 </span>
               </li>
             );
@@ -153,10 +140,7 @@ export default function ShowSplit(_: Route.ComponentProps) {
                       {toName ?? "Unknown"}
                     </span>
                     <span className="text-right whitespace-nowrap tabular-nums">
-                      <AmountRender
-                        amount={edge.amount}
-                        currency={split.currency}
-                      />
+                      <MoneyRender amount={edge.amount} />
                     </span>
                     <svg
                       width="16"
@@ -182,7 +166,6 @@ export default function ShowSplit(_: Route.ComponentProps) {
           key={payment.id}
           payment={payment}
           splitID={split.id}
-          currency={split.currency}
           onClose={() => {
             setPayment(undefined);
           }}

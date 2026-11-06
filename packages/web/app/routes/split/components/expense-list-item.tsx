@@ -45,9 +45,7 @@ export default function ExpenseListItem({
       <div>
         <AmountWithConversion
           amount={expense.amount}
-          currency={expense.currency}
           convertedAmount={converted?.amount}
-          convertedCurrency={currency}
         />
         {expense.kind !== "repayment" && (
           <> paid by {users.find((u) => u.id === expense.payer)?.name}</>
@@ -61,9 +59,7 @@ export default function ExpenseListItem({
               Your share is{" "}
               <AmountWithConversion
                 amount={yourShare}
-                currency={expense.currency}
                 convertedAmount={converted?.participants.get(currentUserID)}
-                convertedCurrency={currency}
               />
             </>
           }

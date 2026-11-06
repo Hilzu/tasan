@@ -17,7 +17,7 @@ import { ApplicationError } from "~/.server/services/errors";
 import { deleteExpense, getExpenseHistory } from "~/.server/services/expenses";
 import { errorResponse } from "~/.server/services/http";
 import { ActionsDropdown } from "~/components/actions-dropdown";
-import { AmountRender, AmountWithConversion } from "~/components/amount";
+import { AmountWithConversion, MoneyRender } from "~/components/amount";
 import { Card } from "~/components/card";
 import { DateRender } from "~/components/date";
 import { DescriptionList } from "~/components/description-list";
@@ -151,9 +151,7 @@ function ExpenseDetails({
             "Amount",
             <AmountWithConversion
               amount={expense.amount}
-              currency={expense.currency}
               convertedAmount={converted?.amount}
-              convertedCurrency={split.currency}
             />,
           ],
           ["Created by", users.find((u) => u.id === expense.createdBy)?.name],
@@ -172,9 +170,7 @@ function ExpenseDetails({
                     {users.find((u) => u.id === userID)?.name}:{" "}
                     <AmountWithConversion
                       amount={amount}
-                      currency={expense.currency}
                       convertedAmount={converted?.participants.get(userID)}
-                      convertedCurrency={split.currency}
                     />
                   </div>
                 ))}
@@ -212,11 +208,7 @@ function ExpenseDetails({
                 </p>
                 <p>
                   {revision.expense.name}:{" "}
-                  <AmountRender
-                    amount={revision.expense.amount}
-                    currency={revision.expense.currency}
-                  />
-                  , paid by{" "}
+                  <MoneyRender amount={revision.expense.amount} />, paid by{" "}
                   {users.find((u) => u.id === revision.expense.payer)?.name}
                 </p>
                 <p>
@@ -225,11 +217,7 @@ function ExpenseDetails({
                       <Fragment key={id}>
                         {index > 0 && ", "}
                         {users.find((u) => u.id === id)?.name ??
-                          "Unknown"}:{" "}
-                        <AmountRender
-                          amount={amount}
-                          currency={revision.expense.currency}
-                        />
+                          "Unknown"}: <MoneyRender amount={amount} />
                       </Fragment>
                     ),
                   )}

@@ -2,7 +2,7 @@ import type { CurrencySymbol } from "@tasan/common/currency";
 import * as M from "@tasan/common/money";
 import classNames from "classnames";
 
-import { AmountRender, AmountWithConversion } from "~/components/amount";
+import { AmountWithConversion, MoneyRender } from "~/components/amount";
 import { Card } from "~/components/card";
 import { DescriptionList } from "~/components/description-list";
 import { SubHeading } from "~/components/heading";
@@ -60,9 +60,9 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
         <DescriptionList
           className="mt-2 gap-y-1 text-sm"
           items={[
-            ["Total expenses", <AmountRender amount={total} currency="EUR" />],
-            ["Your share", <AmountRender amount={share} currency="EUR" />],
-            ["You paid", <AmountRender amount={alexPaid} currency="EUR" />],
+            ["Total expenses", <MoneyRender amount={total} />],
+            ["Your share", <MoneyRender amount={share} />],
+            ["You paid", <MoneyRender amount={alexPaid} />],
           ]}
         />
       </Card>
@@ -87,11 +87,7 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
                   balance.minorUnits < 0n && "text-red-700 dark:text-red-400",
                 )}
               >
-                <AmountRender
-                  amount={balance}
-                  currency="EUR"
-                  signDisplay="exceptZero"
-                />
+                <MoneyRender amount={balance} signDisplay="exceptZero" />
               </span>
             </li>
           ))}
@@ -116,7 +112,7 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
                 <span className="sr-only">pays</span> Alex
               </span>
               <span className="text-right font-medium whitespace-nowrap tabular-nums">
-                <AmountRender amount={euros(payment.amount)} currency="EUR" />
+                <MoneyRender amount={euros(payment.amount)} />
               </span>
             </li>
           ))}
@@ -138,11 +134,9 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
                     String(expense.original?.amount ?? expense.amount),
                     expense.original?.currency ?? "EUR",
                   )}
-                  currency={expense.original?.currency ?? "EUR"}
                   convertedAmount={
                     expense.original ? euros(expense.amount) : undefined
                   }
-                  convertedCurrency="EUR"
                 />
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-300">

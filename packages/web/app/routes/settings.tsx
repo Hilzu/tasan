@@ -15,7 +15,7 @@ import {
 } from "~/.server/auth";
 import { resolveLocaleOption, searchLocales } from "~/.server/locales";
 import { saveUserSettings } from "~/.server/services/users";
-import { AmountRender } from "~/components/amount";
+import { MoneyRender } from "~/components/amount";
 import { Button } from "~/components/button";
 import { InputField } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
@@ -88,8 +88,7 @@ export default function Settings({
         <div className="rounded border border-gray-300 p-3 dark:border-gray-700">
           <p className="font-semibold">Current format ({locale})</p>
           <p>
-            Amount:{" "}
-            <AmountRender amount={create("1234.56", "EUR")} currency="EUR" />
+            Amount: <MoneyRender amount={create("1234.56", "EUR")} />
           </p>
           <p>
             Date:{" "}

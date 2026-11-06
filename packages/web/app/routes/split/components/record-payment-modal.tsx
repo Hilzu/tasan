@@ -1,10 +1,9 @@
-import type { CurrencySymbol } from "@tasan/common/currency";
 import type { ExpenseID, SplitID, UserID } from "@tasan/common/id";
 import { type Money, toString } from "@tasan/common/money";
 import { useEffect, useState } from "react";
 import { href, useFetcher } from "react-router";
 
-import { AmountRender } from "~/components/amount";
+import { MoneyRender } from "~/components/amount";
 import { Button } from "~/components/button";
 import { FieldError } from "~/components/formField";
 import { Modal } from "~/components/modal";
@@ -22,12 +21,10 @@ export interface PaymentDraft {
 export function RecordPaymentModal({
   payment,
   splitID,
-  currency,
   onClose,
 }: {
   payment: PaymentDraft;
   splitID: SplitID;
-  currency: CurrencySymbol;
   onClose: () => void;
 }) {
   const fetcher = useFetcher<typeof action>();
@@ -94,7 +91,7 @@ export function RecordPaymentModal({
     >
       <p>
         {payment.payerName} paid {payment.recipientName}{" "}
-        <AmountRender amount={payment.amount} currency={currency} />.
+        <MoneyRender amount={payment.amount} />.
       </p>
       <p className="mt-2 text-sm">
         Confirm only after the money has been paid.
