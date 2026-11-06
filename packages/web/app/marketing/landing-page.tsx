@@ -3,6 +3,7 @@ import { href } from "react-router";
 
 import { Link } from "~/components/link";
 
+import { SharesExample } from "./shares-example";
 import { type ExampleSplit, SplitExample } from "./split-example";
 
 const examples = [
@@ -51,6 +52,24 @@ const examples = [
     payments: [{ from: "Jo", amount: 60 }],
   },
 ] satisfies ExampleSplit[];
+
+const shareFeatures = [
+  {
+    title: "Shares",
+    description:
+      "Give a couple two shares, or a kid half a share. Any weight works, decimals included.",
+  },
+  {
+    title: "Adjustments",
+    description:
+      "Add the bottle of wine to one person, or take off the dessert someone skipped. Adjustments apply first, and the rest is split by shares.",
+  },
+  {
+    title: "Calculations",
+    description:
+      "Tap = in any amount field and type the sum straight from the receipt. Tasan works it out exactly and rounds only once, at the end.",
+  },
+];
 
 const steps = [
   {
@@ -215,6 +234,52 @@ export const LandingPage = () => {
             Skip paying back every expense separately. Tasan combines everyone’s
             balances into a simple plan for who pays whom. You might pay a
             different person, but everyone ends up square.
+          </p>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="shares-heading"
+        className="border-brand-700/20 dark:border-brand-300/20 grid items-center gap-10 border-t py-12 sm:py-16 lg:grid-cols-[1fr_1fr] lg:gap-16"
+      >
+        <div>
+          <p className="text-brand-700 dark:text-brand-300 text-xs font-semibold tracking-widest uppercase">
+            Shares, adjustments & calculations
+          </p>
+          <h2
+            id="shares-heading"
+            className="text-brand-950 dark:text-brand-50 mt-4 text-3xl font-semibold tracking-tight"
+          >
+            Not every split is even.
+            <br />
+            Every cent still adds up.
+          </h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-gray-700 dark:text-gray-200">
+            Split equally, by exact amounts, or by shares. Tasan does the math
+            and makes sure everyone’s part adds up to the total.
+          </p>
+          <dl className="mt-8 grid max-w-md gap-6">
+            {shareFeatures.map((feature) => (
+              <div
+                key={feature.title}
+                className="border-brand-700 dark:border-brand-300 border-l-2 pl-4"
+              >
+                <dt className="text-brand-950 dark:text-brand-50 font-semibold">
+                  {feature.title}
+                </dt>
+                <dd className="mt-1 text-sm leading-relaxed text-gray-700 dark:text-gray-200">
+                  {feature.description}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <div className="bg-brand-100/70 dark:bg-brand-950 -mx-4 min-w-0 rounded-3xl p-4 min-[380px]:mx-0 sm:p-7">
+          <div className="bg-brand-canvas rounded-lg border border-gray-200 p-4 sm:p-6 dark:border-gray-700 dark:bg-gray-950">
+            <SharesExample />
+          </div>
+          <p className="text-brand-800 dark:text-brand-200 mt-4 text-center text-xs leading-relaxed">
+            Example expense split by shares and adjustments.
           </p>
         </div>
       </section>
