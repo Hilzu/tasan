@@ -18,6 +18,7 @@
     "typescript": "catalog:"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.1073.0",
     "@aws-sdk/client-lambda": "^3.1073.0"
   }
 }

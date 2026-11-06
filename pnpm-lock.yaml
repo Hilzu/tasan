@@ -59,6 +59,9 @@ importers:
 
   packages/benchmark:
     dependencies:
+      '@aws-sdk/client-cloudwatch-logs':
+        specifier: ^3.1073.0
+        version: 3.1073.0
       '@aws-sdk/client-lambda':
         specifier: ^3.1073.0
         version: 3.1073.0
@@ -282,6 +285,10 @@ packages:
         optional: true
       '@middy/core':
         optional: true
+
+  '@aws-sdk/client-cloudwatch-logs@3.1073.0':
+    resolution: {integrity: sha512-gkBSjPtr45W14QM+uYWsG7Wn8AqtqwxHaZo5zTTA7r6bIbB1tqYRFGEwOlBkGFQboCl0Xp/doCoHZRnaxNHn3A==}
+    engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-dynamodb@3.1073.0':
     resolution: {integrity: sha512-2GUPeI0drcms+LOoSC2DfVLCUWQxjjUm4jN08MrVh40XnIRQZ9PxCjFCqAj6yMRXPAzze925MMXEXBQC7IS6jw==}
@@ -850,6 +857,7 @@ packages:
   '@smithy/core@3.25.1':
     resolution: {integrity: sha512-zpDbpXBCBsxfLtG2GEUyfgvHvSFrw5CwDZSNzL0v52gx/c3oPlPbm+7W7num8xs6vyiUBn+bvYPHcQDOXZynCQ==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.4.1':
     resolution: {integrity: sha512-TSAF5NHgxEsllbErYWbK8aLnl5L601NGc5VYJlSPsKnf3YlkhdoBN+geGcaU00oiw2OK3QO5LA3QNXiiWhCidQ==}
@@ -1970,6 +1978,19 @@ snapshots:
   '@aws-lambda-powertools/logger@2.36.0':
     dependencies:
       '@aws-lambda-powertools/commons': 2.36.0
+
+  '@aws-sdk/client-cloudwatch-logs@3.1073.0':
+    dependencies:
+      '@aws-crypto/sha256-browser': 5.2.0
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/core': 3.974.22
+      '@aws-sdk/credential-provider-node': 3.972.57
+      '@aws-sdk/types': 3.973.13
+      '@smithy/core': 3.25.1
+      '@smithy/fetch-http-handler': 5.5.1
+      '@smithy/node-http-handler': 4.8.1
+      '@smithy/types': 4.15.0
+      tslib: 2.8.1
 
   '@aws-sdk/client-dynamodb@3.1073.0':
     dependencies:
