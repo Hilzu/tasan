@@ -7,7 +7,6 @@ import type {
 } from "aws-lambda";
 
 const probePrefixes = [
-  "//",
   "/wp-admin",
   "/wordpress",
   "/.env",
@@ -26,21 +25,31 @@ const regionsServedFromSingapore = [
 const singaporeLambdaFunctionDomain =
   "cxh43kp2vsbbrb4vgwpratjkpi0ekjjk.lambda-url.ap-southeast-1.on.aws";
 
-// Lambda function URLs verify the SigV4 signature against a normalized path (no "." or ".."
-// segments and no empty segments), but CloudFront OAC signs the path exactly as the viewer sent
-// it. The function URL rejects such paths with 403 InvalidSignatureException before the app
-// runs. Browsers resolve these segments themselves, so only scanners and malformed links send
-// them; answering here keeps them from surfacing as signature errors.
-const hasNonNormalizedSegments = (uri: string) => {
-  const segments = uri.split("/").slice(1);
-  return segments.some(
-    (segment, index) =>
-      segment === "." ||
-      segment === ".." ||
-      // A single trailing slash is allowed; it leaves one empty segment at the end.
-      (segment === "" && index < segments.length - 1),
-  );
+// Lambda function URLs verify the SigV4 signature against a normalized path, but CloudFront OAC
+// signs the path exactly as the viewer sent it, so the function URL rejects paths with ".", "..",
+// or empty segments with 403 InvalidSignatureException before the app runs. Redirecting to the
+// normalized path makes the follow-up request signable and fixes the URL in the browser too.
+// This mirrors SigV4 path normalization: empty and "." segments are dropped, ".." removes the
+// previous segment, and a trailing slash is kept.
+const normalizePath = (uri: string) => {
+  const segments: string[] = [];
+  for (const segment of uri.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") segments.pop();
+    else segments.push(segment);
+  }
+  const trailingSlash = segments.length > 0 && uri.endsWith("/") ? "/" : "";
+  return `/${segments.join("/")}${trailingSlash}`;
 };
+
+const redirectResponse = (location: string) =>
+  ({
+    status: "308",
+    headers: {
+      location: [{ value: location }],
+      "cache-control": [{ value: "public, max-age=31536000" }],
+    },
+  }) satisfies CloudFrontResultResponse;
 
 const notFoundResponse = {
   status: "404",
@@ -60,6 +69,11 @@ const methodNotAllowedResponse = {
   },
 } satisfies CloudFrontResultResponse;
 
+// Invite IDs grant access to a split. Everything after the prefix is redacted so that
+// non-normalized forms such as /accept-invite//<inviteID> don't leak the ID either.
+export const redactPath = (uri: string) =>
+  uri.replace(/(\/accept-invite\/).*/, "$1[redacted]");
+
 // In the future we should also host in us-east-2
 // Edge caches to serve from: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
 
@@ -70,7 +84,7 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
     {
       requestId: context.awsRequestId,
       method: request.method,
-      path: request.uri.replace(/(\/accept-invite\/)[^/]+/, "$1[redacted]"),
+      path: redactPath(request.uri),
     },
     () => {
       getLogger().addContext(context);
@@ -86,9 +100,11 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
         return notFoundResponse;
       }
 
-      if (hasNonNormalizedSegments(request.uri)) {
-        getLogger().info("Non-normalized path rejected", { status: 404 });
-        return notFoundResponse;
+      const normalizedPath = normalizePath(request.uri);
+      if (normalizedPath !== request.uri) {
+        getLogger().info("Non-normalized path redirected", { status: 308 });
+        const query = request.querystring ? `?${request.querystring}` : "";
+        return redirectResponse(`${normalizedPath}${query}`);
       }
 
       const region = process.env.AWS_REGION;

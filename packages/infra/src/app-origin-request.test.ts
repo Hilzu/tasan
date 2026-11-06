@@ -8,7 +8,7 @@ import type {
   Context,
 } from "aws-lambda";
 
-import { handler } from "./app-origin-request/main.mjs";
+import { handler, redactPath } from "./app-origin-request/main.mjs";
 
 const context = {
   awsRequestId: "test-request",
@@ -38,21 +38,47 @@ const originRequest = async (
   return result ?? undefined;
 };
 
-const isRejected = (result: CloudFrontRequestResult) =>
-  !!result && "status" in result && result.status === "404";
-
-await test("paths the function URL would normalize are answered at the edge", async () => {
-  for (const uri of [
-    "/a//b",
-    "/splits//",
-    "/.",
-    "/x/.",
-    "/x/..",
-    "/splits/./x",
-    "/assets/../login",
+await test("paths the function URL would normalize are redirected to the normalized path", async () => {
+  for (const [uri, location] of [
+    ["/a//b", "/a/b"],
+    ["//splits", "/splits"],
+    ["/splits//", "/splits/"],
+    ["/.", "/"],
+    ["/x/.", "/x"],
+    ["/x/..", "/"],
+    ["/splits/./x", "/splits/x"],
+    ["/assets/../login", "/login"],
+    ["/a/../../b", "/b"],
   ]) {
-    assert.ok(isRejected(await originRequest(uri)), uri);
+    const result = await originRequest(uri);
+    assert.ok(result && "status" in result, uri);
+    assert.equal(result.status, "308", uri);
+    assert.deepEqual(result.headers?.location, [{ value: location }], uri);
   }
+});
+
+await test("logged paths never contain an invite ID, even in non-normalized forms", () => {
+  for (const uri of [
+    "/accept-invite/inv_secret",
+    "/accept-invite//inv_secret",
+    "/accept-invite/./inv_secret",
+    "/accept-invite/inv_secret/..",
+    "/x/../accept-invite/inv_secret",
+  ]) {
+    const redacted = redactPath(uri);
+    assert.ok(!redacted.includes("inv_secret"), redacted);
+    assert.ok(redacted.endsWith("/accept-invite/[redacted]"), redacted);
+  }
+  assert.equal(redactPath("/splits/spl_1"), "/splits/spl_1");
+});
+
+await test("redirects keep the query string, and a POST keeps its method", async () => {
+  const result = await originRequest("/splits//x", "a=1&b=/../c", "POST");
+  assert.ok(result && "status" in result);
+  assert.equal(result.status, "308");
+  assert.deepEqual(result.headers?.location, [
+    { value: "/splits/x?a=1&b=/../c" },
+  ]);
 });
 
 await test("unsupported methods are answered at the edge with 405 and the supported methods", async () => {
