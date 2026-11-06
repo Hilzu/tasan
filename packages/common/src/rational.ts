@@ -44,10 +44,17 @@ export const parse = (text: string): Rational => {
   const [, sign, whole = "0", fraction = "", leadingFraction, exponent = "0"] =
     match;
   const digits = leadingFraction || fraction;
-  const power = Number(exponent) - digits.length;
+  // Bound the normalized exponent, so equal values like 1e-1024 and
+  // 1.0e-1024 are treated alike; zero has no meaningful exponent.
+  const significand = `${whole}${digits}`.replace(/0+$/, "");
+  if (!/[1-9]/.test(significand)) return rational(0n);
+  const power =
+    Number(exponent) -
+    digits.length +
+    (whole.length + digits.length - significand.length);
   if (!Number.isSafeInteger(power) || Math.abs(power) > 1024)
     throw new OutOfRangeError("Decimal exponent is too large.");
-  const coefficient = BigInt(`${sign}${whole}${digits}`);
+  const coefficient = BigInt(`${sign}${significand}`);
   return power >= 0 ?
       rational(coefficient * 10n ** BigInt(power))
     : rational(coefficient, 10n ** BigInt(-power));

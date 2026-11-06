@@ -14,7 +14,7 @@ import {
 
 const ids = Array.from({ length: 4 }, () => genUserID());
 const [payer, second, third, fourth] = ids;
-await test("both allocation modes reject oversized totals with the expense limit message", () => {
+await test("both allocation modes report oversized totals as a limit error, not an allocation error", () => {
   const amount = M.create("1000000000000.01", "EUR");
   for (const result of [
     calculateExpenseAmounts(
@@ -37,10 +37,13 @@ await test("both allocation modes reject oversized totals with the expense limit
     ),
   ]) {
     assert.equal(result.valid, false);
+    assert.equal(result.error, undefined);
     assert.equal(
-      result.error,
+      result.limitError,
       "Expense amount must not exceed 1 trillion EUR.",
     );
+    assert.equal(M.toString(result.amount), "1000000000000.01");
+    assert.ok(M.equals(result.difference, 0));
   }
 });
 const inputs = (values: (number | undefined)[], fractions = 0) =>

@@ -231,6 +231,30 @@ await test("repayments can cover multiple expenses above the individual expense 
   );
 });
 
+await test("conversions over the expense limit name the converted split currency", async () => {
+  rate.mock.mockImplementation(() =>
+    Promise.resolve(Rate.create("1.000000000001")),
+  );
+  await assert.rejects(
+    () =>
+      createExpense(actorID, splitID, {
+        ...expense,
+        currency: "USD",
+        amount: "1e12",
+        participants: new Map([[actorID, "1e12"]]),
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ApplicationError);
+      assert.equal(
+        error.fieldErrors.amount[0],
+        `Converted expense amount must not exceed 1 trillion ${split.currency}.`,
+      );
+      return true;
+    },
+  );
+  assert.equal(save.mock.callCount(), 0);
+});
+
 await test("creation rejects unrepresentable conversions before writing", async (t) => {
   for (const entry of conversionRangeCases)
     await t.test(entry.name, async () => {

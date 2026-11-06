@@ -9,7 +9,6 @@ import { expenseAmountLimitError } from "~/domain/expense-limits";
 const invalidCalculation = (
   currency: CurrencySymbol,
   total: M.Money | undefined,
-  error = "These amounts cannot be allocated within the supported range. Reduce the amounts or change the allocation.",
 ) => {
   const zero = M.create("0", currency);
   return {
@@ -18,7 +17,9 @@ const invalidCalculation = (
     invalidAmounts: new Set<UserID>(),
     difference: zero,
     valid: false,
-    error,
+    error:
+      "These amounts cannot be allocated within the supported range. Reduce the amounts or change the allocation.",
+    limitError: undefined,
   };
 };
 
@@ -36,8 +37,11 @@ const allocationResult = (
   const invalidAmounts = new Set(
     [...participants].filter(([, value]) => !M.gt(value, 0)).map(([id]) => id),
   );
+  // Reported on the total, separately from allocation problems.
+  const limitError = expenseAmountLimitError(amount);
   return {
     error: undefined,
+    limitError,
     amount,
     participants,
     invalidAmounts,
@@ -46,7 +50,8 @@ const allocationResult = (
       participants.size > 0 &&
       M.gt(amount, 0) &&
       M.equals(difference, 0) &&
-      invalidAmounts.size === 0,
+      invalidAmounts.size === 0 &&
+      limitError === undefined,
   };
 };
 
@@ -68,12 +73,6 @@ export const calculateExpenseAmounts = (
     );
     const explicitTotal = [...participants.values()].reduce(M.add, zero);
     const amount = total ?? explicitTotal;
-    const limitError = expenseAmountLimitError(amount);
-    if (limitError)
-      return {
-        ...invalidCalculation(currency, amount, limitError),
-        hasAmounts: false,
-      };
     const automatic = [...inputs.keys()].filter(
       (id) => inputs.get(id) === undefined,
     );
@@ -121,12 +120,6 @@ export const calculateShareAmounts = (
     const zero = M.create("0", currency);
     const amount = total ?? zero;
     M.assertCurrency(amount, currency);
-    const limitError = expenseAmountLimitError(amount);
-    if (limitError)
-      return {
-        ...invalidCalculation(currency, amount, limitError),
-        invalidShares: new Set<UserID>(),
-      };
     const invalidShares = new Set(
       [...inputs]
         .filter(

@@ -45,26 +45,29 @@ export interface NewExpense {
   participants: Map<UserID, string>;
 }
 
-const validateConversion = (
+// Use the same allocation and tie policy as the split's displayed amounts.
+const convertForSplit = (
   expense: Parameters<typeof convertExpense>[0],
   currency: CurrencySymbol,
-  limitExpense = true,
 ) => {
   try {
-    // Use the same allocation and tie policy as the split's displayed amounts.
-    const converted = convertExpense(expense, currency);
-    if (limitExpense) validateExpenseLimit(converted.amount);
+    return convertExpense(expense, currency);
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
-    invalidField(
+    return invalidField(
       "amount",
       `Amount or participant shares exceed the supported range when converted to ${currency}.`,
     );
   }
 };
 
-const validateExpenseLimit = (amount: M.Money) => {
-  const error = expenseAmountLimitError(amount);
+// New spending must stay within the limit as entered and, when it is in a
+// different currency, after conversion to the split currency.
+const validateExpenseLimit = (
+  amount: M.Money,
+  options: { converted?: boolean } = {},
+) => {
+  const error = expenseAmountLimitError(amount, options);
   if (error) invalidField("amount", error);
 };
 
@@ -124,7 +127,9 @@ const createEntry = async (
         participants,
         conversionRate,
       };
-      validateConversion(changes, split.currency, kind === "expense");
+      const converted = convertForSplit(changes, split.currency);
+      if (kind === "expense" && input.currency !== split.currency)
+        validateExpenseLimit(converted.amount, { converted: true });
       try {
         return await createSplitExpense({
           ...changes,
@@ -299,7 +304,9 @@ export const editExpense = async (
               payer: input.payer,
               conversionRate,
             };
-            validateConversion(changes, split.currency);
+            const converted = convertForSplit(changes, split.currency);
+            if (input.currency !== split.currency)
+              validateExpenseLimit(converted.amount, { converted: true });
             return changes;
           },
         );

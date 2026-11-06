@@ -138,9 +138,14 @@ await test("parsing accepts exact decimal forms at the input and exponent bounda
     ["1e1024", 10n ** 1024n, 1n],
     ["1e-1024", 1n, 10n ** 1024n],
     ["9".repeat(1024), 10n ** 1024n - 1n, 1n],
+    ["1.0e-1024", 1n, 10n ** 1024n],
+    ["10e-1025", 1n, 10n ** 1024n],
+    ["0.0001e1028", 10n ** 1024n, 1n],
+    [`1${"0".repeat(1023)}`, 10n ** 1023n, 1n],
+    ["0e9007199254740993", 0n, 1n],
   ] as const)
     assert.deepEqual(R.parse(text), { numerator, denominator }, text);
-  for (const text of ["1e-1025", "1.0e-1024", "1e9007199254740993"])
+  for (const text of ["1e-1025", "1.1e-1024", "10e1024", "1e9007199254740993"])
     assert.throws(() => R.parse(text), R.OutOfRangeError, text);
 });
 

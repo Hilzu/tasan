@@ -158,13 +158,14 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   const valid = byShares ? shared.valid : calculated.valid;
   const difference = byShares ? shared.difference : calculated.difference;
   const amountError =
-    byShares ?
+    (byShares ? shared.limitError : calculated.limitError) ??
+    (byShares ?
       amount === undefined ? "Enter a total to split by shares."
       : !M.gt(amount, 0) ? "Enter a positive total."
       : undefined
     : calculated.hasAmounts && !M.gt(calculated.amount, 0) ?
       "Enter a positive total or participant amounts."
-    : undefined;
+    : undefined);
   const calculationError = byShares ? shared.error : calculated.error;
   const allocationError =
     calculationError ??
