@@ -8,7 +8,7 @@ export function meta(_: Route.MetaArgs) {
     {
       name: "description",
       content:
-        "Split bills across currencies with automatic conversion and simplified repayments. Tasan brings shared expenses into one home currency and works out who pays whom.",
+        "Split bills across currencies, evenly or by shares, with automatic conversion and simplified repayments. Tasan brings shared expenses into one home currency and works out who pays whom.",
     },
   ];
 }

@@ -80,7 +80,7 @@ const steps = [
   {
     title: "Spend in your currency.",
     description:
-      "Add expenses in the currency you paid. Tasan converts them to your split’s home currency.",
+      "Add expenses in the currency you paid and split them evenly or by shares. Tasan converts them to your split’s home currency.",
   },
   {
     title: "Settle up simply.",
@@ -133,8 +133,9 @@ export const LandingPage = () => {
             </span>
           </h1>
           <p className="mt-6 max-w-sm text-lg leading-relaxed text-gray-700 dark:text-gray-200">
-            Split bills across currencies. Tasan handles the conversions and
-            simplifies who pays whom, so settling up takes less back-and-forth.
+            Split bills across currencies, evenly or by shares. Tasan handles
+            the conversions and simplifies who pays whom, so settling up takes
+            less back-and-forth.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-5">
             <Link
