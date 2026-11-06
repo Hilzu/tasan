@@ -344,6 +344,7 @@ await test("expense validation rejects invalid members, totals, and precision wi
     ["non-finite amount", { amount: "Infinity" }, "amount"],
     ["excess precision", { amount: "10.001" }, "amount"],
     ["fractional JPY", { currency: "JPY", amount: "10.5" }, "amount"],
+    ["fractional ISK", { currency: "ISK", amount: "10.5" }, "amount"],
     [
       "fractional JPY share",
       { currency: "JPY", participants: new Map([[actorID, "10.5"]]) },
@@ -565,6 +566,48 @@ await test("changing currency obtains a rate and returning home removes it", asy
   );
   await editExpense(actorID, splitID, expense.id, operation(), expense);
   assert.equal(savedChanges[1].conversionRate, undefined);
+});
+
+await test("historic currencies are accepted only where the split or expense already uses them", async () => {
+  await assert.rejects(
+    () => createExpense(actorID, splitID, { ...expense, currency: "BGN" }),
+    { code: "invalid_input" },
+  );
+  await assert.rejects(
+    () =>
+      editExpense(actorID, splitID, expense.id, operation(), {
+        ...expense,
+        currency: "BGN",
+      }),
+    { code: "invalid_input" },
+  );
+  assert.equal(save.mock.callCount(), 0);
+  assert.equal(savedChanges.length, 0);
+  assert.equal(rate.mock.callCount(), 0);
+
+  const original = await edits.getSplitExpense(splitID, expense.id);
+  assert.ok(original);
+  edits.getSplitExpense.mock.mockImplementation(() =>
+    Promise.resolve({
+      ...original,
+      currency: "BGN",
+      conversionRate: Rate.create("0.5113"),
+    }),
+  );
+  await editExpense(actorID, splitID, expense.id, operation(), {
+    ...expense,
+    currency: "BGN",
+    name: "Corrected",
+  });
+  assert.equal(savedChanges[0].conversionRate, "0.5113");
+
+  splitMock.exports.requireSplit.mock.mockImplementation(() =>
+    Promise.resolve({ ...split, currency: "BGN" }),
+  );
+  await createExpense(actorID, splitID, { ...expense, currency: "BGN" });
+  await createExpense(actorID, splitID, { ...expense, id: genExpenseID() });
+  assert.deepEqual(rate.mock.calls[0].arguments, ["EUR", "BGN"]);
+  assert.equal(save.mock.callCount(), 2);
 });
 
 await test("edit retries bypass replacement payload validation and rate lookup", async () => {

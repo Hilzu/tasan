@@ -70,3 +70,38 @@ await test("rates keep the JS number's decimal text and reject out-of-range valu
     fetch.mock.restore();
   }
 });
+
+await test("fixed euro currencies convert through the euro without provider pairs", async () => {
+  const fetch = mock.method(globalThis, "fetch", (url: string) =>
+    Promise.resolve(
+      url.includes("from=EUR") ?
+        Response.json({ base: "EUR", rates: { SEK: 11, CHF: 0.94 } })
+      : Response.json({ message: "not found" }, { status: 404 }),
+    ),
+  );
+  try {
+    assert.equal(await fetchCurrencyConversionRate("EUR", "BGN"), "1.95583");
+    assert.equal(
+      await fetchCurrencyConversionRate("BGN", "EUR"),
+      "0.511291881196218",
+    );
+    assert.equal(fetch.mock.callCount(), 0);
+    assert.equal(
+      await fetchCurrencyConversionRate("BGN", "SEK"),
+      "5.6242106931584",
+    );
+    assert.equal(
+      await fetchCurrencyConversionRate("CHF", "BGN"),
+      "2.08067021276596",
+    );
+    assert.deepEqual(
+      fetch.mock.calls.map((call) => call.arguments[0]),
+      [
+        "https://api.frankfurter.dev/v1/latest?from=EUR&to=SEK",
+        "https://api.frankfurter.dev/v1/latest?from=EUR&to=CHF",
+      ],
+    );
+  } finally {
+    fetch.mock.restore();
+  }
+});

@@ -1,4 +1,8 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
+import {
+  currencies,
+  type CurrencySymbol,
+  isCurrencySelectable,
+} from "@tasan/common/currency";
 import * as M from "@tasan/common/money";
 
 import { amountLimitError } from "~/domain/expense-limits";
@@ -14,9 +18,20 @@ export const validateName = (name: string) => {
     invalidField("name", "Name must contain between 1 and 64 characters.");
 };
 
-export const validateCurrency = (currency: CurrencySymbol) => {
+/** `inUse` lists currencies the split or expense already uses, which remain
+ * allowed even when historic.
+ */
+export const validateCurrency = (
+  currency: CurrencySymbol,
+  inUse: readonly CurrencySymbol[] = [],
+) => {
   if (!Object.hasOwn(currencies, currency))
     invalidField("currency", "Invalid currency symbol.");
+  if (!isCurrencySelectable(currency, inUse))
+    invalidField(
+      "currency",
+      `${currencies[currency].name} is no longer in use. Choose another currency.`,
+    );
 };
 
 export const toAmount = (

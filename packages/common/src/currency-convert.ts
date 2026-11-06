@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { CurrencySymbol } from "./currency.js";
+import { type CurrencySymbol, fixedEuroRates } from "./currency.js";
 import * as Rate from "./exchange-rate.js";
 import { getLogger } from "./logging.js";
 import { captureAsync } from "./tracing.js";
@@ -26,6 +26,28 @@ const rates = new Map<string, { rate: Rate.ExchangeRate; expiresAt: number }>();
 const pendingRates = new Map<string, Promise<Rate.ExchangeRate>>();
 
 export const fetchCurrencyConversionRate = async (
+  from: CurrencySymbol,
+  to: CurrencySymbol,
+): Promise<Rate.ExchangeRate> => {
+  if (fixedEuroRates[from] === undefined && fixedEuroRates[to] === undefined)
+    return fetchCachedRate(from, to);
+  // The provider no longer publishes rates for fixed-rate currencies, so
+  // derive their pairs through the euro.
+  const [fromRate, toRate] = await Promise.all([
+    unitsPerEuro(from),
+    unitsPerEuro(to),
+  ]);
+  return Rate.quotient(toRate, fromRate);
+};
+
+const euro = Rate.create("1");
+const unitsPerEuro = (
+  symbol: CurrencySymbol,
+): Rate.ExchangeRate | Promise<Rate.ExchangeRate> =>
+  fixedEuroRates[symbol] ??
+  (symbol === "EUR" ? euro : fetchCachedRate("EUR", symbol));
+
+const fetchCachedRate = async (
   from: CurrencySymbol,
   to: CurrencySymbol,
 ): Promise<Rate.ExchangeRate> => {

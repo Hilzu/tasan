@@ -1,4 +1,7 @@
-// Fetched from https://api.frankfurter.dev/v1/currencies
+import * as Rate from "./exchange-rate.js";
+
+// Fetched from https://api.frankfurter.dev/v1/currencies, plus historic
+// currencies that existing splits and expenses may still use.
 export const currencies = {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   __proto__: null!,
@@ -15,9 +18,9 @@ export const currencies = {
   HKD: { name: "Hong Kong Dollar", fractions: 2 },
   HUF: { name: "Hungarian Forint", fractions: 2 },
   IDR: { name: "Indonesian Rupiah", fractions: 2 },
-  ILS: { name: "Israeli New Sheqel", fractions: 2 },
+  ILS: { name: "Israeli New Shekel", fractions: 2 },
   INR: { name: "Indian Rupee", fractions: 2 },
-  ISK: { name: "Icelandic Króna", fractions: 2 },
+  ISK: { name: "Icelandic Króna", fractions: 0 },
   JPY: { name: "Japanese Yen", fractions: 0 },
   KRW: { name: "South Korean Won", fractions: 0 },
   MXN: { name: "Mexican Peso", fractions: 2 },
@@ -42,3 +45,31 @@ export type CurrencySymbol = keyof typeof currencies;
 export type CurrencyInfo = PropertyValues<typeof currencies>;
 
 export const currencySymbols = Object.keys(currencies);
+
+/** Units per euro for currencies replaced by the euro at an irrevocably fixed
+ * rate. The exchange-rate provider no longer serves them, so conversions go
+ * through the euro using these rates. Bulgaria adopted the euro on 2026-01-01.
+ */
+export const fixedEuroRates: Partial<
+  Record<CurrencySymbol, Rate.ExchangeRate>
+> = {
+  BGN: Rate.create("1.95583"),
+};
+
+/** Historic currencies stay readable and convertible for existing data, but
+ * are offered for new splits and expenses only where already in use.
+ */
+export const isHistoricCurrency = (symbol: CurrencySymbol) =>
+  Object.hasOwn(fixedEuroRates, symbol);
+
+export const isCurrencySelectable = (
+  symbol: CurrencySymbol,
+  inUse: readonly (CurrencySymbol | undefined)[] = [],
+) => !isHistoricCurrency(symbol) || inUse.includes(symbol);
+
+export const selectableCurrencies = (
+  inUse: readonly (CurrencySymbol | undefined)[] = [],
+) =>
+  (Object.keys(currencies) as CurrencySymbol[])
+    .filter((symbol) => isCurrencySelectable(symbol, inUse))
+    .map((symbol) => ({ symbol, name: currencies[symbol].name }));

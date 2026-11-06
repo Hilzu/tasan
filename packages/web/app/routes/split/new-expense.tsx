@@ -43,6 +43,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   }
 }
 
-export default function NewExpense(_: Route.ComponentProps) {
-  return <ExpenseForm />;
+export default function NewExpense({ params }: Route.ComponentProps) {
+  // Remount per split so state such as currency and payer never carries over.
+  return <ExpenseForm key={params.splitID} />;
 }
