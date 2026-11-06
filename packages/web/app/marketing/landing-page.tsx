@@ -3,55 +3,9 @@ import { href } from "react-router";
 
 import { Link } from "~/components/link";
 
+import { examples } from "./example-splits";
 import { SharesExample } from "./shares-example";
-import { type ExampleSplit, SplitExample } from "./split-example";
-
-const examples = [
-  {
-    name: "Weekend away",
-    title: "A little escape",
-    expenses: [
-      {
-        name: "Cabin",
-        paidBy: "Alex",
-        amount: 240,
-        original: { amount: 204, currency: "GBP" },
-      },
-      { name: "Groceries", paidBy: "Sam", amount: 60 },
-      {
-        name: "Train tickets",
-        paidBy: "Jo",
-        amount: 60,
-        original: { amount: 66, currency: "USD" },
-      },
-    ],
-    payments: [
-      { from: "Sam", amount: 60 },
-      { from: "Jo", amount: 60 },
-    ],
-  },
-  {
-    name: "Dinner out",
-    title: "One more course",
-    expenses: [
-      { name: "Dinner", paidBy: "Alex", amount: 90 },
-      { name: "Drinks", paidBy: "Sam", amount: 30 },
-    ],
-    payments: [
-      { from: "Sam", amount: 10 },
-      { from: "Jo", amount: 40 },
-    ],
-  },
-  {
-    name: "Shared home",
-    title: "Under one roof",
-    expenses: [
-      { name: "Groceries", paidBy: "Alex", amount: 120 },
-      { name: "Household supplies", paidBy: "Sam", amount: 60 },
-    ],
-    payments: [{ from: "Jo", amount: 60 }],
-  },
-] satisfies ExampleSplit[];
+import { SplitExample } from "./split-example";
 
 const shareFeatures = [
   {
@@ -196,9 +150,7 @@ export const LandingPage = () => {
             <SplitExample example={example} />
           </div>
           <p className="text-brand-800 dark:text-brand-200 mt-4 text-center text-xs leading-relaxed">
-            {selected === 0 ?
-              "GBP, EUR & USD → one total in EUR. Illustrative rates."
-            : "Everyone’s share, without the spreadsheet."}
+            {example.caption}
           </p>
         </div>
       </section>
