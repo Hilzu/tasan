@@ -1,5 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 
+import { AccessLogsStack } from "./access-logs-stack.js";
 import { RegionalStack } from "./regional-stack.js";
 import { TasanStack } from "./tasan-stack.js";
 
@@ -17,5 +18,12 @@ new RegionalStack(app, "SingaporeStack", {
   userPoolServerURL: tasan.userPoolServerURL,
   appClientID: tasan.appClientID,
   appFunctionAssetPath: tasan.appFunctionAssetPath,
+  distributionID: tasan.distributionID,
+});
+
+new AccessLogsStack(app, "AccessLogsStack", {
+  env: { region: "us-east-1", account: "412381763181" },
+  crossRegionReferences: true,
+
   distributionID: tasan.distributionID,
 });
