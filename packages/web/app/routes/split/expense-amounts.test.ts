@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import * as D from "@tasan/common/decimal";
 import { genUserID } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 
 import {
   calculateExpenseAmounts,
@@ -14,44 +14,77 @@ import {
 
 const ids = Array.from({ length: 4 }, () => genUserID());
 const [payer, second, third, fourth] = ids;
+await test("both allocation modes report oversized totals as a limit error, not an allocation error", () => {
+  const amount = M.create("1000000000000.01", "EUR");
+  for (const result of [
+    calculateExpenseAmounts(
+      amount,
+      new Map([[payer, undefined]]),
+      "EUR",
+      payer,
+    ),
+    calculateExpenseAmounts(
+      undefined,
+      new Map([[payer, amount]]),
+      "EUR",
+      payer,
+    ),
+    calculateShareAmounts(
+      amount,
+      new Map([[payer, { shares: "1", adjustment: undefined }]]),
+      "EUR",
+      payer,
+    ),
+  ]) {
+    assert.equal(result.valid, false);
+    assert.equal(result.limitError, "Amount must not exceed 1 trillion EUR.");
+    assert.equal(M.toString(result.amount), "1000000000000.01");
+    assert.ok(M.equals(result.difference, 0));
+  }
+});
 const inputs = (values: (number | undefined)[], fractions = 0) =>
   new Map(
     values.map((value, i) => [
       ids[i],
-      value === undefined ? undefined : D.create(value, fractions),
+      value === undefined ? undefined : (
+        M.round(String(value), fractions === 0 ? "JPY" : "EUR")
+      ),
     ]),
   );
 const values = (result: ReturnType<typeof calculateExpenseAmounts>) =>
-  [...result.participants.values()].map(
-    (participantAmount) => participantAmount.value,
+  [...result.participants.values()].map((participantAmount) =>
+    Number(M.toString(participantAmount)),
   );
-
 await test("starts empty and handles no participants", () => {
   const result = calculateExpenseAmounts(
     undefined,
     inputs([undefined, undefined]),
-    0,
+    "JPY",
     payer,
   );
   assert.equal(result.hasAmounts, false);
   assert.equal(result.valid, false);
-  assert.equal(result.amount.value, 0);
+  assert.equal(Number(M.toString(result.amount)), 0);
   assert.deepEqual(values(result), [0, 0]);
   assert.equal(
-    calculateExpenseAmounts(D.create(100, 0), new Map(), 0, payer).difference
-      .value,
+    Number(
+      M.toString(
+        calculateExpenseAmounts(M.create("100", "JPY"), new Map(), "JPY", payer)
+          .difference,
+      ),
+    ),
     100,
   );
 });
 
 await test("total first splits equally and specific amounts take precedence", () => {
-  const total = D.create(10000, 0);
+  const total = M.create("10000", "JPY");
   assert.deepEqual(
     values(
       calculateExpenseAmounts(
         total,
         inputs([undefined, undefined, undefined, undefined]),
-        0,
+        "JPY",
         payer,
       ),
     ),
@@ -62,7 +95,7 @@ await test("total first splits equally and specific amounts take precedence", ()
       calculateExpenseAmounts(
         total,
         inputs([1000, undefined, undefined, undefined]),
-        0,
+        "JPY",
         payer,
       ),
     ),
@@ -74,16 +107,21 @@ await test("individual amounts first calculate the total", () => {
   const result = calculateExpenseAmounts(
     undefined,
     inputs([2000, 3000, 1500, 2500]),
-    0,
+    "JPY",
     payer,
   );
-  assert.equal(result.amount.value, 9000);
+  assert.equal(Number(M.toString(result.amount)), 9000);
   assert.equal(result.valid, true);
   assert.deepEqual(values(result), [2000, 3000, 1500, 2500]);
-  assert.equal(result.difference.value, 0);
+  assert.equal(Number(M.toString(result.difference)), 0);
   assert.deepEqual(
     values(
-      calculateExpenseAmounts(undefined, inputs([100, undefined]), 0, payer),
+      calculateExpenseAmounts(
+        undefined,
+        inputs([100, undefined]),
+        "JPY",
+        payer,
+      ),
     ),
     [100, 0],
   );
@@ -92,18 +130,24 @@ await test("individual amounts first calculate the total", () => {
 await test("changing total, selection, and clearing an amount preserves other specific amounts", () => {
   const amounts = inputs([1000, undefined, undefined, undefined]);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(7000, 0), amounts, 0, payer)),
+    values(
+      calculateExpenseAmounts(M.create("7000", "JPY"), amounts, "JPY", payer),
+    ),
     [1000, 2000, 2000, 2000],
   );
   amounts.delete(fourth);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(7000, 0), amounts, 0, payer)),
+    values(
+      calculateExpenseAmounts(M.create("7000", "JPY"), amounts, "JPY", payer),
+    ),
     [1000, 3000, 3000],
   );
   amounts.set(fourth, undefined);
   amounts.set(payer, undefined);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(10000, 0), amounts, 0, payer)),
+    values(
+      calculateExpenseAmounts(M.create("10000", "JPY"), amounts, "JPY", payer),
+    ),
     [2500, 2500, 2500, 2500],
   );
 });
@@ -112,26 +156,26 @@ await test("clearing total returns to the sum of specific amounts", () => {
   const result = calculateExpenseAmounts(
     undefined,
     inputs([1000, 2000, undefined, undefined]),
-    0,
+    "JPY",
     payer,
   );
-  assert.equal(result.amount.value, 3000);
+  assert.equal(Number(M.toString(result.amount)), 3000);
   assert.deepEqual(values(result), [1000, 2000, 0, 0]);
 });
 
 await test("mismatches preserve amounts without negative automatic amounts", () => {
-  const total = D.create(100, 0);
-  const under = calculateExpenseAmounts(total, inputs([40, 50]), 0, payer);
-  assert.equal(under.difference.value, 10);
+  const total = M.create("100", "JPY");
+  const under = calculateExpenseAmounts(total, inputs([40, 50]), "JPY", payer);
+  assert.equal(Number(M.toString(under.difference)), 10);
   assert.equal(under.valid, false);
   assert.deepEqual(values(under), [40, 50]);
   const over = calculateExpenseAmounts(
     total,
     inputs([110, undefined]),
-    0,
+    "JPY",
     payer,
   );
-  assert.equal(over.difference.value, -10);
+  assert.equal(Number(M.toString(over.difference)), -10);
   assert.equal(over.valid, false);
   assert.deepEqual(values(over), [110, 0]);
 });
@@ -139,7 +183,10 @@ await test("mismatches preserve amounts without negative automatic amounts", () 
 await test("JPY and EUR rounding sums to the total", () => {
   for (const fractions of [0, 2]) {
     for (let units = 10; units <= 200; units++) {
-      const total = D.create(units / 10 ** fractions, fractions);
+      const total = M.round(
+        String(units / 10 ** fractions),
+        fractions === 0 ? "JPY" : "EUR",
+      );
       for (const selected of [
         inputs([undefined, undefined, undefined], fractions),
         inputs([undefined, undefined, undefined, undefined], fractions),
@@ -147,10 +194,10 @@ await test("JPY and EUR rounding sums to the total", () => {
         const result = calculateExpenseAmounts(
           total,
           selected,
-          fractions,
+          fractions === 0 ? "JPY" : "EUR",
           third,
         );
-        assert.equal(result.difference.value, 0);
+        assert.equal(Number(M.toString(result.difference)), 0);
         assert.ok(values(result).every((value) => value >= 0));
         const minorUnits = values(result).map((value) =>
           Math.round(value * 10 ** fractions),
@@ -164,36 +211,37 @@ await test("JPY and EUR rounding sums to the total", () => {
     [third, undefined],
   ]);
   assert.deepEqual(
-    values(calculateExpenseAmounts(D.create(100, 0), noPayer, 0, payer)),
+    values(
+      calculateExpenseAmounts(M.create("100", "JPY"), noPayer, "JPY", payer),
+    ),
     [50, 50],
   );
 });
 
 await test("currency changes round specific amounts before calculating remainder", () => {
   const result = calculateExpenseAmounts(
-    D.create(10.25, 2),
-    inputs([2.55, undefined], 2),
-    0,
+    M.round("10.25", "JPY"),
+    inputs([3, undefined], 0),
+    "JPY",
     payer,
   );
-  assert.equal(result.amount.value, 10);
+  assert.equal(Number(M.toString(result.amount)), 10);
   assert.deepEqual(values(result), [3, 7]);
-  assert.equal(result.difference.value, 0);
+  assert.equal(Number(M.toString(result.difference)), 0);
 });
 
 await test("explicit amounts must be positive at the currency precision", () => {
   for (const participantAmount of [0, -1]) {
     const result = calculateExpenseAmounts(
-      D.create(100, 0),
-      inputs([participantAmount, undefined], 2),
-      0,
+      M.create("100", "JPY"),
+      inputs([participantAmount, undefined], 0),
+      "JPY",
       payer,
     );
     assert.deepEqual([...result.invalidAmounts], [payer]);
     assert.equal(result.valid, false);
   }
 });
-
 const shareInputs = (
   values: [number | undefined, number?][],
   fractions = 0,
@@ -202,35 +250,34 @@ const shareInputs = (
     values.map(([shares, adjustment], i) => [
       ids[i],
       {
-        shares,
+        shares: shares === undefined ? undefined : String(shares),
         adjustment:
           adjustment === undefined ? undefined : (
-            D.create(adjustment, fractions)
+            M.round(String(adjustment), fractions === 0 ? "JPY" : "EUR")
           ),
       },
     ]),
   );
 const shareValues = (result: ReturnType<typeof calculateShareAmounts>) =>
-  [...result.participants.values()].map((value) => value.value);
-
+  [...result.participants.values()].map((value) => Number(M.toString(value)));
 await test("shares default to zero and leave the total unallocated", () => {
   const result = calculateShareAmounts(
-    D.create(3000, 0),
+    M.create("3000", "JPY"),
     shareInputs([[0], [0], [0]]),
-    0,
+    "JPY",
     payer,
   );
   assert.deepEqual(shareValues(result), [0, 0, 0]);
-  assert.equal(result.difference.value, 3000);
+  assert.equal(Number(M.toString(result.difference)), 3000);
   assert.equal(result.invalidAmounts.size, 3);
   assert.equal(result.valid, false);
 });
 
 await test("shares split the total proportionally", () => {
   const even = calculateShareAmounts(
-    D.create(3000, 0),
+    M.create("3000", "JPY"),
     shareInputs([[1], [1], [1]]),
-    0,
+    "JPY",
     payer,
   );
   assert.deepEqual(shareValues(even), [1000, 1000, 1000]);
@@ -238,9 +285,9 @@ await test("shares split the total proportionally", () => {
   assert.deepEqual(
     shareValues(
       calculateShareAmounts(
-        D.create(3000, 0),
+        M.create("3000", "JPY"),
         shareInputs([[2], [1], [0, 500]]),
-        0,
+        "JPY",
         payer,
       ),
     ),
@@ -250,21 +297,21 @@ await test("shares split the total proportionally", () => {
 
 await test("negative adjustments lower one share and raise the others", () => {
   const result = calculateShareAmounts(
-    D.create(3000, 0),
+    M.create("3000", "JPY"),
     shareInputs([[1], [1, -100], [1]]),
-    0,
+    "JPY",
     payer,
   );
   assert.deepEqual(shareValues(result), [1034, 933, 1033]);
-  assert.equal(result.difference.value, 0);
+  assert.equal(Number(M.toString(result.difference)), 0);
   assert.equal(result.valid, true);
 });
 
 await test("positive adjustments raise one share and lower the others", () => {
   const result = calculateShareAmounts(
-    D.create(4000, 0),
+    M.create("4000", "JPY"),
     shareInputs([[1], [1], [1, 1000]]),
-    0,
+    "JPY",
     payer,
   );
   assert.deepEqual(shareValues(result), [1000, 1000, 2000]);
@@ -273,12 +320,12 @@ await test("positive adjustments raise one share and lower the others", () => {
 
 await test("adjustments alone can allocate the total without shares", () => {
   const result = calculateShareAmounts(
-    D.create(1500, 0),
+    M.create("1500", "JPY"),
     shareInputs([
       [0, 1000],
       [0, 500],
     ]),
-    0,
+    "JPY",
     payer,
   );
   assert.deepEqual(shareValues(result), [1000, 500]);
@@ -287,14 +334,15 @@ await test("adjustments alone can allocate the total without shares", () => {
 
 await test("share mode requires a total and valid shares", () => {
   assert.equal(
-    calculateShareAmounts(undefined, shareInputs([[1], [1]]), 0, payer).valid,
+    calculateShareAmounts(undefined, shareInputs([[1], [1]]), "JPY", payer)
+      .valid,
     false,
   );
   for (const shares of [undefined, -1, NaN]) {
     const result = calculateShareAmounts(
-      D.create(100, 0),
+      M.create("100", "JPY"),
       shareInputs([[shares], [1]]),
-      0,
+      "JPY",
       payer,
     );
     assert.deepEqual([...result.invalidShares], [payer]);
@@ -304,17 +352,17 @@ await test("share mode requires a total and valid shares", () => {
 
 await test("adjustments that leave someone owing nothing are invalid", () => {
   const result = calculateShareAmounts(
-    D.create(1000, 0),
+    M.create("1000", "JPY"),
     shareInputs([[1], [1, -600]]),
-    0,
+    "JPY",
     payer,
   );
   assert.deepEqual(shareValues(result), [800, 200]);
   assert.equal(result.valid, true);
   const invalid = calculateShareAmounts(
-    D.create(1000, 0),
+    M.create("1000", "JPY"),
     shareInputs([[1], [1, -1000]]),
-    0,
+    "JPY",
     payer,
   );
   assert.deepEqual(shareValues(invalid), [1000, 0]);
@@ -326,9 +374,9 @@ await test("share rounding sums to the total and favors the payer on ties", () =
   assert.deepEqual(
     shareValues(
       calculateShareAmounts(
-        D.create(100, 0),
+        M.create("100", "JPY"),
         shareInputs([[1], [1], [1]]),
-        0,
+        "JPY",
         third,
       ),
     ),
@@ -336,21 +384,29 @@ await test("share rounding sums to the total and favors the payer on ties", () =
   );
   for (const fractions of [0, 2]) {
     for (let units = 10; units <= 200; units++) {
-      const total = D.create(units / 10 ** fractions, fractions);
+      const total = M.round(
+        String(units / 10 ** fractions),
+        fractions === 0 ? "JPY" : "EUR",
+      );
       for (const selected of [
         shareInputs([[1], [2], [0.5]], fractions),
         shareInputs([[1], [1, -0.03], [1], [3, 0.07]], fractions),
       ]) {
-        const result = calculateShareAmounts(total, selected, fractions, payer);
-        assert.equal(result.difference.value, 0);
+        const result = calculateShareAmounts(
+          total,
+          selected,
+          fractions === 0 ? "JPY" : "EUR",
+          payer,
+        );
+        assert.equal(Number(M.toString(result.difference)), 0);
       }
     }
   }
 });
 
 await test("share inputs parse and step without going negative", () => {
-  assert.equal(parseShares(""), 0);
-  assert.equal(parseShares("1,5"), 1.5);
+  assert.equal(parseShares(""), "0");
+  assert.equal(parseShares("1,5"), "1.5");
   assert.equal(parseShares("-1"), undefined);
   assert.equal(parseShares("abc"), undefined);
   assert.equal(stepShares("0", 1), "1");
@@ -358,4 +414,25 @@ await test("share inputs parse and step without going negative", () => {
   assert.equal(stepShares("0.5", -1), "0");
   assert.equal(stepShares("0", -1), "0");
   assert.equal(stepShares("abc", 1), "1");
+});
+
+await test("allocation without automatic participants or shares reports the remainder", () => {
+  const explicit = calculateExpenseAmounts(
+    M.create("10", "EUR"),
+    new Map([[payer, M.create("4", "EUR")]]),
+    "EUR",
+    payer,
+  );
+  assert.equal(M.toString(explicit.difference), "6.00");
+  const shared = calculateShareAmounts(
+    M.create("10", "EUR"),
+    shareInputs([[0], [0, 1]], 2),
+    "EUR",
+    payer,
+  );
+  assert.equal(M.toString(shared.difference), "9.00");
+});
+
+await test("share stepping keeps a valid value when the next step exceeds the range", () => {
+  assert.equal(stepShares("1000000", 1), "1000000");
 });

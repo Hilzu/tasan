@@ -8,7 +8,7 @@ import {
   PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
-import * as D from "@tasan/common/decimal";
+import * as Rate from "@tasan/common/exchange-rate";
 import {
   asOperationID,
   genExpenseID,
@@ -16,6 +16,7 @@ import {
   genSplitID,
   genUserID,
 } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 
 process.env.TABLE_NAME = "TestTable";
 const {
@@ -39,9 +40,9 @@ const expense = {
   createdBy: actorID,
   name: "Dinner",
   currency: "JPY" as const,
-  amount: D.create(1000, 0),
+  amount: M.create("1000", "JPY"),
   payer: actorID,
-  participants: new Map([[actorID, D.create(1000, 0)]]),
+  participants: new Map([[actorID, M.create("1000", "JPY")]]),
 };
 const operation = genOperationID;
 const low = asOperationID("op_00000000000000000000000001");
@@ -125,7 +126,6 @@ const storage = (missEventualReads = false) => {
     },
   };
 };
-
 await test("concurrent and sequential creation retries insert only one baseline", async () => {
   const db = storage();
   assert.deepEqual(
@@ -385,7 +385,10 @@ await test("operation IDs cannot be reused by another actor or action", async ()
 
 await test("returning to the split currency removes the previous rate only from the new snapshot", async () => {
   const db = storage();
-  await createSplitExpense({ ...expense, conversionRate: 0.006 });
+  await createSplitExpense({
+    ...expense,
+    conversionRate: Rate.create("0.006"),
+  });
   await editSplitExpense(
     expense.splitID,
     expense.id,
@@ -395,6 +398,8 @@ await test("returning to the split currency removes the previous rate only from 
       Promise.resolve({
         ...expense,
         currency: "EUR",
+        amount: M.create("1000", "EUR"),
+        participants: new Map([[actorID, M.create("1000", "EUR")]]),
         conversionRate: undefined,
       }),
   );
@@ -510,11 +515,11 @@ await test("decimal amounts and participant maps round-trip in currencies with f
   const value = {
     ...expense,
     currency: "EUR" as const,
-    amount: D.create(12.34, 2),
-    conversionRate: 163.25,
+    amount: M.create("12.34", "EUR"),
+    conversionRate: Rate.create("163.25"),
     participants: new Map([
-      [actorID, D.create(6.17, 2)],
-      [otherUser, D.create(6.17, 2)],
+      [actorID, M.create("6.17", "EUR")],
+      [otherUser, M.create("6.17", "EUR")],
     ]),
   };
   await createSplitExpense(value);

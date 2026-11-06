@@ -12,9 +12,9 @@ import { zfd } from "zod-form-data";
 const expenseFields = {
   expenseName: zfd.text(),
   currency: zfd.text(currencySymbolSchema),
-  amount: zfd.numeric(),
+  amount: zfd.text(),
   payer: zfd.text(userIDSchema),
-  participants: z.record(userIDSchema, zfd.numeric()).default({}),
+  participants: z.record(userIDSchema, zfd.text()).default({}),
 };
 export const newExpenseFormSchema = zfd.formData({
   expenseID: zfd.text(expenseIDSchema),

@@ -1,6 +1,5 @@
 import type { CurrencySymbol } from "@tasan/common/currency";
 import { fetchCurrencyConversionRate } from "@tasan/common/currency-convert";
-import * as D from "@tasan/common/decimal";
 import {
   asExpenseID,
   asOperationID,
@@ -10,6 +9,7 @@ import {
   type UserID,
 } from "@tasan/common/id";
 import { getLogger } from "@tasan/common/logging";
+import type * as M from "@tasan/common/money";
 import {
   createSplitExpense,
   deleteSplitExpense,
@@ -22,6 +22,9 @@ import {
   findSplitUsers,
   getSplitExpense,
 } from "@tasan/data";
+
+import { convertExpense } from "~/domain/convert-expense";
+import { amountLimitError } from "~/domain/expense-limits";
 
 import { ApplicationError } from "./errors";
 import { logAction } from "./logging";
@@ -37,10 +40,23 @@ export interface NewExpense {
   id: ExpenseID;
   name: string;
   currency: CurrencySymbol;
-  amount: number;
+  amount: string;
   payer: UserID;
-  participants: Map<UserID, number>;
+  participants: Map<UserID, string>;
 }
+
+// Converted with the same allocation and tie policy as the split's displayed
+// amounts, new spending must also stay within the limit in the split currency.
+const validateConversion = (
+  expense: Parameters<typeof convertExpense>[0],
+  currency: CurrencySymbol,
+) => {
+  if (expense.currency === currency) return;
+  const error = amountLimitError(convertExpense(expense, currency).amount, {
+    converted: true,
+  });
+  if (error) invalidField("amount", error);
+};
 
 const createEntry = async (
   actorID: UserID,
@@ -88,23 +104,22 @@ const createEntry = async (
         input.currency === split.currency ?
           undefined
         : await fetchCurrencyConversionRate(input.currency, split.currency);
-      if (
-        conversionRate !== undefined &&
-        (!Number.isFinite(conversionRate) || conversionRate <= 0)
-      )
-        throw new Error("Invalid exchange rate from currency provider");
       getLogger().appendKeys({ conversionRate });
+      const changes = {
+        name: input.name,
+        currency: input.currency,
+        amount,
+        payer: input.payer,
+        participants,
+        conversionRate,
+      };
+      validateConversion(changes, split.currency);
       try {
         return await createSplitExpense({
+          ...changes,
           kind,
           id: input.id,
           splitID,
-          name: input.name,
-          currency: input.currency,
-          amount,
-          payer: input.payer,
-          participants,
-          conversionRate,
           createdBy: actorID,
         });
       } catch (error) {
@@ -125,7 +140,7 @@ export const createExpense = (
 export const recordRepayment = async (
   actorID: UserID,
   splitID: SplitID,
-  input: { id: ExpenseID; payer: UserID; recipient: UserID; amount: number },
+  input: { id: ExpenseID; payer: UserID; recipient: UserID; amount: string },
 ) => {
   await requireMembership(actorID, splitID);
   const split = await requireSplit(splitID);
@@ -160,17 +175,17 @@ const validateExpense = (
     invalidField("payer", "Payer must be in the split.");
   if (input.participants.size === 0)
     invalidField("participants", "Participants are required.");
-  const participants = new Map<UserID, D.Decimal>();
+  const participants = new Map<UserID, M.Money>();
   for (const [userID, value] of input.participants) {
     if (!members.has(userID))
       invalidField("participants", "Participants must be in the split.");
     participants.set(userID, toAmount(value, input.currency, "participants"));
   }
   const total = [...participants.values()].reduce(
-    (sum, share) => D.add(sum, share),
-    D.create(0, amount.fractions),
+    (sum, share) => sum + share.minorUnits,
+    0n,
   );
-  if (!D.equals(total, amount))
+  if (total !== amount.minorUnits)
     invalidField("participants", "Total amount must match the expense amount.");
   return { amount, participants };
 };
@@ -263,13 +278,8 @@ export const editExpense = async (
                   input.currency,
                   split.currency,
                 );
-            if (
-              conversionRate !== undefined &&
-              (!Number.isFinite(conversionRate) || conversionRate <= 0)
-            )
-              throw new Error("Invalid exchange rate from currency provider");
             getLogger().appendKeys({ conversionRate });
-            return {
+            const changes = {
               name: input.name,
               currency: input.currency,
               amount,
@@ -277,6 +287,8 @@ export const editExpense = async (
               payer: input.payer,
               conversionRate,
             };
+            validateConversion(changes, split.currency);
+            return changes;
           },
         );
       } catch (error) {

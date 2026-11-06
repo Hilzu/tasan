@@ -1,18 +1,21 @@
-import type { CurrencySymbol } from "@tasan/common/currency";
-import type { Decimal } from "@tasan/common/decimal";
+import { currencies } from "@tasan/common/currency";
+import { formatDecimal, type Money, toString } from "@tasan/common/money";
 
 export function formatAmount(
-  amount: Decimal,
-  currency: CurrencySymbol,
+  amount: Money,
   language?: string,
   signDisplay: Intl.NumberFormatOptions["signDisplay"] = "auto",
 ): string {
-  return new Intl.NumberFormat(language, {
-    style: "currency",
-    currency,
-    currencyDisplay: "code",
-    minimumFractionDigits: amount.fractions,
-    maximumFractionDigits: amount.fractions,
-    signDisplay,
-  }).format(amount.value);
+  const { fractions } = currencies[amount.currency];
+  return formatDecimal(
+    toString(amount),
+    new Intl.NumberFormat(language, {
+      style: "currency",
+      currency: amount.currency,
+      currencyDisplay: "code",
+      minimumFractionDigits: fractions,
+      maximumFractionDigits: fractions,
+      signDisplay,
+    }),
+  );
 }

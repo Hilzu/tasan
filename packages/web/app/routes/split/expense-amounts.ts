@@ -1,64 +1,73 @@
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
 import type { UserID } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 
-// Undefined means automatic; specific amounts must be positive.
-export const calculateExpenseAmounts = (
-  total: D.Decimal | undefined,
-  inputs: ReadonlyMap<UserID, D.Decimal | undefined>,
-  fractions: number,
-  payer: UserID,
+import { amountLimitError } from "~/domain/expense-limits";
+
+const allocationResult = (
+  amount: M.Money,
+  participants: Map<UserID, M.Money>,
 ) => {
-  const zero = D.create(0, fractions);
-  const participants = new Map(
-    [...inputs].map(([id, value]) => [
-      id,
-      value ? D.create(value, fractions) : zero,
-    ]),
+  const zero = M.create("0", amount.currency);
+  const difference = M.sub(
+    amount,
+    [...participants.values()].reduce(M.add, zero),
   );
-  const explicitTotal = [...participants.values()].reduce(
-    (sum, value) => D.add(sum, value),
-    zero,
-  );
-  const amount = total ? D.create(total, fractions) : explicitTotal;
-  const automatic = [...inputs.keys()].filter(
-    (id) => inputs.get(id) === undefined,
-  );
-  const remaining = D.sub(amount, explicitTotal);
-  // Distribute in minor units so amounts never become negative through rounding.
-  const units = Math.round(Math.max(0, remaining.value) * 10 ** fractions);
-  const perPersonUnits = Math.floor(units / (automatic.length || 1));
-  let extraUnits = units - perPersonUnits * automatic.length;
-  // Give the payer the first rounding unit when they have an automatic amount.
-  const order =
-    automatic.includes(payer) ?
-      [payer, ...automatic.filter((id) => id !== payer)]
-    : automatic;
-  for (const id of order) {
-    const extra = extraUnits > 0 ? 1 : 0;
-    extraUnits -= extra;
-    participants.set(
-      id,
-      D.create((perPersonUnits + extra) / 10 ** fractions, fractions),
-    );
-  }
-  const participantTotal = [...participants.values()].reduce(
-    (sum, value) => D.add(sum, value),
-    zero,
-  );
-  const difference = D.sub(amount, participantTotal);
   const invalidAmounts = new Set(
-    [...participants].filter(([, value]) => !D.gt(value, 0)).map(([id]) => id),
+    [...participants].filter(([, value]) => !M.gt(value, 0)).map(([id]) => id),
   );
+  // Reported on the total, separately from allocation problems.
+  const limitError = amountLimitError(amount);
   return {
+    limitError,
     amount,
     participants,
     invalidAmounts,
     difference,
     valid:
       participants.size > 0 &&
-      D.gt(amount, 0) &&
-      D.equals(difference, 0) &&
-      invalidAmounts.size === 0,
+      M.gt(amount, 0) &&
+      M.equals(difference, 0) &&
+      invalidAmounts.size === 0 &&
+      limitError === undefined,
+  };
+};
+
+// Undefined means automatic; specific amounts must be positive.
+export const calculateExpenseAmounts = (
+  total: M.Money | undefined,
+  inputs: ReadonlyMap<UserID, M.Money | undefined>,
+  currency: CurrencySymbol,
+  payer: UserID,
+) => {
+  const zero = M.create("0", currency);
+  if (total) M.assertCurrency(total, currency);
+  const participants = new Map(
+    [...inputs].map(([id, value]) => {
+      if (value) M.assertCurrency(value, currency);
+      return [id, value ?? zero] as const;
+    }),
+  );
+  const explicitTotal = [...participants.values()].reduce(M.add, zero);
+  const amount = total ?? explicitTotal;
+  const automatic = [...inputs.keys()].filter(
+    (id) => inputs.get(id) === undefined,
+  );
+  const remaining = M.sub(amount, explicitTotal);
+  // Preserve the form's payer-then-input-order tie policy.
+  const order =
+    automatic.includes(payer) ?
+      [payer, ...automatic.filter((id) => id !== payer)]
+    : automatic;
+  if (order.length > 0) {
+    const allocated = M.allocate(
+      M.gt(remaining, 0) ? remaining : zero,
+      order.map(() => "1"),
+    );
+    order.forEach((id, index) => participants.set(id, allocated[index]));
+  }
+  return {
+    ...allocationResult(amount, participants),
     hasAmounts:
       total !== undefined ||
       [...inputs.values()].some((value) => value !== undefined),
@@ -66,111 +75,75 @@ export const calculateExpenseAmounts = (
 };
 
 export interface ShareInput {
-  // Undefined means the shares input is invalid.
-  shares: number | undefined;
-  adjustment: D.Decimal | undefined;
+  shares: string | undefined;
+  adjustment: M.Money | undefined;
 }
 
-// Splits what remains of the total after adjustments in proportion to shares.
-// Adjustments may be negative, so someone can pay less than an equal share.
+// Apply signed adjustments, then allocate the remainder by exact decimal weights.
 export const calculateShareAmounts = (
-  total: D.Decimal | undefined,
+  total: M.Money | undefined,
   inputs: ReadonlyMap<UserID, ShareInput>,
-  fractions: number,
+  currency: CurrencySymbol,
   payer: UserID,
 ) => {
-  const scale = 10 ** fractions;
-  const toUnits = (value: D.Decimal | undefined) =>
-    value ? Math.round(value.value * scale) : 0;
-  const zero = D.create(0, fractions);
-  const amount = total ? D.create(total, fractions) : zero;
+  const zero = M.create("0", currency);
+  const amount = total ?? zero;
+  M.assertCurrency(amount, currency);
   const invalidShares = new Set(
     [...inputs]
-      .filter(([, { shares }]) => shares === undefined || !(shares >= 0))
+      .filter(
+        ([, { shares }]) =>
+          shares === undefined || parseShares(shares) === undefined,
+      )
       .map(([id]) => id),
   );
-  const shares = new Map(
-    [...inputs].map(([id, input]) => [
-      id,
-      invalidShares.has(id) ? 0 : (input.shares ?? 0),
-    ]),
+  const adjustments = new Map(
+    [...inputs].map(([id, { adjustment }]) => {
+      if (adjustment) M.assertCurrency(adjustment, currency);
+      return [id, adjustment ?? zero] as const;
+    }),
   );
-  const totalShares = [...shares.values()].reduce((sum, n) => sum + n, 0);
-  const adjustmentUnits = [...inputs.values()].reduce(
-    (sum, { adjustment }) => sum + toUnits(adjustment),
-    0,
+  const base = M.sub(amount, [...adjustments.values()].reduce(M.add, zero));
+  const order = [...inputs.keys()].sort(
+    (a, b) => Number(b === payer) - Number(a === payer),
   );
-  const baseUnits = toUnits(amount) - adjustmentUnits;
-  // Largest remainder in minor units keeps the sum exact; the payer wins ties.
-  const exact = new Map(
-    [...shares].map(([id, n]) => [
-      id,
-      totalShares > 0 ? (baseUnits * n) / totalShares : 0,
-    ]),
+  const weights = order.map((id) =>
+    invalidShares.has(id) ? "0" : (
+      (parseShares(inputs.get(id)?.shares ?? "0") ?? "0")
+    ),
   );
-  const shareUnits = new Map(
-    [...exact].map(([id, value]) => [id, Math.floor(value + 1e-9)]),
-  );
-  let extraUnits =
-    totalShares > 0 ?
-      baseUnits - [...shareUnits.values()].reduce((sum, n) => sum + n, 0)
-    : 0;
-  const ids = [...inputs.keys()];
-  const order = [...ids]
-    .filter((id) => (shares.get(id) ?? 0) > 0)
-    .sort(
-      (a, b) =>
-        (exact.get(b) ?? 0) -
-          (shareUnits.get(b) ?? 0) -
-          ((exact.get(a) ?? 0) - (shareUnits.get(a) ?? 0)) ||
-        Number(b === payer) - Number(a === payer) ||
-        ids.indexOf(a) - ids.indexOf(b),
-    );
-  for (const id of order) {
-    if (extraUnits <= 0) break;
-    shareUnits.set(id, (shareUnits.get(id) ?? 0) + 1);
-    extraUnits--;
-  }
+  // Without shares nothing is allocated; the difference reports the remainder.
+  const allocated =
+    weights.every((weight) => weight === "0") ?
+      weights.map(() => zero)
+    : M.allocate(base, weights);
+  const shares = new Map(order.map((id, index) => [id, allocated[index]]));
   const participants = new Map(
-    [...inputs].map(([id, { adjustment }]) => [
+    [...inputs.keys()].map((id) => [
       id,
-      D.create(
-        ((shareUnits.get(id) ?? 0) + toUnits(adjustment)) / scale,
-        fractions,
-      ),
+      M.add(shares.get(id) ?? zero, adjustments.get(id) ?? zero),
     ]),
   );
-  const participantTotal = [...participants.values()].reduce(
-    (sum, value) => D.add(sum, value),
-    zero,
-  );
-  const difference = D.sub(amount, participantTotal);
-  const invalidAmounts = new Set(
-    [...participants].filter(([, value]) => !D.gt(value, 0)).map(([id]) => id),
-  );
+  const result = allocationResult(amount, participants);
   return {
-    amount,
-    participants,
+    ...result,
     invalidShares,
-    invalidAmounts,
-    difference,
-    valid:
-      total !== undefined &&
-      participants.size > 0 &&
-      D.gt(amount, 0) &&
-      D.equals(difference, 0) &&
-      invalidShares.size === 0 &&
-      invalidAmounts.size === 0,
+    valid: total !== undefined && result.valid && invalidShares.size === 0,
   };
 };
 
-// Blank shares count as zero; undefined marks unparseable or negative input.
-export const parseShares = (text: string) => {
-  const shares = Number(text.trim().replace(",", "."));
-  return Number.isFinite(shares) && shares >= 0 ? shares : undefined;
+export const parseShares = (text: string): string | undefined => {
+  try {
+    return M.weight(text);
+  } catch {
+    return undefined;
+  }
 };
-
-// Steps from the parsed value, treating invalid input as zero and never going
-// below zero; rounding drops float noise such as 1.1000000000000001.
-export const stepShares = (text: string, delta: number) =>
-  String(Math.max(0, Number(((parseShares(text) ?? 0) + delta).toFixed(6))));
+export const stepShares = (text: string, delta: number): string => {
+  const current = parseShares(text) ?? "0";
+  try {
+    return M.stepWeight(current, delta);
+  } catch {
+    return current;
+  }
+};

@@ -8,15 +8,17 @@
     "./compare": "./dist/compare.js",
     "./currency": "./dist/currency.js",
     "./currency-convert": "./dist/currency-convert.js",
-    "./decimal": "./dist/decimal.js",
     "./graph": "./dist/graph.js",
     "./id": "./dist/id.js",
     "./logging": "./dist/logging.js",
     "./tracing": "./dist/tracing.js",
-    "./validation": "./dist/validation.js"
+    "./validation": "./dist/validation.js",
+    "./money": "./dist/money.js",
+    "./exchange-rate": "./dist/exchange-rate.js"
   },
   "scripts": {
     "build": "tsc",
+    "test": "node --import tsx --test 'src/**/*.test.ts'",
     "clean": "rm -rf dist"
   },
   "engines": {
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "tsx": "^4.22.4",
     "typescript": "catalog:"
   },
   "dependencies": {

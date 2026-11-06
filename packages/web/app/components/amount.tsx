@@ -1,5 +1,4 @@
-import type { CurrencySymbol } from "@tasan/common/currency";
-import type * as D from "@tasan/common/decimal";
+import type * as M from "@tasan/common/money";
 
 import { useLanguage } from "~/context";
 import { formatAmount } from "~/domain/format-amount";
@@ -7,45 +6,36 @@ import { formatAmount } from "~/domain/format-amount";
 export function useFormatAmount() {
   const language = useLanguage();
   return (
-    amount: D.Decimal,
-    currency: CurrencySymbol,
+    amount: M.Money,
     signDisplay?: Intl.NumberFormatOptions["signDisplay"],
-  ) => formatAmount(amount, currency, language, signDisplay);
+  ) => formatAmount(amount, language, signDisplay);
 }
 
-interface AmountRenderProps {
-  amount: D.Decimal;
-  currency: CurrencySymbol;
+interface MoneyRenderProps {
+  amount: M.Money;
   signDisplay?: Intl.NumberFormatOptions["signDisplay"];
 }
 
-export function AmountRender({
-  amount,
-  currency,
-  signDisplay,
-}: AmountRenderProps) {
+export function MoneyRender({ amount, signDisplay }: MoneyRenderProps) {
   const format = useFormatAmount();
-  return <span>{format(amount, currency, signDisplay)}</span>;
+  return <span>{format(amount, signDisplay)}</span>;
 }
 
 export function AmountWithConversion({
   amount,
-  currency,
   convertedAmount,
-  convertedCurrency,
-}: Pick<AmountRenderProps, "amount" | "currency"> & {
-  convertedAmount?: D.Decimal;
-  convertedCurrency: CurrencySymbol;
+}: {
+  amount: M.Money;
+  convertedAmount?: M.Money;
 }) {
   return (
     <>
-      <AmountRender amount={amount} currency={currency} />
+      <MoneyRender amount={amount} />
       {convertedAmount && (
         <>
           {" "}
           (
-          <AmountRender amount={convertedAmount} currency={convertedCurrency} />
-          )
+          <MoneyRender amount={convertedAmount} />)
         </>
       )}
     </>

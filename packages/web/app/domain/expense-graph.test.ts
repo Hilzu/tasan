@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { currencies } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import * as Rate from "@tasan/common/exchange-rate";
 import { genExpenseID, genSplitID, type UserID } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 import type { SplitExpense } from "@tasan/data";
 
 import {
@@ -20,16 +20,13 @@ const numberGen = function* () {
     yield i++;
   }
 };
-
 const genTestUserID = (tag: string) => `usr_${tag}` as UserID;
-
 interface CreateTestExpenseOpts {
   payer: UserID;
-  amount: D.Decimal;
-  participants: Record<UserID, D.Decimal>;
-  conversionRate?: number;
+  amount: M.Money;
+  participants: Record<UserID, M.Money>;
+  conversionRate?: Rate.ExchangeRate;
 }
-
 const createTestExpense = ({
   payer,
   amount,
@@ -46,35 +43,29 @@ const createTestExpense = ({
     currency: "EUR",
     conversionRate,
     payer: payer,
-    participants: new Map(Object.entries(participants)) as Map<
-      UserID,
-      D.Decimal
-    >,
+    participants: new Map(Object.entries(participants)) as Map<UserID, M.Money>,
   } satisfies SplitExpense;
 };
-
 await test("createGraphWithCurrency", async (t) => {
   await t.test("creates a graph with no expenses", () => {
     const graph = createGraphWithCurrency("EUR", []);
     assert.deepEqual(graph, new Map());
   });
-
   await t.test("creates a graph with one expense", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
     const graph = createGraphWithCurrency("EUR", [
       createTestExpense({
         payer: userA,
-        amount: D.create(10),
-        participants: { [userB]: D.create(10) },
+        amount: M.create("10", "EUR"),
+        participants: { [userB]: M.create("10", "EUR") },
       }),
     ]);
     assert.deepEqual(
       graph,
-      new Map([[userB, [{ to: userA, amount: D.create(10) }]]]),
+      new Map([[userB, [{ to: userA, amount: M.create("10", "EUR") }]]]),
     );
   });
-
   await t.test("creates a graph with several expenses", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
@@ -82,48 +73,52 @@ await test("createGraphWithCurrency", async (t) => {
     const graph = createGraphWithCurrency("EUR", [
       createTestExpense({
         payer: userA,
-        amount: D.create(12),
-        participants: { [userB]: D.create(4), [userC]: D.create(8) },
+        amount: M.create("12", "EUR"),
+        participants: {
+          [userB]: M.create("4", "EUR"),
+          [userC]: M.create("8", "EUR"),
+        },
       }),
       createTestExpense({
         payer: userB,
-        amount: D.create(15),
-        participants: { [userA]: D.create(10), [userC]: D.create(5) },
+        amount: M.create("15", "EUR"),
+        participants: {
+          [userA]: M.create("10", "EUR"),
+          [userC]: M.create("5", "EUR"),
+        },
       }),
     ]);
     assert.deepEqual(
       graph,
       new Map([
-        [userA, [{ to: userB, amount: D.create(10) }]],
-        [userB, [{ to: userA, amount: D.create(4) }]],
+        [userA, [{ to: userB, amount: M.create("10", "EUR") }]],
+        [userB, [{ to: userA, amount: M.create("4", "EUR") }]],
         [
           userC,
           [
-            { to: userA, amount: D.create(8) },
-            { to: userB, amount: D.create(5) },
+            { to: userA, amount: M.create("8", "EUR") },
+            { to: userB, amount: M.create("5", "EUR") },
           ],
         ],
       ]),
     );
   });
-
   await t.test("creates a graph with currency conversion", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
     const graph = createGraphWithCurrency("USD", [
       createTestExpense({
         payer: userA,
-        amount: D.create(10),
-        participants: { [userB]: D.create(10) },
-        conversionRate: 1.666666,
+        amount: M.create("10", "EUR"),
+        participants: { [userB]: M.create("10", "EUR") },
+        conversionRate: Rate.create("1.666666"),
       }),
     ]);
     assert.deepEqual(
       graph,
-      new Map([[userB, [{ to: userA, amount: D.create(16.67) }]]]),
+      new Map([[userB, [{ to: userA, amount: M.create("16.67", "USD") }]]]),
     );
   });
-
   await t.test(
     "converts foreign fractions before rounding to home currency",
     () => {
@@ -139,18 +134,17 @@ await test("createGraphWithCurrency", async (t) => {
       ] as const) {
         const expense = createTestExpense({
           payer,
-          amount: D.create(source),
-          participants: { [debtor]: D.create(source) },
-          conversionRate,
+          amount: M.round(String(source), "EUR"),
+          participants: { [debtor]: M.round(String(source), "EUR") },
+          conversionRate: Rate.create(String(conversionRate)),
         });
         const before = structuredClone(expense);
-        const amount = D.create(expected, currencies[currency].fractions);
+        const amount = M.round(String(expected), currency);
         const expectedGraph = new Map([[debtor, [{ to: payer, amount }]]]);
         assert.deepEqual(
           createGraphWithCurrency(currency, [expense]),
           expectedGraph,
         );
-
         const graph = calculateExpenseGraph({
           id: expense.splitID,
           name: "Foreign expense",
@@ -167,7 +161,7 @@ await test("createGraphWithCurrency", async (t) => {
           currency,
         )) {
           const summary = calculateExpenseSummary([expense], currency, userID);
-          assert.deepEqual(balance, D.sub(summary.paid, summary.share));
+          assert.deepEqual(balance, M.sub(summary.paid, summary.share));
         }
         assert.deepEqual(expense, before);
       }
@@ -179,35 +173,31 @@ await test("simplifyDebts", async (t) => {
   await t.test("cancels mutual debts", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
-
     const graph = new Map([
-      [userA, [{ to: userB, amount: D.create(10) }]],
-      [userB, [{ to: userA, amount: D.create(5) }]],
+      [userA, [{ to: userB, amount: M.create("10", "EUR") }]],
+      [userB, [{ to: userA, amount: M.create("5", "EUR") }]],
     ]);
     const newGraph = simplifyDebts(graph, "EUR");
     assert.deepEqual(
       newGraph,
-      new Map([[userA, [{ to: userB, amount: D.create(5) }]]]),
+      new Map([[userA, [{ to: userB, amount: M.create("5", "EUR") }]]]),
     );
   });
-
   await t.test("cancels mutual debts with multiple participants", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
     const userC = genTestUserID("c");
-
     const graph = new Map([
       [
         userA,
         [
-          { to: userB, amount: D.create(10) },
-          { to: userC, amount: D.create(5) },
+          { to: userB, amount: M.create("10", "EUR") },
+          { to: userC, amount: M.create("5", "EUR") },
         ],
       ],
-      [userB, [{ to: userA, amount: D.create(5) }]],
-      [userC, [{ to: userA, amount: D.create(2) }]],
+      [userB, [{ to: userA, amount: M.create("5", "EUR") }]],
+      [userC, [{ to: userA, amount: M.create("2", "EUR") }]],
     ]);
-
     const newGraph = simplifyDebts(graph, "EUR");
     assert.deepEqual(
       newGraph,
@@ -215,8 +205,8 @@ await test("simplifyDebts", async (t) => {
         [
           userA,
           [
-            { to: userB, amount: D.create(5) },
-            { to: userC, amount: D.create(3) },
+            { to: userB, amount: M.create("5", "EUR") },
+            { to: userC, amount: M.create("3", "EUR") },
           ],
         ],
       ]),
@@ -229,33 +219,32 @@ await test("calculateBalances", async (t) => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
     assert.deepEqual(calculateBalances(new Map(), [userB, userA], "EUR"), [
-      { userID: userA, balance: D.create(0) },
-      { userID: userB, balance: D.create(0) },
+      { userID: userA, balance: M.create("0", "EUR") },
+      { userID: userB, balance: M.create("0", "EUR") },
     ]);
   });
-
   await t.test("sorts the user most in the red first", () => {
     const userA = genTestUserID("a");
     const userB = genTestUserID("b");
     const userC = genTestUserID("c");
     const userD = genTestUserID("d");
     const graph = new Map([
-      [userA, [{ to: userC, amount: D.create(5) }]],
+      [userA, [{ to: userC, amount: M.create("5", "EUR") }]],
       [
         userB,
         [
-          { to: userC, amount: D.create(10) },
-          { to: userA, amount: D.create(2) },
+          { to: userC, amount: M.create("10", "EUR") },
+          { to: userA, amount: M.create("2", "EUR") },
         ],
       ],
     ]);
     assert.deepEqual(
       calculateBalances(graph, [userA, userB, userC, userD], "EUR"),
       [
-        { userID: userB, balance: D.create(-12) },
-        { userID: userA, balance: D.create(-3) },
-        { userID: userD, balance: D.create(0) },
-        { userID: userC, balance: D.create(15) },
+        { userID: userB, balance: M.create("-12", "EUR") },
+        { userID: userA, balance: M.create("-3", "EUR") },
+        { userID: userD, balance: M.create("0", "EUR") },
+        { userID: userC, balance: M.create("15", "EUR") },
       ],
     );
   });
@@ -267,7 +256,6 @@ await test("simplified repayment plans", async (t) => {
   const c = genTestUserID("c");
   const d = genTestUserID("d");
   const users = [a, b, c, d];
-
   for (const { name, currency, edges, expected } of [
     { name: "empty split", currency: "EUR", edges: [], expected: [] },
     {
@@ -367,18 +355,27 @@ await test("simplified repayment plans", async (t) => {
     expected: [UserID, UserID, number][];
   }[]) {
     await t.test(name, () => {
-      const graph = new Map<UserID, { to: UserID; amount: D.Decimal }[]>();
+      const graph = new Map<
+        UserID,
+        {
+          to: UserID;
+          amount: M.Money;
+        }[]
+      >();
       const fractions = currency === "JPY" ? 0 : 2;
       for (const [from, to, amount] of edges) {
         graph.set(from, [
           ...(graph.get(from) ?? []),
-          { to, amount: D.create(amount, fractions) },
+          {
+            to,
+            amount: M.round(String(amount), fractions === 0 ? "JPY" : "EUR"),
+          },
         ]);
       }
       const before = structuredClone(graph);
       const result = simplifyDebts(graph, currency);
       const payments = [...result].flatMap(([from, debts]) =>
-        debts.map(({ to, amount }) => [from, to, amount.value]),
+        debts.map(({ to, amount }) => [from, to, Number(M.toString(amount))]),
       );
       const normalize = (items: unknown[][]) =>
         items.sort((x, y) =>
@@ -402,25 +399,24 @@ await test("simplified repayment plans", async (t) => {
         result,
       );
       const active = calculateBalances(graph, users, currency).filter(
-        ({ balance }) => !D.equals(balance, 0),
+        ({ balance }) => !M.equals(balance, 0),
       ).length;
       assert.ok(payments.length <= Math.max(0, active - 1));
     });
   }
-
   await t.test("converted expenses use simplified repayments", () => {
     const expenses = [
       createTestExpense({
         payer: b,
-        amount: D.create(10),
-        participants: { [a]: D.create(10) },
-        conversionRate: 1.666666,
+        amount: M.create("10", "EUR"),
+        participants: { [a]: M.create("10", "EUR") },
+        conversionRate: Rate.create("1.666666"),
       }),
       createTestExpense({
         payer: c,
-        amount: D.create(10),
-        participants: { [b]: D.create(10) },
-        conversionRate: 1.666666,
+        amount: M.create("10", "EUR"),
+        participants: { [b]: M.create("10", "EUR") },
+        conversionRate: Rate.create("1.666666"),
       }),
     ];
     assert.deepEqual(
@@ -433,7 +429,7 @@ await test("simplified repayment plans", async (t) => {
         currency: "EUR",
         expenses,
       }),
-      new Map([[a, [{ to: c, amount: D.create(16.67) }]]]),
+      new Map([[a, [{ to: c, amount: M.create("16.67", "EUR") }]]]),
     );
   });
 });

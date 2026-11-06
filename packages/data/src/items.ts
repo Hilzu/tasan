@@ -1,4 +1,5 @@
 // Internal persistence schemas. Do not export these through the package entry point.
+import * as Rate from "@tasan/common/exchange-rate";
 import {
   asExpenseID,
   asInviteID,
@@ -8,6 +9,7 @@ import {
   type ExpenseID,
   type OperationID,
 } from "@tasan/common/id";
+import * as Money from "@tasan/common/money";
 import {
   cognitoIDSchema,
   currencySymbolSchema,
@@ -36,6 +38,21 @@ const expiry = z
   .number()
   .int()
   .refine((value) => Number.isFinite(new Date(value * 1000).getTime()));
+
+// Amounts and rates are plain DynamoDB numbers. Amount and rate limits keep
+// them within 15 significant digits, which JS numbers hold exactly.
+export const moneyFromNumber = (
+  value: number,
+  currency: Money.Money["currency"],
+): Money.Money => Money.create(String(value), currency);
+export const moneyToNumber = (amount: Money.Money): number => {
+  const value = Number(Money.toString(amount));
+  if (!Money.equals(moneyFromNumber(value, amount.currency), amount))
+    throw new RangeError("Amount cannot be stored exactly.");
+  return value;
+};
+export const rateFromNumber = (value: number): Rate.ExchangeRate =>
+  Rate.create(String(value));
 
 export const userItemSchema = z
   .object({
@@ -135,25 +152,44 @@ const expenseFields = z.object({
   createdBy: userIDSchema,
   amount: z.number(),
   currency: currencySymbolSchema,
-  conversionRate: z.number().positive().optional(),
+  conversionRate: z.number().optional(),
   payer: userIDSchema,
   participants: z.record(userIDSchema, z.number()),
   // Legacy baseline soft deletions did not always record deletedBy.
   deletedAt: timestamp.optional(),
   deletedBy: userIDSchema.optional(),
 });
-export const splitExpenseItemSchema = z.union([
-  expenseFields.extend({
-    sk: expenseIDSchema,
-    updatedAt: timestamp.optional(),
-    updatedBy: userIDSchema.optional(),
-  }),
-  expenseFields.extend({
-    sk: operationKeySchema,
-    updatedAt: timestamp,
-    updatedBy: userIDSchema,
-  }),
-]);
+export const splitExpenseItemSchema = z
+  .union([
+    expenseFields.extend({
+      sk: expenseIDSchema,
+      updatedAt: timestamp.optional(),
+      updatedBy: userIDSchema.optional(),
+    }),
+    expenseFields.extend({
+      sk: operationKeySchema,
+      updatedAt: timestamp,
+      updatedBy: userIDSchema,
+    }),
+  ])
+  .superRefine((item, ctx) => {
+    try {
+      const amount = moneyFromNumber(item.amount, item.currency);
+      const participants = Object.values(item.participants).reduce(
+        (sum, value) => sum + moneyFromNumber(value, item.currency).minorUnits,
+        0n,
+      );
+      if (participants !== amount.minorUnits)
+        throw new RangeError("Participants must sum to the amount.");
+      if (item.conversionRate !== undefined)
+        rateFromNumber(item.conversionRate);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Invalid stored monetary amount",
+      });
+    }
+  });
 export type SplitExpenseItem = z.infer<typeof splitExpenseItemSchema>;
 
 export const expenseIDOf = (item: SplitExpenseItem) =>

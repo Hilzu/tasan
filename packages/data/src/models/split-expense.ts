@@ -1,8 +1,8 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { GetCommand, paginateQuery, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
+import type * as Rate from "@tasan/common/exchange-rate";
 import {
   asUserID,
   type ExpenseID,
@@ -10,6 +10,7 @@ import {
   type SplitID,
   type UserID,
 } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
@@ -17,8 +18,11 @@ import { TableName } from "../config.js";
 import {
   expenseIDOf,
   expenseOperationKey,
+  moneyFromNumber,
+  moneyToNumber,
   operationIDOf,
   parseItem,
+  rateFromNumber,
   type SplitExpenseItem,
   splitExpenseItemSchema,
 } from "../items.js";
@@ -28,46 +32,47 @@ export interface SplitExpense {
   id: ExpenseID;
   splitID: SplitID;
   name: string;
-  amount: D.Decimal;
+  amount: M.Money;
   createdBy: UserID;
   createdAt: Date;
   updatedAt?: Date;
   updatedBy?: UserID;
   currency: CurrencySymbol;
-  conversionRate?: number;
+  conversionRate?: Rate.ExchangeRate;
   payer: UserID;
-  participants: Map<UserID, D.Decimal>;
+  participants: Map<UserID, M.Money>;
 }
 
 interface ExpenseReadOptions {
   consistentRead?: boolean;
 }
 
-const fromItem = (item: SplitExpenseItem): SplitExpense => {
-  const fractionDigits = currencies[item.currency].fractions;
-  return {
-    kind: item.kind ?? "expense",
-    id: expenseIDOf(item),
-    splitID: item.pk,
-    updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
-    updatedBy: item.updatedBy,
-    name: item.name,
-    amount: D.create(item.amount, fractionDigits),
-    createdBy: item.createdBy,
-    createdAt: new Date(item.createdAt),
-    currency: item.currency,
-    conversionRate: item.conversionRate,
-    payer: item.payer,
-    participants: new Map(
-      Object.entries(item.participants)
-        .sort(compareByKey)
-        .map(([id, amount]) => [
-          asUserID(id),
-          D.create(amount, fractionDigits),
-        ]),
-    ),
-  };
-};
+// The item schema has already checked amounts, participants, and the rate.
+const fromItem = (item: SplitExpenseItem): SplitExpense => ({
+  kind: item.kind ?? "expense",
+  id: expenseIDOf(item),
+  splitID: item.pk,
+  updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
+  updatedBy: item.updatedBy,
+  name: item.name,
+  amount: moneyFromNumber(item.amount, item.currency),
+  createdBy: item.createdBy,
+  createdAt: new Date(item.createdAt),
+  currency: item.currency,
+  conversionRate:
+    item.conversionRate === undefined ?
+      undefined
+    : rateFromNumber(item.conversionRate),
+  payer: item.payer,
+  participants: new Map(
+    Object.entries(item.participants)
+      .sort(compareByKey)
+      .map(([id, value]) => [
+        asUserID(id),
+        moneyFromNumber(value, item.currency),
+      ]),
+  ),
+});
 
 // A tombstone always wins, regardless of its operation ID or arrival order.
 // Otherwise creation is the baseline and the greatest operation ID wins.
@@ -160,16 +165,27 @@ export type EditSplitExpense = Pick<
   "name" | "amount" | "currency" | "conversionRate" | "payer" | "participants"
 >;
 
-const storedChanges = (expense: EditSplitExpense) => ({
-  name: expense.name,
-  amount: expense.amount.value,
-  currency: expense.currency,
-  conversionRate: expense.conversionRate,
-  payer: expense.payer,
-  participants: Object.fromEntries(
-    [...expense.participants].map(([id, amount]) => [id, amount.value]),
-  ),
-});
+const storedChanges = (expense: EditSplitExpense) => {
+  M.assertCurrency(expense.amount, expense.currency);
+  for (const amount of expense.participants.values())
+    M.assertCurrency(amount, expense.currency);
+  return {
+    name: expense.name,
+    amount: moneyToNumber(expense.amount),
+    currency: expense.currency,
+    conversionRate:
+      expense.conversionRate === undefined ?
+        undefined
+      : Number(expense.conversionRate),
+    payer: expense.payer,
+    participants: Object.fromEntries(
+      [...expense.participants].map(([id, amount]) => [
+        id,
+        moneyToNumber(amount),
+      ]),
+    ),
+  };
+};
 
 const insertItem = (Item: SplitExpenseItem) => {
   return documentClient().send(

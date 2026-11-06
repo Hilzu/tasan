@@ -2,52 +2,46 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
 import type { Graph } from "@tasan/common/graph";
 import type { UserID } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 
 import { calculateBalances, simplifyDebts } from "~/domain/expense-graph";
-
 // Integer accounting is independent of both the production balance calculator
-// and its decimal arithmetic, so the two cannot hide the same rounding error.
-const minorUnits = (amount: D.Decimal, fractions: number) =>
-  BigInt(amount.value.toFixed(fractions).replace(".", ""));
-
-const account = (graph: Graph, users: UserID[], fractions: number) => {
+// and its arithmetic helpers, so the two cannot hide the same accounting error.
+const minorUnits = (amount: M.Money) => amount.minorUnits;
+const account = (graph: Graph, users: UserID[]) => {
   const balances = new Map(users.map((id) => [id, 0n]));
   for (const [from, edges] of graph) {
     for (const { to, amount } of edges) {
-      const units = minorUnits(amount, fractions);
+      const units = minorUnits(amount);
       balances.set(from, (balances.get(from) ?? 0n) - units);
       balances.set(to, (balances.get(to) ?? 0n) + units);
     }
   }
   return balances;
 };
-
 const verify = (graph: Graph, currency: CurrencySymbol) => {
   const fractions = currencies[currency].fractions;
   const original = structuredClone(graph);
-  const expected = account(graph, [], fractions);
+  const expected = account(graph, []);
   const users = [...expected.keys()];
   const result = simplifyDebts(graph, currency);
-  assert.deepEqual(account(result, users, fractions), expected);
+  assert.deepEqual(account(result, users), expected);
   assert.equal(
     [...expected.values()].reduce((sum, value) => sum + value, 0n),
     0n,
   );
-
   for (const candidate of [graph, result]) {
     assert.deepEqual(
       new Map(
         calculateBalances(candidate, users, currency).map(
-          ({ userID, balance }) => [userID, minorUnits(balance, fractions)],
+          ({ userID, balance }) => [userID, minorUnits(balance)],
         ),
       ),
       expected,
     );
   }
-
   const outstanding = new Map(expected);
   let payments = 0;
   for (const [from, edges] of result) {
@@ -57,11 +51,11 @@ const verify = (graph: Graph, currency: CurrencySymbol) => {
       assert.notEqual(from, to);
       assert.ok(!recipients.has(to), "No duplicate payment pairs");
       recipients.add(to);
-      assert.ok(Number.isFinite(amount.value) && amount.value > 0);
-      assert.equal(amount.fractions, fractions);
+      assert.ok(amount.minorUnits > 0n);
+      assert.equal(currencies[amount.currency].fractions, fractions);
       assert.ok((expected.get(from) ?? 0n) < 0n, "Only net debtors pay");
       assert.ok((expected.get(to) ?? 0n) > 0n, "Only net creditors receive");
-      const units = minorUnits(amount, fractions);
+      const units = minorUnits(amount);
       assert.ok(units > 0n);
       outstanding.set(from, (outstanding.get(from) ?? 0n) + units);
       outstanding.set(to, (outstanding.get(to) ?? 0n) - units);
@@ -92,9 +86,7 @@ const verify = (graph: Graph, currency: CurrencySymbol) => {
     "Input order does not affect the plan",
   );
 };
-
 const testUser = (index: number) => `usr_${String(index)}` as UserID;
-
 await test("exhaustive integer accounting for all 3-person graphs with edge weights -2 to 2", () => {
   // Six directed edges, each with five possible weights: 15,625 graphs per
   // precision. Includes mutual debts, cycles, chains, zeroes and signed edges.
@@ -111,7 +103,7 @@ await test("exhaustive integer accounting for all 3-person graphs with edge weig
           const edges = graph.get(testUser(from)) ?? [];
           edges.push({
             to: testUser(to),
-            amount: D.create(units / 10 ** fractions, fractions),
+            amount: M.round(String(units / 10 ** fractions), currency),
           });
           graph.set(testUser(from), edges);
         }
@@ -139,9 +131,9 @@ await test("seeded larger graphs preserve exact balances in every supported curr
         const edges = graph.get(from) ?? [];
         edges.push({
           to,
-          amount: D.create(
-            (random(2_000_001) - 1_000_000) / 10 ** fractions,
-            fractions,
+          amount: M.round(
+            String((random(2000001) - 1000000) / 10 ** fractions),
+            currency,
           ),
         });
         graph.set(from, edges);

@@ -1,7 +1,7 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
-import * as D from "@tasan/common/decimal";
+import type { CurrencySymbol } from "@tasan/common/currency";
 import * as G from "@tasan/common/graph";
 import type { UserID } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 import type { SplitExpense, SplitWithData } from "@tasan/data";
 
 import { convertExpense } from "~/domain/convert-expense";
@@ -15,7 +15,7 @@ export const createGraphWithCurrency = (
     const { payer } = expense;
     for (const [userID, amount] of convertExpense(expense, currency)
       .participants) {
-      if (userID === payer || !D.gt(amount, 0)) continue;
+      if (userID === payer || !M.gt(amount, 0)) continue;
       graph = G.upsertEdge(graph, userID, payer, amount);
     }
   }
@@ -32,7 +32,7 @@ export const calculateExpenseGraph = (split: SplitWithData) => {
 
 export interface Balance {
   userID: UserID;
-  balance: D.Decimal;
+  balance: M.Money;
 }
 
 /**
@@ -44,19 +44,19 @@ export const calculateBalances = (
   userIDs: UserID[],
   currency: CurrencySymbol,
 ): Balance[] => {
-  const zero = D.create(0, currencies[currency].fractions);
-  const balances = new Map<UserID, D.Decimal>(userIDs.map((id) => [id, zero]));
+  const zero = M.create("0", currency);
+  const balances = new Map<UserID, M.Money>(userIDs.map((id) => [id, zero]));
   for (const [from, edges] of graph) {
     for (const { to, amount } of edges) {
-      balances.set(from, D.sub(balances.get(from) ?? zero, amount));
-      balances.set(to, D.add(balances.get(to) ?? zero, amount));
+      balances.set(from, M.sub(balances.get(from) ?? zero, amount));
+      balances.set(to, M.add(balances.get(to) ?? zero, amount));
     }
   }
   return [...balances]
     .map(([userID, balance]) => ({ userID, balance }))
     .sort(
       (a, b) =>
-        a.balance.value - b.balance.value || a.userID.localeCompare(b.userID),
+        M.compare(a.balance, b.balance) || a.userID.localeCompare(b.userID),
     );
 };
 
@@ -72,21 +72,21 @@ export const simplifyDebts = (
 ): G.Graph => {
   const balances = calculateBalances(graph, [], currency);
   const debtors = balances
-    .filter(({ balance }) => balance.value < 0)
-    .map(({ userID, balance }) => ({ userID, balance: D.mul(balance, -1) }));
-  const creditors = balances.filter(({ balance }) => D.gt(balance, 0));
+    .filter(({ balance }) => balance.minorUnits < 0n)
+    .map(({ userID, balance }) => ({ userID, balance: M.negate(balance) }));
+  const creditors = balances.filter(({ balance }) => M.gt(balance, 0));
   const largestFirst = (a: Balance, b: Balance) =>
-    b.balance.value - a.balance.value || a.userID.localeCompare(b.userID);
+    M.compare(b.balance, a.balance) || a.userID.localeCompare(b.userID);
   let repayments = G.create();
 
   while (true) {
     const debtor = debtors.sort(largestFirst).at(0);
     const creditor = creditors.sort(largestFirst).at(0);
     if (!debtor || !creditor) break;
-    if (!D.gt(debtor.balance, 0) || !D.gt(creditor.balance, 0)) break;
+    if (!M.gt(debtor.balance, 0) || !M.gt(creditor.balance, 0)) break;
 
     const amount =
-      D.gt(debtor.balance, creditor.balance) ?
+      M.gt(debtor.balance, creditor.balance) ?
         creditor.balance
       : debtor.balance;
     repayments = G.upsertEdge(
@@ -95,8 +95,8 @@ export const simplifyDebts = (
       creditor.userID,
       amount,
     );
-    debtor.balance = D.sub(debtor.balance, amount);
-    creditor.balance = D.sub(creditor.balance, amount);
+    debtor.balance = M.sub(debtor.balance, amount);
+    creditor.balance = M.sub(creditor.balance, amount);
   }
 
   return repayments;

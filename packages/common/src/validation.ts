@@ -1,7 +1,6 @@
 import { type RefinementCtx, z } from "zod";
 
 import { currencies, type CurrencySymbol } from "./currency.js";
-import * as Decimal from "./decimal.js";
 import { asCognitoUserID, asExpenseID, asOperationID, asUserID } from "./id.js";
 
 export const currencySymbolSchema = z
@@ -10,11 +9,6 @@ export const currencySymbolSchema = z
     (c): c is CurrencySymbol => c in currencies,
     "Invalid currency symbol",
   );
-
-export const decimalSchema = z
-  .number()
-  .positive()
-  .transform((c) => Decimal.create(c));
 
 const validateID =
   <T>(validateFN: (id: string) => T) =>

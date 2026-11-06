@@ -14,7 +14,7 @@ const schema = zfd.formData({
   id: zfd.text(expenseIDSchema),
   payer: zfd.text(userIDSchema),
   recipient: zfd.text(userIDSchema),
-  amount: zfd.numeric(),
+  amount: zfd.text(),
 });
 
 export async function action({ request, params, context }: Route.ActionArgs) {

@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import * as D from "@tasan/common/decimal";
 import { genExpenseID, genSplitID, genUserID } from "@tasan/common/id";
+import * as M from "@tasan/common/money";
 import type { SplitExpense, SplitWithData } from "@tasan/data";
 
 import {
   calculateBalances,
   calculateExpenseGraph,
 } from "~/domain/expense-graph";
-
 await test("recording simplified payments settles indirect debts and deleting restores them", () => {
   const [a, b, c] = [genUserID(), genUserID(), genUserID()];
   const split: SplitWithData = {
@@ -35,17 +34,20 @@ await test("recording simplified payments settles indirect debts and deleting re
     createdBy: a,
     kind,
     payer,
-    amount: D.create(amount, 2),
-    participants: new Map([[recipient, D.create(amount, 2)]]),
+    amount: M.round(String(amount), "EUR"),
+    participants: new Map([[recipient, M.round(String(amount), "EUR")]]),
   });
   // A owes B and B owes C. Simplification asks A to pay C directly.
   split.expenses = [entry(b, a, 25), entry(c, b, 25)];
   const original = calculateExpenseGraph(split);
-  assert.deepEqual([...original], [[a, [{ to: c, amount: D.create(25, 2) }]]]);
+  assert.deepEqual(
+    [...original],
+    [[a, [{ to: c, amount: M.create("25", "EUR") }]]],
+  );
   split.expenses.push(entry(a, c, 10, "repayment"));
   assert.deepEqual(
     calculateBalances(calculateExpenseGraph(split), [a, b, c], "EUR").map(
-      (x) => [x.userID, x.balance.value],
+      (x) => [x.userID, Number(M.toString(x.balance))],
     ),
     [
       [a, -15],
