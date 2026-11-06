@@ -1,56 +1,31 @@
+import classNames from "classnames";
 import { useState } from "react";
 import { href } from "react-router";
 
 import { Link } from "~/components/link";
 
-import { type ExampleSplit, SplitExample } from "./split-example";
+import { ExampleCaption, ExampleCard, ExampleFrame } from "./example-frame";
+import { examples } from "./example-splits";
+import { SharesExample } from "./shares-example";
+import { SplitExample } from "./split-example";
 
-const examples = [
+const shareFeatures = [
   {
-    name: "Weekend away",
-    title: "A little escape",
-    expenses: [
-      {
-        name: "Cabin",
-        paidBy: "Alex",
-        amount: 240,
-        original: { amount: 204, currency: "GBP" },
-      },
-      { name: "Groceries", paidBy: "Sam", amount: 60 },
-      {
-        name: "Train tickets",
-        paidBy: "Jo",
-        amount: 60,
-        original: { amount: 66, currency: "USD" },
-      },
-    ],
-    payments: [
-      { from: "Sam", amount: 60 },
-      { from: "Jo", amount: 60 },
-    ],
+    title: "Shares",
+    description:
+      "Give a couple two shares, or a kid half a share. Any weight works, decimals included.",
   },
   {
-    name: "Dinner out",
-    title: "One more course",
-    expenses: [
-      { name: "Dinner", paidBy: "Alex", amount: 90 },
-      { name: "Drinks", paidBy: "Sam", amount: 30 },
-    ],
-    payments: [
-      { from: "Sam", amount: 10 },
-      { from: "Jo", amount: 40 },
-    ],
+    title: "Adjustments",
+    description:
+      "Add the bottle of wine to one person, or take off the dessert someone skipped. Adjustments apply first, and the rest is split by shares.",
   },
   {
-    name: "Shared home",
-    title: "Under one roof",
-    expenses: [
-      { name: "Groceries", paidBy: "Alex", amount: 120 },
-      { name: "Household supplies", paidBy: "Sam", amount: 60 },
-    ],
-    payments: [{ from: "Jo", amount: 60 }],
+    title: "Calculations",
+    description:
+      "Tap = in any amount field and type the sum straight from the receipt. Tasan works it out exactly and rounds only once, at the end.",
   },
-] satisfies ExampleSplit[];
+];
 
 const steps = [
   {
@@ -61,7 +36,7 @@ const steps = [
   {
     title: "Spend in your currency.",
     description:
-      "Add expenses in the currency you paid. Tasan converts them to your split’s home currency.",
+      "Add expenses in the currency you paid and split them evenly or by shares. Tasan converts them to your split’s home currency.",
   },
   {
     title: "Settle up simply.",
@@ -114,8 +89,9 @@ export const LandingPage = () => {
             </span>
           </h1>
           <p className="mt-6 max-w-sm text-lg leading-relaxed text-gray-700 dark:text-gray-200">
-            Split bills across currencies. Tasan handles the conversions and
-            simplifies who pays whom, so settling up takes less back-and-forth.
+            Split bills across currencies, evenly or by shares. Tasan handles
+            the conversions and simplifies who pays whom, so settling up takes
+            less back-and-forth.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-5">
             <Link
@@ -134,7 +110,7 @@ export const LandingPage = () => {
           </div>
         </div>
 
-        <div className="bg-brand-100/70 dark:bg-brand-950 -mx-4 min-w-0 rounded-3xl p-4 min-[380px]:mx-0 sm:p-7">
+        <ExampleFrame>
           <div
             role="group"
             aria-label="Choose an example split"
@@ -159,28 +135,46 @@ export const LandingPage = () => {
             id="example-description"
             className="text-brand-800 dark:text-brand-200 mb-3 text-center text-xs leading-relaxed"
           >
-            Example split · Scroll to explore
+            Example split
           </p>
           <p role="status" className="sr-only">
             Showing {example.name}
           </p>
-          <div
-            key={example.name}
+          {/* Every example shares one grid cell, so the card is as tall as the
+              tallest one and switching examples does not shift the page. */}
+          <ExampleCard
             id="split-example"
             role="region"
             aria-label={`${example.name} example split`}
             aria-describedby="example-description"
-            tabIndex={0}
-            className="bg-brand-canvas outline-brand-700 dark:outline-brand-300 max-h-144 overflow-y-auto overscroll-y-contain rounded-lg border border-gray-200 p-4 text-base focus-visible:outline-2 focus-visible:outline-offset-4 sm:p-6 dark:border-gray-700 dark:bg-gray-950"
+            className="grid text-base"
           >
-            <SplitExample example={example} />
-          </div>
-          <p className="text-brand-800 dark:text-brand-200 mt-4 text-center text-xs leading-relaxed">
-            {selected === 0 ?
-              "GBP, EUR & USD → one total in EUR. Illustrative rates."
-            : "Everyone’s share, without the spreadsheet."}
-          </p>
-        </div>
+            {examples.map((item) => (
+              <div
+                key={item.name}
+                className={classNames(
+                  "[grid-area:1/1]",
+                  item !== example && "invisible",
+                )}
+              >
+                <SplitExample example={item} />
+              </div>
+            ))}
+          </ExampleCard>
+          <ExampleCaption className="grid">
+            {examples.map((item) => (
+              <p
+                key={item.name}
+                className={classNames(
+                  "[grid-area:1/1]",
+                  item !== example && "invisible",
+                )}
+              >
+                {item.caption}
+              </p>
+            ))}
+          </ExampleCaption>
+        </ExampleFrame>
       </section>
 
       <section
@@ -217,6 +211,52 @@ export const LandingPage = () => {
             different person, but everyone ends up square.
           </p>
         </div>
+      </section>
+
+      <section
+        aria-labelledby="shares-heading"
+        className="border-brand-700/20 dark:border-brand-300/20 grid items-center gap-10 border-t py-12 sm:py-16 lg:grid-cols-[1fr_1fr] lg:gap-16"
+      >
+        <div>
+          <p className="text-brand-700 dark:text-brand-300 text-xs font-semibold tracking-widest uppercase">
+            Shares, adjustments & calculations
+          </p>
+          <h2
+            id="shares-heading"
+            className="text-brand-950 dark:text-brand-50 mt-4 text-3xl font-semibold tracking-tight"
+          >
+            Not every split is even.
+            <br />
+            Every cent still adds up.
+          </h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-gray-700 dark:text-gray-200">
+            Split equally, by exact amounts, or by shares. Tasan does the math
+            and makes sure everyone’s part adds up to the total.
+          </p>
+          <dl className="mt-8 grid max-w-md gap-6">
+            {shareFeatures.map((feature) => (
+              <div
+                key={feature.title}
+                className="border-brand-700 dark:border-brand-300 border-l-2 pl-4"
+              >
+                <dt className="text-brand-950 dark:text-brand-50 font-semibold">
+                  {feature.title}
+                </dt>
+                <dd className="mt-1 text-sm leading-relaxed text-gray-700 dark:text-gray-200">
+                  {feature.description}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <ExampleFrame>
+          <ExampleCard>
+            <SharesExample />
+          </ExampleCard>
+          <ExampleCaption>
+            Example expense split by shares and adjustments.
+          </ExampleCaption>
+        </ExampleFrame>
       </section>
 
       <section
