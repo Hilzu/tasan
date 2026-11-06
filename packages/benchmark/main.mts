@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import * as process from "node:process";
+import process from "node:process";
 import { setTimeout } from "node:timers/promises";
 
 import {
@@ -11,6 +11,7 @@ import {
   GetFunctionCommand,
   GetFunctionConfigurationCommand,
   LambdaClient,
+  LastUpdateStatus,
   UpdateFunctionCodeCommand,
   UpdateFunctionConfigurationCommand,
   waitUntilFunctionUpdatedV2,
@@ -95,12 +96,20 @@ const formatState = ({ architecture, memorySize }: FunctionState) =>
 // Interrupting stops the benchmark but still restores the original configuration and reports
 // the samples collected so far.
 const abortController = new AbortController();
-process.once("SIGINT", () => {
+const onBenchmarkInterrupt = () => {
   console.error(
     "Interrupted; restoring the original configuration. Press Ctrl-C again to exit without restoring.",
   );
   abortController.abort();
-});
+};
+process.once("SIGINT", onBenchmarkInterrupt);
+
+// After the restore, interrupting stops waiting for Lambda reports and prints what was found.
+const reportsAbortController = new AbortController();
+const onReportsInterrupt = () => {
+  console.error("Interrupted; printing results with the reports found so far.");
+  reportsAbortController.abort();
+};
 
 const warmConnection = async () => {
   const res = await fetch(connectionWarmupUrl, {
@@ -144,11 +153,36 @@ const request = async (page: Page) => {
 const lambda = new LambdaClient({ region, maxAttempts: 5 });
 const logs = new CloudWatchLogsClient({ region, maxAttempts: 5 });
 
+const updateTimeoutSeconds = 120;
+
 const waitForUpdate = () =>
   waitUntilFunctionUpdatedV2(
-    { client: lambda, maxWaitTime: 120 },
+    { client: lambda, maxWaitTime: updateTimeoutSeconds },
     { FunctionName: functionName },
   );
+
+// Unlike the SDK waiter, which throws when the last update failed, this only waits for an
+// in-progress update to finish, so the restore is still attempted after a failed update.
+const waitForUpdateToFinish = async () => {
+  const deadline = Date.now() + updateTimeoutSeconds * 1000;
+  while (true) {
+    const res = await lambda.send(
+      new GetFunctionConfigurationCommand({ FunctionName: functionName }),
+    );
+    if (res.LastUpdateStatus === LastUpdateStatus.Failed) {
+      console.error(
+        `The last update of ${functionName} failed (${res.LastUpdateStatusReason ?? "no reason given"}); restoring anyway`,
+      );
+    }
+    if (res.LastUpdateStatus !== LastUpdateStatus.InProgress) return;
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `Timed out waiting for the in-progress update of ${functionName} to finish`,
+      );
+    }
+    await setTimeout(2000);
+  }
+};
 
 const getState = async (): Promise<FunctionState & { codeSha256: string }> => {
   const res = await lambda.send(
@@ -219,8 +253,8 @@ const setState = async (target: FunctionState) => {
 };
 
 const restore = async () => {
-  // A failed or interrupted run may have left an update in progress.
-  await waitForUpdate();
+  // A failed or interrupted run may have left an update in progress or failed.
+  await waitForUpdateToFinish();
   await setState(original);
   const restored = await getState();
   if (
@@ -302,7 +336,10 @@ const parseReport = (
 };
 
 // Collects the Lambda platform reports (JSON log format) for the measured requests.
-const fetchReports = async (samples: readonly Sample[]) => {
+const fetchReports = async (
+  samples: readonly Sample[],
+  signal: AbortSignal,
+) => {
   const reports = new Map<string, LambdaReport>();
   const deadline = Date.now() + reportTimeoutMs;
   // Samples are in request order, so the first missing one is the earliest.
@@ -331,14 +368,20 @@ const fetchReports = async (samples: readonly Sample[]) => {
 
     missing = missing.filter((sample) => !reports.has(sample.requestId));
     if (missing.length === 0) return reports;
-    if (Date.now() >= deadline) {
+    if (signal.aborted || Date.now() >= deadline) {
       console.error(
         `${missing.length.toString()} Lambda reports were not found; their server-side columns are empty`,
       );
       return reports;
     }
-    console.error(`Waiting for ${missing.length.toString()} Lambda reports…`);
-    await setTimeout(reportPollIntervalMs);
+    console.error(
+      `Waiting for ${missing.length.toString()} Lambda reports… Press Ctrl-C to stop waiting.`,
+    );
+    try {
+      await setTimeout(reportPollIntervalMs, undefined, { signal });
+    } catch {
+      // Interrupted: poll once more for reports that arrived meanwhile, then stop.
+    }
   }
 };
 
@@ -488,19 +531,52 @@ console.error(
   `Benchmarking ${functionName} in ${region}; original configuration ${formatState(original)} will be restored afterwards`,
 );
 
+// Errors from the run and the restore are reported without discarding the samples collected so far.
 const samples: Sample[] = [];
+let runFailed = false;
 try {
   await runBenchmark(samples);
 } catch (error) {
-  if (!abortController.signal.aborted) throw error;
-} finally {
-  await restore();
+  // Interrupting rejects the in-flight request with an AbortError, which is expected.
+  if (!abortController.signal.aborted) {
+    runFailed = true;
+    console.error("Benchmark stopped by an error:", error);
+  }
 }
+
+let restored = false;
+try {
+  await restore();
+  restored = true;
+} catch (error) {
+  console.error(`Restoring ${functionName} failed:`, error);
+}
+
+process.off("SIGINT", onBenchmarkInterrupt);
+process.once("SIGINT", onReportsInterrupt);
 
 if (samples.length === 0) {
   console.error("No samples were collected");
 } else {
-  const reports = await fetchReports(samples);
+  const reports = await fetchReports(
+    samples,
+    reportsAbortController.signal,
+  ).catch((error: unknown) => {
+    console.error("Fetching Lambda reports failed:", error);
+    return new Map<string, LambdaReport>();
+  });
   printTsv(samples, reports);
   printSummary(samples, reports);
 }
+
+if (runFailed) {
+  console.error(
+    "\nThe benchmark stopped early because of an error; see above.",
+  );
+}
+if (!restored) {
+  console.error(
+    `\n${functionName} was NOT restored to ${formatState(original)}. Check its configuration manually.`,
+  );
+}
+if (runFailed || !restored) process.exitCode = 1;
