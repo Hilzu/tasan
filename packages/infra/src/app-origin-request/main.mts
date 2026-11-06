@@ -26,6 +26,29 @@ const regionsServedFromSingapore = [
 const singaporeLambdaFunctionDomain =
   "cxh43kp2vsbbrb4vgwpratjkpi0ekjjk.lambda-url.ap-southeast-1.on.aws";
 
+// Lambda function URLs verify the SigV4 signature against a normalized path (no "." or ".."
+// segments and no empty segments), but CloudFront OAC signs the path exactly as the viewer sent
+// it. The function URL rejects such paths with 403 InvalidSignatureException before the app
+// runs. Browsers resolve these segments themselves, so only scanners and malformed links send
+// them; answering here keeps them from surfacing as signature errors.
+const hasNonNormalizedSegments = (uri: string) => {
+  const segments = uri.split("/").slice(1);
+  return segments.some(
+    (segment, index) =>
+      segment === "." ||
+      segment === ".." ||
+      // A single trailing slash is allowed; it leaves one empty segment at the end.
+      (segment === "" && index < segments.length - 1),
+  );
+};
+
+const notFoundResponse = {
+  status: "404",
+  headers: {
+    "cache-control": [{ value: "public, max-age=31536000" }],
+  },
+} satisfies CloudFrontResultResponse;
+
 // In the future we should also host in us-east-2
 // Edge caches to serve from: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
 
@@ -44,12 +67,12 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
 
       if (probePrefixes.some((p) => request.uri.startsWith(p))) {
         getLogger().info("Probe request blocked", { status: 404 });
-        return {
-          status: "404",
-          headers: {
-            "cache-control": [{ value: "public, max-age=31536000" }],
-          },
-        } satisfies CloudFrontResultResponse;
+        return notFoundResponse;
+      }
+
+      if (hasNonNormalizedSegments(request.uri)) {
+        getLogger().info("Non-normalized path rejected", { status: 404 });
+        return notFoundResponse;
       }
 
       const region = process.env.AWS_REGION;
