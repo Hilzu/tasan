@@ -79,13 +79,20 @@ interface FunctionState {
   memorySize: number;
 }
 
-interface Sample extends FunctionState {
-  time: string;
-  round: number;
-  page: string;
+interface RequestResult {
+  status: number;
+  // Empty for successful requests; otherwise x-amzn-errortype or the HTTP status.
+  error: string;
+  // Empty when the response had no x-amzn-requestid.
   requestId: string;
   cache: string;
   clientMs: number;
+}
+
+interface Sample extends FunctionState, RequestResult {
+  time: string;
+  round: number;
+  page: string;
 }
 
 interface LambdaReport {
@@ -127,7 +134,14 @@ const warmConnection = async () => {
   }
 };
 
-const request = async (page: Page) => {
+// Stop when this many requests in a row fail, which points to a systemic problem rather than
+// the occasional rejected request.
+const maxConsecutiveErrors = 5;
+
+// Error responses are returned as failed results so that occasional failures, such as the
+// Function URL sporadically rejecting CloudFront's request signature, don't end a long run.
+// Redirects and cached responses mean the setup is wrong and stop the run.
+const request = async (page: Page): Promise<RequestResult> => {
   const start = performance.now();
   const res = await fetch(page.url, {
     headers: { Cookie: sessionCookie },
@@ -138,20 +152,33 @@ const request = async (page: Page) => {
   // Read the whole body so the measurement covers the full response and the connection can be reused.
   const body = await res.text();
   const clientMs = performance.now() - start;
-  if (res.status !== 200) {
-    console.error(`Error requesting ${page.url}`);
-    console.error("Error status:", res.status);
-    console.error("Error headers:", res.headers);
-    console.error("Error response:", body);
-    throw new Error(`Unexpected response status ${res.status.toString()}`);
-  }
   const cache = res.headers.get("x-cache") ?? "";
+  const requestId = res.headers.get("x-amzn-requestid") ?? "";
+  if (res.status >= 300 && res.status < 400) {
+    throw new Error(
+      `${page.url} redirected to ${res.headers.get("location") ?? "an unknown location"}; the session has probably expired`,
+    );
+  }
+  if (res.status !== 200) {
+    const error =
+      res.headers.get("x-amzn-errortype") ?? `HTTP ${res.status.toString()}`;
+    console.error(
+      `Request failed: ${page.url} ${res.status.toString()} ${error} (x-cache: ${cache}, request ID: ${requestId || "none"}): ${body.slice(0, 200)}`,
+    );
+    return { status: res.status, error, requestId, cache, clientMs };
+  }
   if (!cache.startsWith("Miss")) {
     throw new Error(`Response was not served by the Lambda: x-cache ${cache}`);
   }
-  const requestId = res.headers.get("x-amzn-requestid");
   if (!requestId) throw new Error("Response is missing x-amzn-requestid");
-  return { requestId, cache, clientMs };
+  return { status: res.status, error: "", requestId, cache, clientMs };
+};
+
+const requireSuccess = async (page: Page) => {
+  const result = await request(page);
+  if (result.error) {
+    throw new Error(`${page.url} failed with ${result.error}`);
+  }
 };
 
 const lambda = new LambdaClient({ region, maxAttempts: 5 });
@@ -227,7 +254,7 @@ const downloadDeployedCode = async (expectedSha256: string) => {
 
 // Fail on an expired session or an inaccessible split before touching the function.
 await warmConnection();
-for (const page of pages) await request(page);
+for (const page of pages) await requireSuccess(page);
 
 await waitForUpdate();
 const original = await getState();
@@ -286,6 +313,17 @@ const configurations: FunctionState[] = architectures.flatMap((architecture) =>
   memorySizes.map((memorySize) => ({ architecture, memorySize })),
 );
 
+let consecutiveErrors = 0;
+const trackErrors = (result: RequestResult) => {
+  consecutiveErrors = result.error ? consecutiveErrors + 1 : 0;
+  if (consecutiveErrors >= maxConsecutiveErrors) {
+    throw new Error(
+      `${consecutiveErrors.toString()} requests in a row failed; stopping`,
+    );
+  }
+  return result;
+};
+
 const runBenchmark = async (samples: Sample[]) => {
   for (let round = 1; round <= rounds; round++) {
     for (const [index, configuration] of shuffle(configurations).entries()) {
@@ -297,18 +335,19 @@ const runBenchmark = async (samples: Sample[]) => {
 
       await warmConnection();
       for (let i = 0; i < warmupCount; i++) {
-        for (const page of pages) await request(page);
+        for (const page of pages) trackErrors(await request(page));
       }
 
       for (let i = 0; i < samplesPerRound; i++) {
         for (const page of pages) {
           const time = new Date().toISOString();
+          const result = trackErrors(await request(page));
           samples.push({
             ...configuration,
             time,
             round,
             page: page.name,
-            ...(await request(page)),
+            ...result,
           });
         }
       }
@@ -348,7 +387,7 @@ const fetchReports = async (
   const deadline = Date.now() + reportTimeoutMs;
   // Samples are in request order, so the first missing one is the earliest.
   let missing = [...samples];
-  while (true) {
+  while (missing.length > 0) {
     const missingIds = new Set(missing.map((sample) => sample.requestId));
     // Scan only from the earliest request still without a report instead of the whole run.
     const startTime = Date.parse(missing[0].time) - reportClockSkewMarginMs;
@@ -371,7 +410,7 @@ const fetchReports = async (
     }
 
     missing = missing.filter((sample) => !reports.has(sample.requestId));
-    if (missing.length === 0) return reports;
+    if (missing.length === 0) break;
     if (signal.aborted || Date.now() >= deadline) {
       console.error(
         `${missing.length.toString()} Lambda reports were not found; their server-side columns are empty`,
@@ -387,6 +426,7 @@ const fetchReports = async (
       // Interrupted: poll once more for reports that arrived meanwhile, then stop.
     }
   }
+  return reports;
 };
 
 const percentile = (sorted: readonly number[], p: number) =>
@@ -430,6 +470,8 @@ const writeTsv = async (
     "architecture",
     "memoryMB",
     "page",
+    "status",
+    "error",
     "requestId",
     "xCache",
     "clientMs",
@@ -448,6 +490,8 @@ const writeTsv = async (
         sample.architecture,
         sample.memorySize.toString(),
         sample.page,
+        sample.status.toString(),
+        sample.error,
         sample.requestId,
         sample.cache,
         sample.clientMs.toFixed(1),
@@ -479,6 +523,7 @@ const printPageSummary = (
   const header = [
     "Config",
     "n",
+    "Errors",
     "Client p50",
     "p90",
     "p95",
@@ -499,8 +544,13 @@ const printPageSummary = (
         sample.memorySize === configuration.memorySize,
     );
     if (configSamples.length === 0) continue;
-    const client = summarize(configSamples.map((sample) => sample.clientMs));
-    const configReports = configSamples.flatMap((sample) => {
+    // Timings cover successful requests only; failed ones are counted separately.
+    const successful = configSamples.filter((sample) => !sample.error);
+    const errorCount = configSamples.length - successful.length;
+    const client =
+      successful.length > 0 &&
+      summarize(successful.map((sample) => sample.clientMs));
+    const configReports = successful.flatMap((sample) => {
       const report = reports.get(sample.requestId);
       return report ? [report] : [];
     });
@@ -518,11 +568,12 @@ const printPageSummary = (
         1_000_000;
     rows.push([
       formatState(configuration),
-      configSamples.length.toString(),
-      ms(client.p50),
-      ms(client.p90),
-      ms(client.p95),
-      ms(client.mean),
+      successful.length.toString(),
+      errorCount.toString(),
+      client ? ms(client.p50) : "-",
+      client ? ms(client.p90) : "-",
+      client ? ms(client.p95) : "-",
+      client ? ms(client.mean) : "-",
       server ? ms(server.duration.p50) : "-",
       server ? ms(server.duration.p95) : "-",
       server ? ms(server.duration.mean) : "-",
@@ -577,8 +628,9 @@ process.once("SIGINT", onReportsInterrupt);
 if (samples.length === 0) {
   console.error("No samples were collected");
 } else {
+  // Failed requests may never have reached the function, so only successful ones have reports.
   const reports = await fetchReports(
-    samples,
+    samples.filter((sample) => !sample.error),
     reportsAbortController.signal,
   ).catch((error: unknown) => {
     console.error("Fetching Lambda reports failed:", error);
