@@ -4,6 +4,7 @@ import { href } from "react-router";
 
 import { Link } from "~/components/link";
 
+import { ExampleCaption, ExampleCard, ExampleFrame } from "./example-frame";
 import { examples } from "./example-splits";
 import { SharesExample } from "./shares-example";
 import { SplitExample } from "./split-example";
@@ -109,7 +110,7 @@ export const LandingPage = () => {
           </div>
         </div>
 
-        <div className="bg-brand-100/70 dark:bg-brand-950 -mx-4 min-w-0 rounded-3xl p-4 min-[380px]:mx-0 sm:p-7">
+        <ExampleFrame>
           <div
             role="group"
             aria-label="Choose an example split"
@@ -141,12 +142,12 @@ export const LandingPage = () => {
           </p>
           {/* Every example shares one grid cell, so the card is as tall as the
               tallest one and switching examples does not shift the page. */}
-          <div
+          <ExampleCard
             id="split-example"
             role="region"
             aria-label={`${example.name} example split`}
             aria-describedby="example-description"
-            className="bg-brand-canvas grid rounded-lg border border-gray-200 p-4 text-base sm:p-6 dark:border-gray-700 dark:bg-gray-950"
+            className="grid text-base"
           >
             {examples.map((item) => (
               <div
@@ -159,21 +160,21 @@ export const LandingPage = () => {
                 <SplitExample example={item} />
               </div>
             ))}
-          </div>
-          <div className="mt-4 grid text-center text-xs leading-relaxed">
+          </ExampleCard>
+          <ExampleCaption className="grid">
             {examples.map((item) => (
               <p
                 key={item.name}
                 className={classNames(
-                  "text-brand-800 dark:text-brand-200 [grid-area:1/1]",
+                  "[grid-area:1/1]",
                   item !== example && "invisible",
                 )}
               >
                 {item.caption}
               </p>
             ))}
-          </div>
-        </div>
+          </ExampleCaption>
+        </ExampleFrame>
       </section>
 
       <section
@@ -248,14 +249,14 @@ export const LandingPage = () => {
             ))}
           </dl>
         </div>
-        <div className="bg-brand-100/70 dark:bg-brand-950 -mx-4 min-w-0 rounded-3xl p-4 min-[380px]:mx-0 sm:p-7">
-          <div className="bg-brand-canvas rounded-lg border border-gray-200 p-4 sm:p-6 dark:border-gray-700 dark:bg-gray-950">
+        <ExampleFrame>
+          <ExampleCard>
             <SharesExample />
-          </div>
-          <p className="text-brand-800 dark:text-brand-200 mt-4 text-center text-xs leading-relaxed">
+          </ExampleCard>
+          <ExampleCaption>
             Example expense split by shares and adjustments.
-          </p>
-        </div>
+          </ExampleCaption>
+        </ExampleFrame>
       </section>
 
       <section

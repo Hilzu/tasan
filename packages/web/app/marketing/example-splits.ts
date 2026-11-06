@@ -3,8 +3,8 @@ import * as G from "@tasan/common/graph";
 import type { UserID } from "@tasan/common/id";
 import * as M from "@tasan/common/money";
 
+import { calculateShareAmounts } from "~/domain/expense-amounts";
 import { simplifyDebts } from "~/domain/expense-graph";
-import { calculateShareAmounts } from "~/routes/split/expense-amounts";
 
 export const people = ["Alex", "Sam", "Jo"] as const;
 export type Person = (typeof people)[number];
@@ -28,7 +28,7 @@ export interface ExampleSplit {
   expenses: ExampleExpense[];
 }
 
-export const examples = [
+const exampleData = [
   {
     name: "Weekend away",
     title: "A little escape",
@@ -89,11 +89,11 @@ export const examples = [
 
 const eur = (value: string) => M.create(value, "EUR");
 // Names stand in for user IDs so the app's own calculations can be reused.
-const id = (person: Person) => person as string as UserID;
+export const exampleUserID = (person: Person) => person as string as UserID;
 
 // Each expense is split like the expense form would, then repayments are
 // simplified like on the split page.
-export const calculateExample = (example: ExampleSplit) => {
+const calculateExample = (example: ExampleSplit) => {
   const expenses = example.expenses.map((expense) => {
     const { participants } = calculateShareAmounts(
       eur(expense.amount),
@@ -101,7 +101,7 @@ export const calculateExample = (example: ExampleSplit) => {
         people.map((person) => {
           const adjustment = expense.adjustments?.[person];
           return [
-            id(person),
+            exampleUserID(person),
             {
               shares: expense.shares?.[person] ?? "1",
               adjustment: adjustment ? eur(adjustment) : undefined,
@@ -110,39 +110,30 @@ export const calculateExample = (example: ExampleSplit) => {
         }),
       ),
       "EUR",
-      id(expense.paidBy),
+      exampleUserID(expense.paidBy),
     );
     const owed = new Map(
       people.map(
-        (person) => [person, participants.get(id(person)) ?? eur("0")] as const,
+        (person) =>
+          [
+            person,
+            participants.get(exampleUserID(person)) ?? eur("0"),
+          ] as const,
       ),
     );
     return { ...expense, owed };
   });
 
-  const sum = (values: M.Money[]) => values.reduce(M.add, eur("0"));
-  const total = sum(expenses.map(({ amount }) => eur(amount)));
-  const participants = people
-    .map((person) => {
-      const paid = sum(
-        expenses
-          .filter(({ paidBy }) => paidBy === person)
-          .map(({ amount }) => eur(amount)),
-      );
-      const share = sum(
-        expenses.map(({ owed }) => owed.get(person) ?? eur("0")),
-      );
-      return { name: person, paid, share, balance: M.sub(paid, share) };
-    })
-    .sort(
-      (a, b) => M.compare(a.balance, b.balance) || a.name.localeCompare(b.name),
-    );
-
   let graph = G.create();
   for (const expense of expenses)
     for (const [person, amount] of expense.owed)
       if (person !== expense.paidBy && M.gt(amount, 0))
-        graph = G.upsertEdge(graph, id(person), id(expense.paidBy), amount);
+        graph = G.upsertEdge(
+          graph,
+          exampleUserID(person),
+          exampleUserID(expense.paidBy),
+          amount,
+        );
   const payments = [...simplifyDebts(graph, "EUR")].flatMap(([from, edges]) =>
     edges.map(({ to, amount }) => ({
       from: from as string as Person,
@@ -151,5 +142,14 @@ export const calculateExample = (example: ExampleSplit) => {
     })),
   );
 
-  return { total, expenses, participants, payments };
+  return {
+    ...example,
+    total: expenses.map(({ amount }) => eur(amount)).reduce(M.add, eur("0")),
+    expenses,
+    payments,
+  };
 };
+
+// The data is static, so every example is calculated once at load.
+export const examples = exampleData.map(calculateExample);
+export type Example = (typeof examples)[number];

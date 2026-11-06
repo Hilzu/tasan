@@ -31,13 +31,13 @@ import {
   SelectField,
 } from "~/components/formField";
 import { MainHeading } from "~/components/heading";
-import { useStorage } from "~/hooks";
 import {
   calculateExpenseAmounts,
   calculateShareAmounts,
   parseShares,
   stepShares,
-} from "~/routes/split/expense-amounts";
+} from "~/domain/expense-amounts";
+import { useStorage } from "~/hooks";
 import type { SplitLoader } from "~/routes/split/split-parent";
 
 type AllocationMode = "amounts" | "shares";

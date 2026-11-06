@@ -4,19 +4,22 @@ import { MoneyRender } from "~/components/amount";
 import { Card } from "~/components/card";
 import { SubHeading } from "~/components/heading";
 
-import { calculateExample, type ExampleSplit } from "./example-splits";
+import type { Example } from "./example-splits";
 
 // Only the expenses and the resulting repayments, so each example fits
-// without scrolling.
-export function SplitExample({ example }: { example: ExampleSplit }) {
-  const { total, expenses, payments } = calculateExample(example);
-
+// without scrolling. Repayments sit at the bottom, so an example shorter
+// than the card leaves its spare space above them instead of below.
+export function SplitExample({
+  example: { title, total, expenses, payments },
+}: {
+  example: Example;
+}) {
   return (
-    <div className="space-y-5">
+    <div className="flex h-full flex-col gap-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-            {example.title}
+            {title}
           </h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Alex, Sam &amp; Jo · Totals in EUR
@@ -65,7 +68,7 @@ export function SplitExample({ example }: { example: ExampleSplit }) {
           ))}
         </ul>
       </Card>
-      <Card heading={<SubHeading>Repayments</SubHeading>}>
+      <Card className="mt-auto" heading={<SubHeading>Repayments</SubHeading>}>
         <ul className="bg-brand-50 dark:bg-brand-900/40 mt-2 rounded-lg px-3 py-1 text-sm">
           {payments.map(({ from, to, amount }) => (
             <li

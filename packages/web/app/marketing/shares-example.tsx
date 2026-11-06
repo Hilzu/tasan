@@ -2,37 +2,57 @@ import * as M from "@tasan/common/money";
 import classNames from "classnames";
 
 import { MoneyRender } from "~/components/amount";
+import { calculateShareAmounts } from "~/domain/expense-amounts";
+
+import { exampleUserID, type Person } from "./example-splits";
 
 const calculation = "118 + 24.50";
+const payer: Person = "Alex";
 
-// Alex paid, so Alex comes first and gets any tied rounding cent, as in the form.
-const rows = [
+const rows: {
+  name: Person;
+  note: string;
+  shares: string;
+  adjustment?: string;
+}[] = [
   { name: "Alex", note: "Plus partner", shares: "2" },
   { name: "Sam", note: "Bottle of wine", shares: "1", adjustment: "18" },
   { name: "Jo", note: "Skipped dessert", shares: "1", adjustment: "-6" },
 ];
 
-export function SharesExample() {
-  const total = M.calculate(calculation, "EUR");
-  const adjustments = rows.map(({ adjustment }) =>
-    M.create(adjustment ?? "0", "EUR"),
-  );
-  const base = adjustments.reduce(M.sub, total);
-  const allocated = M.allocate(
-    base,
-    rows.map(({ shares }) => shares),
-  );
-  const owed = allocated.map((share, index) =>
-    M.add(share, adjustments[index]),
-  );
-  const sum = owed.reduce(M.add, M.create("0", "EUR"));
+// Split exactly as the expense form would. The remaining 130.50 leaves a
+// half cent tied between Sam and Jo, and it goes to Sam, who comes first.
+const total = M.calculate(calculation, "EUR");
+const adjustments = rows.map(({ adjustment }) =>
+  M.create(adjustment ?? "0", "EUR"),
+);
+const base = adjustments.reduce(M.sub, total);
+const { participants } = calculateShareAmounts(
+  total,
+  new Map(
+    rows.map(
+      ({ name, shares }, index) =>
+        [
+          exampleUserID(name),
+          { shares, adjustment: adjustments[index] },
+        ] as const,
+    ),
+  ),
+  "EUR",
+  exampleUserID(payer),
+);
+const owed = rows.map(
+  ({ name }) => participants.get(exampleUserID(name)) ?? M.create("0", "EUR"),
+);
+const sum = owed.reduce(M.add, M.create("0", "EUR"));
 
+export function SharesExample() {
   return (
     <div className="space-y-4 text-sm">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-lg font-semibold">Birthday dinner</h3>
         <span className="text-xs text-gray-600 dark:text-gray-300">
-          Paid by Alex
+          Paid by {payer}
         </span>
       </div>
       <div>

@@ -3,42 +3,51 @@ import { test } from "node:test";
 
 import * as M from "@tasan/common/money";
 
-import { calculateExample, examples } from "./example-splits";
+import { type Example, examples, people } from "./example-splits";
+
+const zero = M.create("0", "EUR");
 
 const byName = (name: string) => {
   const example = examples.find((entry) => entry.name === name);
   assert.ok(example);
-  return calculateExample(example);
+  return example;
 };
 
-const show = (values: Iterable<[string, M.Money]>) =>
+const show = (values: Iterable<readonly [string, M.Money]>) =>
   Object.fromEntries(
     [...values].map(([key, value]) => [key, M.toString(value)]),
   );
 
+// Paid minus owed per person: positive when others owe them.
+const balances = ({ expenses }: Example) =>
+  new Map(
+    people.map((person) => [
+      person,
+      expenses.reduce(
+        (balance, expense) =>
+          M.sub(
+            expense.paidBy === person ?
+              M.add(balance, M.create(expense.amount, "EUR"))
+            : balance,
+            expense.owed.get(person) ?? zero,
+          ),
+        zero,
+      ),
+    ]),
+  );
+
 await test("every example splits each expense exactly and settles up", () => {
   for (const example of examples) {
-    const { total, expenses, participants, payments } =
-      calculateExample(example);
-    for (const expense of expenses)
+    for (const expense of example.expenses)
       assert.equal(
         M.toString([...expense.owed.values()].reduce(M.add)),
         M.toString(M.create(expense.amount, "EUR")),
         `${example.name}: ${expense.name}`,
       );
-    assert.equal(
-      M.toString(participants.map(({ share }) => share).reduce(M.add)),
-      M.toString(total),
-    );
-    const settled = new Map(
-      participants.map(({ name, balance }) => [name, balance]),
-    );
-    for (const { from, to, amount } of payments) {
-      settled.set(
-        from,
-        M.add(settled.get(from) ?? M.create("0", "EUR"), amount),
-      );
-      settled.set(to, M.sub(settled.get(to) ?? M.create("0", "EUR"), amount));
+    const settled = balances(example);
+    for (const { from, to, amount } of example.payments) {
+      settled.set(from, M.add(settled.get(from) ?? zero, amount));
+      settled.set(to, M.sub(settled.get(to) ?? zero, amount));
     }
     for (const balance of settled.values())
       assert.ok(M.equals(balance, 0), example.name);
@@ -46,20 +55,25 @@ await test("every example splits each expense exactly and settles up", () => {
 });
 
 await test("dinner out applies the plus-one share and the champagne adjustment", () => {
-  const { expenses, participants, payments } = byName("Dinner out");
+  const example = byName("Dinner out");
   assert.deepEqual(
-    expenses.map(({ owed }) => show(owed)),
+    example.expenses.map(({ owed }) => show(owed)),
     [
       { Alex: "30.00", Sam: "60.00", Jo: "30.00" },
       { Alex: "20.00", Sam: "8.00", Jo: "8.00" },
     ],
   );
+  assert.deepEqual(show(balances(example)), {
+    Alex: "70.00",
+    Sam: "-32.00",
+    Jo: "-38.00",
+  });
   assert.deepEqual(
-    show(participants.map(({ name, balance }) => [name, balance])),
-    { Alex: "70.00", Sam: "-32.00", Jo: "-38.00" },
-  );
-  assert.deepEqual(
-    payments.map(({ from, to, amount }) => [from, to, M.toString(amount)]),
+    example.payments.map(({ from, to, amount }) => [
+      from,
+      to,
+      M.toString(amount),
+    ]),
     [
       ["Jo", "Alex", "38.00"],
       ["Sam", "Alex", "32.00"],
