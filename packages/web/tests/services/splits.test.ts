@@ -67,6 +67,14 @@ await test("split creation rejects invalid names before writing", async () => {
   assert.equal(save.mock.callCount(), 0);
 });
 
+await test("split creation rejects historic currencies before writing", async () => {
+  await assert.rejects(
+    () => create(actorID, { name: "Trip", currency: "BGN" }),
+    { code: "invalid_input" },
+  );
+  assert.equal(save.mock.callCount(), 0);
+});
+
 await test("membership checks reject non-members", async () => {
   await assert.rejects(() => requireMembership(actorID, splitID), {
     code: "not_found",

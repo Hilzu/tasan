@@ -1,4 +1,8 @@
-import { currencies, type CurrencySymbol } from "@tasan/common/currency";
+import {
+  type CurrencySymbol,
+  isCurrencySelectable,
+  selectableCurrencies,
+} from "@tasan/common/currency";
 import { genExpenseID, genOperationID, type UserID } from "@tasan/common/id";
 import * as M from "@tasan/common/money";
 import { currencySymbolSchema } from "@tasan/common/validation";
@@ -89,6 +93,7 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
   }, [split.id, session.userID, expense?.id]);
   const [preferredCurrency, setPreferredCurrency] =
     useStorage<CurrencySymbol>("preferredCurrency");
+  const currenciesInUse = [split.currency, expense?.currency];
   const [currency, setCurrency] = useState(expense?.currency ?? split.currency);
   const [total, setTotal] = useState<AmountInput>(() =>
     expense ?
@@ -119,7 +124,12 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
     );
   };
   useLayoutEffect(() => {
-    if (!expense && preferredCurrency) setCurrency(preferredCurrency);
+    if (
+      !expense &&
+      preferredCurrency &&
+      isCurrencySelectable(preferredCurrency, currenciesInUse)
+    )
+      setCurrency(preferredCurrency);
   }, []);
   const amount = resolveAmount(total.text, total.expressionMode, currency);
   const calculated = calculateExpenseAmounts(
@@ -242,9 +252,9 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
             setPreferredCurrency(currency);
           }}
         >
-          {Object.entries(currencies).map(([symbol, currency]) => (
+          {selectableCurrencies(currenciesInUse).map(({ symbol, name }) => (
             <option key={symbol} value={symbol}>
-              {currency.name} ({symbol})
+              {name} ({symbol})
             </option>
           ))}
         </SelectField>

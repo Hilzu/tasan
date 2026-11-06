@@ -1,4 +1,4 @@
-import { currencies } from "@tasan/common/currency";
+import { selectableCurrencies } from "@tasan/common/currency";
 import { currencySymbolSchema } from "@tasan/common/validation";
 import { Form, href, redirect } from "react-router";
 import { zfd } from "zod-form-data";
@@ -59,9 +59,9 @@ export default function NewSplit({ actionData }: Route.ComponentProps) {
           description="All expenses will be converted to this currency."
           errors={actionData?.errors.fieldErrors.currency}
         >
-          {Object.entries(currencies).map(([symbol, currency]) => (
+          {selectableCurrencies().map(({ symbol, name }) => (
             <option key={symbol} value={symbol}>
-              {currency.name} ({symbol})
+              {name} ({symbol})
             </option>
           ))}
         </SelectField>

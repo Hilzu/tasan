@@ -1,4 +1,5 @@
-// Fetched from https://api.frankfurter.dev/v1/currencies
+// Fetched from https://api.frankfurter.dev/v1/currencies, plus historic
+// currencies that existing splits and expenses may still use.
 export const currencies = {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   __proto__: null!,
@@ -42,3 +43,29 @@ export type CurrencySymbol = keyof typeof currencies;
 export type CurrencyInfo = PropertyValues<typeof currencies>;
 
 export const currencySymbols = Object.keys(currencies);
+
+/** Units per euro for currencies replaced by the euro at an irrevocably fixed
+ * rate. The exchange-rate provider no longer serves them, so conversions go
+ * through the euro using these rates. Bulgaria adopted the euro on 2026-01-01.
+ */
+export const fixedEuroRates: Partial<Record<CurrencySymbol, number>> = {
+  BGN: 1.95583,
+};
+
+/** Historic currencies stay readable and convertible for existing data, but
+ * are offered for new splits and expenses only where already in use.
+ */
+export const isHistoricCurrency = (symbol: CurrencySymbol) =>
+  Object.hasOwn(fixedEuroRates, symbol);
+
+export const isCurrencySelectable = (
+  symbol: CurrencySymbol,
+  inUse: readonly (CurrencySymbol | undefined)[] = [],
+) => !isHistoricCurrency(symbol) || inUse.includes(symbol);
+
+export const selectableCurrencies = (
+  inUse: readonly (CurrencySymbol | undefined)[] = [],
+) =>
+  (Object.keys(currencies) as CurrencySymbol[])
+    .filter((symbol) => isCurrencySelectable(symbol, inUse))
+    .map((symbol) => ({ symbol, name: currencies[symbol].name }));

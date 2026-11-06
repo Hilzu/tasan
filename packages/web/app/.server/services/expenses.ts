@@ -99,7 +99,9 @@ const createEntry = async (
         requireSplit(splitID),
         findSplitUsers(splitID),
       ]);
-      const { amount, participants } = validateExpense(input, splitUsers);
+      const { amount, participants } = validateExpense(input, splitUsers, [
+        split.currency,
+      ]);
       const conversionRate =
         input.currency === split.currency ?
           undefined
@@ -166,9 +168,10 @@ export const recordRepayment = async (
 const validateExpense = (
   input: Omit<NewExpense, "id">,
   splitUsers: Awaited<ReturnType<typeof findSplitUsers>>,
+  currenciesInUse: readonly CurrencySymbol[],
 ) => {
   validateName(input.name);
-  validateCurrency(input.currency);
+  validateCurrency(input.currency, currenciesInUse);
   const amount = toAmount(input.amount, input.currency, "amount");
   const members = new Set(splitUsers.map((user) => user.userID));
   if (!members.has(input.payer))
@@ -270,7 +273,10 @@ export const editExpense = async (
               requireSplit(splitID),
               findSplitUsers(splitID),
             ]);
-            const { amount, participants } = validateExpense(input, members);
+            const { amount, participants } = validateExpense(input, members, [
+              split.currency,
+              current.currency,
+            ]);
             const conversionRate =
               input.currency === current.currency ? current.conversionRate
               : input.currency === split.currency ? undefined
