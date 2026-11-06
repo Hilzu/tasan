@@ -77,15 +77,23 @@ await test("the distribution's access logs are delivered to the log group as JSO
   assert.deepEqual(delivery.DependsOn?.toSorted(), [policyID, sourceID].sort());
 });
 
-await test("logged fields leave out query strings, referrers, and cookies", () => {
+await test("logged fields include the full request and origin details but no cookies", () => {
   const [, delivery] = onlyResource("AWS::Logs::Delivery");
   const fields = delivery.Properties.RecordFields as string[];
-  for (const field of ["cs-uri-stem", "c-ip", "sc-status", "cs-method"]) {
+  for (const field of [
+    "cs-uri-stem",
+    "cs-uri-query",
+    "cs(Referer)",
+    "c-ip",
+    "s-ip",
+    "r-host",
+    "sc-status",
+    "x-edge-detailed-result-type",
+  ]) {
     assert.ok(fields.includes(field), field);
   }
-  for (const field of ["cs-uri-query", "cs(Referer)", "cs(Cookie)"]) {
-    assert.ok(!fields.includes(field), field);
-  }
+  assert.ok(!fields.includes("cs(Cookie)"));
+  assert.equal(new Set(fields).size, fields.length);
 });
 
 await test("only this distribution's log delivery may write to the log group", () => {

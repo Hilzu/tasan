@@ -16,14 +16,20 @@ type Props = StackProps & {
 
 const deliverySourceName = "TasanAppDistribution";
 
-// Query strings carry OAuth callback codes and search terms, and same-origin referrers carry
-// full page URLs such as invite links, so cs-uri-query and cs(Referer) are left out. Cookie
-// logging stays off on the distribution. Invite IDs still appear in cs-uri-stem for
-// /accept-invite requests; invites expire after five days and the logs after 90.
+// Every field that can carry information for this distribution, except cs(Cookie), which would
+// contain session cookies. Cookie logging also stays off on the distribution.
+// Left out because they are always empty here: field-level encryption (fle-*), media streaming
+// (cmcd-*, x-edge-mqcs), mTLS (connection-id), multi-tenant and continuous deployment
+// distributions, and the date, time, and distribution ID fields that other fields duplicate.
+// Paths and referrers include invite IDs, which expire after five days. Query strings include
+// OAuth authorization codes, which are single use, expire after five minutes, and can't be
+// redeemed without the app client's secret.
 const recordFields = [
   "timestamp(ms)",
   "x-edge-location",
   "x-edge-request-id",
+  "s-ip",
+  "cs(Host)",
   "x-host-header",
   "c-ip",
   "x-forwarded-for",
@@ -36,20 +42,28 @@ const recordFields = [
   "ssl-cipher",
   "cs-method",
   "cs-uri-stem",
+  "cs-uri-query",
   "cs-bytes",
+  "cs(Referer)",
   "cs(User-Agent)",
   "sc-status",
   "sc-bytes",
   "sc-content-type",
   "sc-content-len",
+  "sc-range-start",
+  "sc-range-end",
   "x-edge-result-type",
   "x-edge-response-result-type",
   "x-edge-detailed-result-type",
   "cache-behavior-path-pattern",
+  "r-host",
+  "sr-reason",
   "time-taken",
   "time-to-first-byte",
   "origin-fbl",
   "origin-lbl",
+  "viewer-request-log-data",
+  "viewer-response-log-data",
 ];
 
 // CloudFront standard logging (v2) delivers access logs through CloudWatch Logs vended log
