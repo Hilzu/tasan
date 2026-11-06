@@ -166,15 +166,13 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
     : calculated.hasAmounts && !M.gt(calculated.amount, 0) ?
       "Enter a positive total or participant amounts."
     : undefined);
-  const calculationError = byShares ? shared.error : calculated.error;
   const allocationError =
-    calculationError ??
-    (byShares && amount === undefined ? undefined
+    byShares && amount === undefined ? undefined
     : M.gt(difference, 0) ?
       `${formatAmount(difference, currency)} left to allocate.${byShares ? " Set shares or adjustments." : ""}`
     : M.gt(M.create("0", currency), difference) ?
       `${byShares ? "Adjustments" : "Participant amounts"} exceed total by ${formatAmount(M.negate(difference), currency)}.`
-    : undefined);
+    : undefined;
 
   return (
     <div>

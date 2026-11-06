@@ -1,6 +1,8 @@
 import { currencies, type CurrencySymbol } from "@tasan/common/currency";
 import * as M from "@tasan/common/money";
 
+import { amountLimitError } from "~/domain/expense-limits";
+
 import { ApplicationError } from "./errors";
 
 export const invalidField = (field: string, message: string): never => {
@@ -22,14 +24,17 @@ export const toAmount = (
   currency: CurrencySymbol,
   field: string,
 ) => {
+  let amount: M.Money | undefined;
   try {
-    const amount = M.create(value, currency);
-    if (M.gt(amount, 0)) return amount;
+    amount = M.create(value, currency);
   } catch {
     /* Report domain validation as a field error. */
   }
-  return invalidField(
-    field,
-    `Amount must be positive, within the supported range, and use ${String(currencies[currency].fractions)} decimal places at most.`,
-  );
+  if (!amount || !M.gt(amount, 0))
+    return invalidField(
+      field,
+      `Amount must be positive and use ${String(currencies[currency].fractions)} decimal places at most.`,
+    );
+  const limitError = amountLimitError(amount);
+  return limitError ? invalidField(field, limitError) : amount;
 };

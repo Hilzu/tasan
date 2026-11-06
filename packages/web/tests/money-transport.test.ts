@@ -13,7 +13,7 @@ await test("React Router preserves Money, rates, and Maps in document hydration,
   const original = {
     amount: M.create("9007199254740993.01", "EUR"),
     participants: new Map([["participant", M.create("-0.03", "EUR")]]),
-    conversionRate: Rate.create("0.12345678901234567890123456789012345678"),
+    conversionRate: Rate.create(String(0.012345678901234567)),
   };
   const build: ServerBuild = {
     entry: {

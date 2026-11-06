@@ -1,11 +1,5 @@
 // Internal rational arithmetic. Public Money/rate APIs validate their own domains.
-/** A well-formed value outside the supported magnitude, precision, or size. */
-export class OutOfRangeError extends RangeError {
-  constructor(message: string) {
-    super(message);
-    this.name = "OutOfRangeError";
-  }
-}
+// Inputs are short plain decimals, so values stay small without size checks.
 export interface Rational {
   numerator: bigint;
   denominator: bigint;
@@ -25,39 +19,19 @@ export const rational = (numerator: bigint, denominator = 1n): Rational => {
     denominator = -denominator;
   }
   const factor = gcd(numerator < 0n ? -numerator : numerator, denominator);
-  numerator /= factor;
-  denominator /= factor;
-  if (
-    numerator.toString().length > 4096 ||
-    denominator.toString().length > 4096
-  )
-    throw new OutOfRangeError("Calculation is too large.");
-  return { numerator, denominator };
+  return { numerator: numerator / factor, denominator: denominator / factor };
 };
+/** Plain decimal text such as "-12.50" or ".5"; no exponent notation. */
 export const parse = (text: string): Rational => {
-  if (typeof text !== "string") throw new RangeError("Invalid decimal.");
-  if (text.length > 1024) throw new OutOfRangeError("Decimal is too long.");
-  const match = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:e([+-]?\d+))?$/i.exec(
-    text.trim(),
-  );
+  const match =
+    text.length <= 100 &&
+    /^([+-]?)(?=\.?\d)(\d*)(?:\.(\d*))?$/.exec(text.trim());
   if (!match) throw new RangeError("Invalid decimal.");
-  const [, sign, whole = "0", fraction = "", leadingFraction, exponent = "0"] =
-    match;
-  const digits = leadingFraction || fraction;
-  // Bound the normalized exponent, so equal values like 1e-1024 and
-  // 1.0e-1024 are treated alike; zero has no meaningful exponent.
-  const significand = `${whole}${digits}`.replace(/0+$/, "");
-  if (!/[1-9]/.test(significand)) return rational(0n);
-  const power =
-    Number(exponent) -
-    digits.length +
-    (whole.length + digits.length - significand.length);
-  if (!Number.isSafeInteger(power) || Math.abs(power) > 1024)
-    throw new OutOfRangeError("Decimal exponent is too large.");
-  const coefficient = BigInt(`${sign}${significand}`);
-  return power >= 0 ?
-      rational(coefficient * 10n ** BigInt(power))
-    : rational(coefficient, 10n ** BigInt(-power));
+  const [, sign, whole, fraction = ""] = match;
+  return rational(
+    BigInt(`${sign}${whole}${fraction}`),
+    10n ** BigInt(fraction.length),
+  );
 };
 export const add = (a: Rational, b: Rational) =>
   rational(
@@ -102,26 +76,6 @@ export const decimalText = (value: Rational): string => {
   );
   return scale ? text.replace(/0+$/, "").replace(/\.$/, "") : text;
 };
-// Matches DynamoDB's decimal range; insignificant trailing zeroes do not count.
-export const storageDecimal = (text: string): string => {
-  const value = parse(text);
-  if (value.numerator === 0n) return "0";
-  const canonical = decimalText(value);
-  const digits = canonical
-    .replace(/[-.]/g, "")
-    .replace(/^0+/, "")
-    .replace(/0+$/, "");
-  const magnitude = canonical.replace(/^-/, "");
-  const [whole, fraction = ""] = magnitude.split(".");
-  const exponent =
-    whole !== "0" ? whole.length - 1 : -1 - fraction.search(/[1-9]/);
-  if (digits.length > 38 || exponent < -130 || exponent > 125)
-    throw new OutOfRangeError(
-      "Decimal exceeds the supported range or precision.",
-    );
-  return canonical;
-};
-
 /** Largest remainder with signed floors; ties favour earlier input parts. */
 export const allocate = (
   total: bigint,
@@ -154,7 +108,7 @@ export const allocate = (
 };
 
 export const expression = (text: string): Rational => {
-  if (text.length > 1024) throw new OutOfRangeError("Calculation is too long.");
+  if (text.length > 200) throw new RangeError("Calculation is too long.");
   const tokens = text.match(/\d+[.,]?\d*|[.,]\d+|[-+*/()]|\S/g) ?? [];
   let pos = 0;
   const expr = (): Rational => {

@@ -24,7 +24,7 @@ import {
 } from "@tasan/data";
 
 import { convertExpense } from "~/domain/convert-expense";
-import { expenseAmountLimitError } from "~/domain/expense-limits";
+import { amountLimitError } from "~/domain/expense-limits";
 
 import { ApplicationError } from "./errors";
 import { logAction } from "./logging";
@@ -45,29 +45,16 @@ export interface NewExpense {
   participants: Map<UserID, string>;
 }
 
-// Use the same allocation and tie policy as the split's displayed amounts.
-const convertForSplit = (
+// Converted with the same allocation and tie policy as the split's displayed
+// amounts, new spending must also stay within the limit in the split currency.
+const validateConversion = (
   expense: Parameters<typeof convertExpense>[0],
   currency: CurrencySymbol,
 ) => {
-  try {
-    return convertExpense(expense, currency);
-  } catch (error) {
-    if (!(error instanceof RangeError)) throw error;
-    return invalidField(
-      "amount",
-      `Amount or participant shares exceed the supported range when converted to ${currency}.`,
-    );
-  }
-};
-
-// New spending must stay within the limit as entered and, when it is in a
-// different currency, after conversion to the split currency.
-const validateExpenseLimit = (
-  amount: M.Money,
-  options: { converted?: boolean } = {},
-) => {
-  const error = expenseAmountLimitError(amount, options);
+  if (expense.currency === currency) return;
+  const error = amountLimitError(convertExpense(expense, currency).amount, {
+    converted: true,
+  });
   if (error) invalidField("amount", error);
 };
 
@@ -113,7 +100,6 @@ const createEntry = async (
         findSplitUsers(splitID),
       ]);
       const { amount, participants } = validateExpense(input, splitUsers);
-      if (kind === "expense") validateExpenseLimit(amount);
       const conversionRate =
         input.currency === split.currency ?
           undefined
@@ -127,9 +113,7 @@ const createEntry = async (
         participants,
         conversionRate,
       };
-      const converted = convertForSplit(changes, split.currency);
-      if (kind === "expense" && input.currency !== split.currency)
-        validateExpenseLimit(converted.amount, { converted: true });
+      validateConversion(changes, split.currency);
       try {
         return await createSplitExpense({
           ...changes,
@@ -287,7 +271,6 @@ export const editExpense = async (
               findSplitUsers(splitID),
             ]);
             const { amount, participants } = validateExpense(input, members);
-            validateExpenseLimit(amount);
             const conversionRate =
               input.currency === current.currency ? current.conversionRate
               : input.currency === split.currency ? undefined
@@ -304,9 +287,7 @@ export const editExpense = async (
               payer: input.payer,
               conversionRate,
             };
-            const converted = convertForSplit(changes, split.currency);
-            if (input.currency !== split.currency)
-              validateExpenseLimit(converted.amount, { converted: true });
+            validateConversion(changes, split.currency);
             return changes;
           },
         );

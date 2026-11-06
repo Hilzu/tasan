@@ -11,7 +11,6 @@ let _documentClient: DynamoDBDocumentClient | undefined;
 export const documentClient = () => {
   _documentClient ??= DynamoDBDocumentClient.from(dynamoClient(), {
     marshallOptions: { removeUndefinedValues: true },
-    unmarshallOptions: { wrapNumbers: true },
   });
   return _documentClient;
 };

@@ -2,33 +2,12 @@ import type { CurrencySymbol } from "@tasan/common/currency";
 import type { UserID } from "@tasan/common/id";
 import * as M from "@tasan/common/money";
 
-import { expenseAmountLimitError } from "~/domain/expense-limits";
-
-// Nothing could be calculated, so only the range error is reported; no
-// participant amount or derived total error applies.
-const invalidCalculation = (
-  currency: CurrencySymbol,
-  total: M.Money | undefined,
-) => {
-  const zero = M.create("0", currency);
-  return {
-    amount: total ?? zero,
-    participants: new Map<UserID, M.Money>(),
-    invalidAmounts: new Set<UserID>(),
-    difference: zero,
-    valid: false,
-    error:
-      "These amounts cannot be allocated within the supported range. Reduce the amounts or change the allocation.",
-    limitError: undefined,
-  };
-};
+import { amountLimitError } from "~/domain/expense-limits";
 
 const allocationResult = (
   amount: M.Money,
   participants: Map<UserID, M.Money>,
 ) => {
-  // Calculated split totals may be wider than storage; an expense must fit.
-  M.fromMinorUnits(amount.minorUnits, amount.currency);
   const zero = M.create("0", amount.currency);
   const difference = M.sub(
     amount,
@@ -38,9 +17,8 @@ const allocationResult = (
     [...participants].filter(([, value]) => !M.gt(value, 0)).map(([id]) => id),
   );
   // Reported on the total, separately from allocation problems.
-  const limitError = expenseAmountLimitError(amount);
+  const limitError = amountLimitError(amount);
   return {
-    error: undefined,
     limitError,
     amount,
     participants,
@@ -62,46 +40,38 @@ export const calculateExpenseAmounts = (
   currency: CurrencySymbol,
   payer: UserID,
 ) => {
-  try {
-    const zero = M.create("0", currency);
-    if (total) M.assertCurrency(total, currency);
-    const participants = new Map(
-      [...inputs].map(([id, value]) => {
-        if (value) M.assertCurrency(value, currency);
-        return [id, value ?? zero] as const;
-      }),
+  const zero = M.create("0", currency);
+  if (total) M.assertCurrency(total, currency);
+  const participants = new Map(
+    [...inputs].map(([id, value]) => {
+      if (value) M.assertCurrency(value, currency);
+      return [id, value ?? zero] as const;
+    }),
+  );
+  const explicitTotal = [...participants.values()].reduce(M.add, zero);
+  const amount = total ?? explicitTotal;
+  const automatic = [...inputs.keys()].filter(
+    (id) => inputs.get(id) === undefined,
+  );
+  const remaining = M.sub(amount, explicitTotal);
+  // Preserve the form's payer-then-input-order tie policy.
+  const order =
+    automatic.includes(payer) ?
+      [payer, ...automatic.filter((id) => id !== payer)]
+    : automatic;
+  if (order.length > 0) {
+    const allocated = M.allocate(
+      M.gt(remaining, 0) ? remaining : zero,
+      order.map(() => "1"),
     );
-    const explicitTotal = [...participants.values()].reduce(M.add, zero);
-    const amount = total ?? explicitTotal;
-    const automatic = [...inputs.keys()].filter(
-      (id) => inputs.get(id) === undefined,
-    );
-    const remaining = M.sub(amount, explicitTotal);
-    // Preserve the form's payer-then-input-order tie policy.
-    const order =
-      automatic.includes(payer) ?
-        [payer, ...automatic.filter((id) => id !== payer)]
-      : automatic;
-    if (order.length > 0) {
-      const allocated = M.allocate(
-        M.gt(remaining, 0) ? remaining : zero,
-        order.map(() => "1"),
-      );
-      order.forEach((id, index) => participants.set(id, allocated[index]));
-    }
-    return {
-      ...allocationResult(amount, participants),
-      hasAmounts:
-        total !== undefined ||
-        [...inputs.values()].some((value) => value !== undefined),
-    };
-  } catch (error) {
-    if (!(error instanceof RangeError)) throw error;
-    return {
-      ...invalidCalculation(currency, total),
-      hasAmounts: false,
-    };
+    order.forEach((id, index) => participants.set(id, allocated[index]));
   }
+  return {
+    ...allocationResult(amount, participants),
+    hasAmounts:
+      total !== undefined ||
+      [...inputs.values()].some((value) => value !== undefined),
+  };
 };
 
 export interface ShareInput {
@@ -116,58 +86,50 @@ export const calculateShareAmounts = (
   currency: CurrencySymbol,
   payer: UserID,
 ) => {
-  try {
-    const zero = M.create("0", currency);
-    const amount = total ?? zero;
-    M.assertCurrency(amount, currency);
-    const invalidShares = new Set(
-      [...inputs]
-        .filter(
-          ([, { shares }]) =>
-            shares === undefined || parseShares(shares) === undefined,
-        )
-        .map(([id]) => id),
-    );
-    const adjustments = new Map(
-      [...inputs].map(([id, { adjustment }]) => {
-        if (adjustment) M.assertCurrency(adjustment, currency);
-        return [id, adjustment ?? zero] as const;
-      }),
-    );
-    const base = M.sub(amount, [...adjustments.values()].reduce(M.add, zero));
-    const order = [...inputs.keys()].sort(
-      (a, b) => Number(b === payer) - Number(a === payer),
-    );
-    const weights = order.map((id) =>
-      invalidShares.has(id) ? "0" : (
-        (parseShares(inputs.get(id)?.shares ?? "0") ?? "0")
-      ),
-    );
-    // Without shares nothing is allocated; the difference reports the remainder.
-    const allocated =
-      weights.every((weight) => weight === "0") ?
-        weights.map(() => zero)
-      : M.allocate(base, weights);
-    const shares = new Map(order.map((id, index) => [id, allocated[index]]));
-    const participants = new Map(
-      [...inputs.keys()].map((id) => [
-        id,
-        M.add(shares.get(id) ?? zero, adjustments.get(id) ?? zero),
-      ]),
-    );
-    const result = allocationResult(amount, participants);
-    return {
-      ...result,
-      invalidShares,
-      valid: total !== undefined && result.valid && invalidShares.size === 0,
-    };
-  } catch (error) {
-    if (!(error instanceof RangeError)) throw error;
-    return {
-      ...invalidCalculation(currency, total),
-      invalidShares: new Set<UserID>(),
-    };
-  }
+  const zero = M.create("0", currency);
+  const amount = total ?? zero;
+  M.assertCurrency(amount, currency);
+  const invalidShares = new Set(
+    [...inputs]
+      .filter(
+        ([, { shares }]) =>
+          shares === undefined || parseShares(shares) === undefined,
+      )
+      .map(([id]) => id),
+  );
+  const adjustments = new Map(
+    [...inputs].map(([id, { adjustment }]) => {
+      if (adjustment) M.assertCurrency(adjustment, currency);
+      return [id, adjustment ?? zero] as const;
+    }),
+  );
+  const base = M.sub(amount, [...adjustments.values()].reduce(M.add, zero));
+  const order = [...inputs.keys()].sort(
+    (a, b) => Number(b === payer) - Number(a === payer),
+  );
+  const weights = order.map((id) =>
+    invalidShares.has(id) ? "0" : (
+      (parseShares(inputs.get(id)?.shares ?? "0") ?? "0")
+    ),
+  );
+  // Without shares nothing is allocated; the difference reports the remainder.
+  const allocated =
+    weights.every((weight) => weight === "0") ?
+      weights.map(() => zero)
+    : M.allocate(base, weights);
+  const shares = new Map(order.map((id, index) => [id, allocated[index]]));
+  const participants = new Map(
+    [...inputs.keys()].map((id) => [
+      id,
+      M.add(shares.get(id) ?? zero, adjustments.get(id) ?? zero),
+    ]),
+  );
+  const result = allocationResult(amount, participants);
+  return {
+    ...result,
+    invalidShares,
+    valid: total !== undefined && result.valid && invalidShares.size === 0,
+  };
 };
 
 export const parseShares = (text: string): string | undefined => {

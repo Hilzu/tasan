@@ -37,11 +37,7 @@ await test("both allocation modes report oversized totals as a limit error, not 
     ),
   ]) {
     assert.equal(result.valid, false);
-    assert.equal(result.error, undefined);
-    assert.equal(
-      result.limitError,
-      "Expense amount must not exceed 1 trillion EUR.",
-    );
+    assert.equal(result.limitError, "Amount must not exceed 1 trillion EUR.");
     assert.equal(M.toString(result.amount), "1000000000000.01");
     assert.ok(M.equals(result.difference, 0));
   }
@@ -420,31 +416,6 @@ await test("share inputs parse and step without going negative", () => {
   assert.equal(stepShares("abc", 1), "1");
 });
 
-await test("allocation range failures remain recoverable form validation errors", () => {
-  const total = M.create("1e125", "EUR");
-  const weights = shareInputs([[1], [1], [1]], 2);
-  const shared = calculateShareAmounts(total, weights, "EUR", payer);
-  assert.equal(shared.valid, false);
-  assert.ok(shared.error);
-  const explicit = calculateExpenseAmounts(
-    undefined,
-    new Map([
-      [payer, total],
-      [second, M.create("0.01", "EUR")],
-    ]),
-    "EUR",
-    payer,
-  );
-  assert.equal(explicit.valid, false);
-  assert.ok(explicit.error);
-  // Only the range error applies; nothing derived from a failed calculation.
-  assert.equal(explicit.hasAmounts, false);
-  for (const result of [shared, explicit]) {
-    assert.equal(result.participants.size, 0);
-    assert.equal(result.invalidAmounts.size, 0);
-  }
-});
-
 await test("allocation without automatic participants or shares reports the remainder", () => {
   const explicit = calculateExpenseAmounts(
     M.create("10", "EUR"),
@@ -452,7 +423,6 @@ await test("allocation without automatic participants or shares reports the rema
     "EUR",
     payer,
   );
-  assert.equal(explicit.error, undefined);
   assert.equal(M.toString(explicit.difference), "6.00");
   const shared = calculateShareAmounts(
     M.create("10", "EUR"),
@@ -460,10 +430,9 @@ await test("allocation without automatic participants or shares reports the rema
     "EUR",
     payer,
   );
-  assert.equal(shared.error, undefined);
   assert.equal(M.toString(shared.difference), "9.00");
 });
 
 await test("share stepping keeps a valid value when the next step exceeds the range", () => {
-  assert.equal(stepShares("1e125", 1), M.weight("1e125"));
+  assert.equal(stepShares("1000000", 1), "1000000");
 });

@@ -3,60 +3,26 @@ import { test } from "node:test";
 
 import * as Rate from "./exchange-rate.js";
 
-await test("rates canonicalize equivalent decimal scales without losing published digits", () => {
-  assert.equal(Rate.create("1.00500"), Rate.create("1005e-3"));
-  assert.equal(Rate.create("1.25e-7"), "0.000000125");
-  assert.equal(
-    Rate.create("0.12345678901234567890123456789012345678"),
-    "0.12345678901234567890123456789012345678",
-  );
+await test("rates canonicalize decimal scales and keep provider digits exactly", () => {
+  assert.equal(Rate.create("1.00500"), "1.005");
+  assert.equal(Rate.create("0.000054733"), "0.000054733");
+  assert.equal(Rate.create(String(0.1 + 0.2)), "0.30000000000000004");
+  assert.equal(Rate.create("0.000001"), "0.000001");
+  assert.equal(Rate.create("1000000"), "1000000");
 });
 
-await test("rates enforce positivity and storage precision and magnitude limits", () => {
-  assert.equal(Rate.create("1e-130"), `0.${"0".repeat(129)}1`);
-  assert.equal(
-    Rate.create(`${"9".repeat(38)}e88`),
-    `${"9".repeat(38)}${"0".repeat(88)}`,
-  );
+await test("rates stay within one millionth to one million and JS number precision", () => {
   for (const text of [
     "0",
     "-1",
     "NaN",
-    "Infinity",
     "",
-    "1e126",
-    "1e-131",
-    "0.123456789012345678901234567890123456789",
+    "1e-7",
+    "0.0000009",
+    "1000000.1",
+    "0.12345678901234567890",
   ])
-    assert.throws(() => Rate.create(text), RangeError);
-});
-
-await test("provider rates round to storage precision, half away from zero", () => {
-  for (const [text, expected] of [
-    ["0.9", "0.9"],
-    ["1.25e-7", "0.000000125"],
-    [
-      "0.123456789012345678901234567890123456789",
-      "0.12345678901234567890123456789012345679",
-    ],
-    [
-      "0.123456789012345678901234567890123456784",
-      "0.12345678901234567890123456789012345678",
-    ],
-    [
-      "123456789012345678901234567890123456785",
-      "123456789012345678901234567890123456790",
-    ],
-    [`9.${"9".repeat(38)}`, "10"],
-    [`1${"0".repeat(38)}1`, `1${"0".repeat(39)}`],
-    [
-      `1.${"0".repeat(37)}5e-130`,
-      `0.${"0".repeat(129)}10000000000000000000000000000000000001`,
-    ],
-  ])
-    assert.equal(Rate.round(text), expected, text);
-  for (const text of ["0", "-1", "NaN", "1e-131", `${"9".repeat(39)}e87`])
-    assert.throws(() => Rate.round(text), RangeError, text);
+    assert.throws(() => Rate.create(text), RangeError, text);
 });
 
 await test("reciprocal display rounds half units away from zero at explicit precision", () => {

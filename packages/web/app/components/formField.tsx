@@ -12,6 +12,7 @@ import {
 import { flushSync } from "react-dom";
 
 import { useLanguage } from "~/context";
+import { amountLimitError } from "~/domain/expense-limits";
 
 export function FieldError({ errors }: { errors: string[] }) {
   return (
@@ -125,24 +126,18 @@ export const readAmountInput = (
   currency: CurrencySymbol,
 ): { amount?: M.Money; error: string } => {
   if (value.trim() === "") return { error: "" };
+  let amount: M.Money;
   try {
-    return {
-      amount:
-        expressionMode ?
-          M.calculate(value, currency)
-        : M.round(parseNumber(value), currency),
-      error: "",
-    };
+    amount =
+      expressionMode ?
+        M.calculate(value, currency)
+      : M.round(parseNumber(value), currency);
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
-    return {
-      error:
-        error instanceof M.OutOfRangeError ?
-          "Amount is too large or has too many digits."
-        : expressionMode ? "Invalid calculation"
-        : "Invalid amount",
-    };
+    return { error: expressionMode ? "Invalid calculation" : "Invalid amount" };
   }
+  const limitError = amountLimitError(amount);
+  return limitError ? { error: limitError } : { amount, error: "" };
 };
 
 export const resolveAmount = (

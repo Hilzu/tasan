@@ -51,41 +51,21 @@ await test("failed and invalid exchange rates are not cached", async () => {
   }
 });
 
-await test("rate ingestion preserves the exact published JSON decimal and exponent notation", async () => {
+await test("rates keep the JS number's decimal text and reject out-of-range values", async () => {
   const fetch = mock.method(globalThis, "fetch", () =>
     Promise.resolve(
-      new Response(
-        '{"base":"INR","rates":{"EUR":0.12345678901234567890123456789012345678,"JPY":1.25e-7}}',
-      ),
+      new Response('{"base":"INR","rates":{"EUR":0.012345678901234567}}'),
     ),
   );
   try {
     assert.equal(
       await fetchCurrencyConversionRate("INR", "EUR"),
-      "0.12345678901234567890123456789012345678",
+      String(0.012345678901234567),
     );
-    assert.equal(
-      await fetchCurrencyConversionRate("INR", "JPY"),
-      "0.000000125",
+    fetch.mock.mockImplementation(() =>
+      Promise.resolve(new Response('{"base":"INR","rates":{"JPY":1.25e-7}}')),
     );
-  } finally {
-    fetch.mock.restore();
-  }
-});
-
-await test("rates with more digits than storage allows are rounded, not rejected", async () => {
-  const fetch = mock.method(globalThis, "fetch", () =>
-    Promise.resolve(
-      new Response(
-        '{"base":"CHF","rates":{"EUR":0.123456789012345678901234567890123456789}}',
-      ),
-    ),
-  );
-  try {
-    assert.equal(
-      await fetchCurrencyConversionRate("CHF", "EUR"),
-      "0.12345678901234567890123456789012345679",
-    );
+    await assert.rejects(() => fetchCurrencyConversionRate("INR", "JPY"));
   } finally {
     fetch.mock.restore();
   }

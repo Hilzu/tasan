@@ -2,20 +2,13 @@ import { currencies, type CurrencySymbol } from "./currency.js";
 import { create as rateFromText, type ExchangeRate } from "./exchange-rate.js";
 import * as R from "./rational.js";
 
-export { OutOfRangeError } from "./rational.js";
-
 declare const money: unique symbol;
 /** Signed, quantized minor units in a validated currency. Plain data supports
  * React Router transport. No implicit number conversion or scale conversion.
- * Constructors, conversion, and allocation enforce <=38 significant decimal
- * digits and magnitude <1e126 major units (the existing persistence range).
- * Addition, subtraction, and negation allow wider computed totals and balances,
- * up to 4096 minor-unit digits; persistence still validates individual amounts.
- * Range, precision, and size violations throw OutOfRangeError, a RangeError.
- * Invalid decimal syntax/currency, excess precision, mismatched
- * currencies, and division by zero also throw RangeError. Amount constructors
- * do not accept number inputs.
- * Text inputs are limited to 1024 characters; exact intermediates to 4096 digits.
+ * Arithmetic is exact and unbounded; callers enforce business limits such as
+ * the maximum amount at their input boundaries. Invalid decimal syntax or
+ * currency, excess precision, mismatched currencies, and division by zero
+ * throw RangeError.
  */
 export interface Money {
   readonly minorUnits: bigint;
@@ -27,28 +20,12 @@ const fractions = (currency: CurrencySymbol) => {
     throw new RangeError("Invalid currency.");
   return currencies[currency].fractions;
 };
-const fromComputedUnits = (
-  minorUnits: bigint,
-  currency: CurrencySymbol,
-): Money => {
-  fractions(currency);
-  if (typeof minorUnits !== "bigint")
-    throw new RangeError("Invalid minor units.");
-  if (minorUnits.toString().replace(/^-/, "").length > 4096)
-    throw new R.OutOfRangeError("Amount is too large.");
-  return Object.freeze({ minorUnits, currency }) as Money;
-};
 export const fromMinorUnits = (
   minorUnits: bigint,
   currency: CurrencySymbol,
 ): Money => {
-  const scale = fractions(currency);
-  if (typeof minorUnits !== "bigint")
-    throw new RangeError("Invalid minor units.");
-  if (minorUnits.toString().length > 129)
-    throw new R.OutOfRangeError("Amount exceeds the supported range.");
-  R.storageDecimal(R.fixed(minorUnits, scale));
-  return fromComputedUnits(minorUnits, currency);
+  fractions(currency);
+  return Object.freeze({ minorUnits, currency }) as Money;
 };
 /** Parse an already quantized major-unit decimal, rejecting excess precision. */
 export const create = (text: string, currency: CurrencySymbol): Money => {
@@ -68,24 +45,6 @@ const fromRational = (value: R.Rational, currency: CurrencySymbol): Money =>
     R.round(R.multiply(value, R.rational(10n ** BigInt(fractions(currency))))),
     currency,
   );
-/** Quantize legacy decimal parts against their rounded total. Equal remainders
- * favour earlier parts. Each part must stay within one minor unit of its stored
- * value, allowing historical rounding differences and floating-point noise.
- */
-export const roundAndAllocate = (
-  total: Money,
-  parts: readonly string[],
-): Money[] => {
-  const scale = R.rational(10n ** BigInt(fractions(total.currency)));
-  const values = parts.map((text) => R.multiply(R.parse(text), scale));
-  return R.allocate(total.minorUnits, values).map((units, index) => {
-    const { numerator, denominator } = values[index];
-    const difference = units * denominator - numerator;
-    if (difference <= -denominator || difference >= denominator)
-      throw new RangeError("Allocated parts must sum to the total.");
-    return fromMinorUnits(units, total.currency);
-  });
-};
 export const toString = (amount: Money): string =>
   R.fixed(amount.minorUnits, fractions(amount.currency));
 export const assertCurrency = (
@@ -108,14 +67,14 @@ export const equals = (a: Money, b: Money | 0): boolean => compare(a, b) === 0;
 export const gt = (a: Money, b: Money | 0): boolean => compare(a, b) > 0;
 export const add = (a: Money, b: Money): Money => {
   assertCurrency(b, a.currency);
-  return fromComputedUnits(a.minorUnits + b.minorUnits, a.currency);
+  return fromMinorUnits(a.minorUnits + b.minorUnits, a.currency);
 };
 export const sub = (a: Money, b: Money): Money => {
   assertCurrency(b, a.currency);
-  return fromComputedUnits(a.minorUnits - b.minorUnits, a.currency);
+  return fromMinorUnits(a.minorUnits - b.minorUnits, a.currency);
 };
 export const negate = (a: Money): Money =>
-  fromComputedUnits(-a.minorUnits, a.currency);
+  fromMinorUnits(-a.minorUnits, a.currency);
 /** Evaluate exact arithmetic, quantizing only the final result. */
 export const calculate = (text: string, currency: CurrencySymbol): Money =>
   fromRational(R.expression(text), currency);
@@ -127,20 +86,6 @@ const conversionMultiplier = (
   R.multiply(
     R.parse(rateFromText(rate)),
     R.rational(10n ** BigInt(fractions(to)), 10n ** BigInt(fractions(from))),
-  );
-export const convert = (
-  amount: Money,
-  rate: ExchangeRate,
-  currency: CurrencySymbol,
-): Money =>
-  fromMinorUnits(
-    R.round(
-      R.multiply(
-        R.rational(amount.minorUnits),
-        conversionMultiplier(amount.currency, rate, currency),
-      ),
-    ),
-    currency,
   );
 export const convertAndAllocate = (
   total: Money,
@@ -167,11 +112,12 @@ export const convertAndAllocate = (
     ).map((units) => fromMinorUnits(units, currency)),
   };
 };
-/** Nonnegative decimal weights; blanks count as zero. */
+/** Decimal weights from 0 to one million; blanks count as zero. */
 export const weight = (text: string): string => {
   const value = R.parse(text.trim().replace(",", ".") || "0");
-  if (value.numerator < 0n) throw new RangeError("Weight must be nonnegative.");
-  return R.storageDecimal(R.decimalText(value));
+  if (value.numerator < 0n || value.numerator > 1000000n * value.denominator)
+    throw new RangeError("Weight must be between 0 and 1000000.");
+  return R.decimalText(value);
 };
 export const stepWeight = (text: string, delta: number): string => {
   if (!Number.isSafeInteger(delta))

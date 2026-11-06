@@ -1,5 +1,4 @@
 // Internal persistence schemas. Do not export these through the package entry point.
-import { NumberValue } from "@aws-sdk/lib-dynamodb";
 import * as Rate from "@tasan/common/exchange-rate";
 import {
   asExpenseID,
@@ -35,33 +34,25 @@ const splitIDSchema = idSchema(asSplitID);
 const sessionIDSchema = idSchema(asSessionID);
 const inviteIDSchema = idSchema(asInviteID);
 const timestamp = z.iso.datetime();
-const numericText = z
-  .instanceof(NumberValue)
-  .transform((value) => value.toString());
-const storedDecimal = z.union([
-  numericText,
-  z.string(),
-  z.number().transform(String),
-]);
-const storedRate = storedDecimal.transform((text, ctx) => {
-  try {
-    return Rate.create(text);
-  } catch {
-    ctx.addIssue({ code: "custom", message: "Invalid rate" });
-    return z.NEVER;
-  }
-});
-const expiry = z.preprocess(
-  (value) => (value instanceof NumberValue ? Number(value.toString()) : value),
-  z
-    .number()
-    .int()
-    .refine(
-      (value) =>
-        Number.isSafeInteger(value) &&
-        Number.isFinite(new Date(value * 1000).getTime()),
-    ),
-);
+const expiry = z
+  .number()
+  .int()
+  .refine((value) => Number.isFinite(new Date(value * 1000).getTime()));
+
+// Amounts and rates are plain DynamoDB numbers. Amount and rate limits keep
+// them within 15 significant digits, which JS numbers hold exactly.
+export const moneyFromNumber = (
+  value: number,
+  currency: Money.Money["currency"],
+): Money.Money => Money.create(String(value), currency);
+export const moneyToNumber = (amount: Money.Money): number => {
+  const value = Number(Money.toString(amount));
+  if (!Money.equals(moneyFromNumber(value, amount.currency), amount))
+    throw new RangeError("Amount cannot be stored exactly.");
+  return value;
+};
+export const rateFromNumber = (value: number): Rate.ExchangeRate =>
+  Rate.create(String(value));
 
 export const userItemSchema = z
   .object({
@@ -159,11 +150,11 @@ const expenseFields = z.object({
   name: z.string(),
   createdAt: timestamp,
   createdBy: userIDSchema,
-  amount: storedDecimal,
+  amount: z.number(),
   currency: currencySymbolSchema,
-  conversionRate: storedRate.optional(),
+  conversionRate: z.number().optional(),
   payer: userIDSchema,
-  participants: z.record(userIDSchema, storedDecimal),
+  participants: z.record(userIDSchema, z.number()),
   // Legacy baseline soft deletions did not always record deletedBy.
   deletedAt: timestamp.optional(),
   deletedBy: userIDSchema.optional(),
@@ -181,13 +172,17 @@ export const splitExpenseItemSchema = z
       updatedBy: userIDSchema,
     }),
   ])
-  // Check each stored decimal on its own. Superseded legacy revisions may not
-  // reconcile with their total; the model reconciles only what it reads.
   .superRefine((item, ctx) => {
     try {
-      Money.round(item.amount, item.currency);
-      for (const amount of Object.values(item.participants))
-        Money.round(amount, item.currency);
+      const amount = moneyFromNumber(item.amount, item.currency);
+      const participants = Object.values(item.participants).reduce(
+        (sum, value) => sum + moneyFromNumber(value, item.currency).minorUnits,
+        0n,
+      );
+      if (participants !== amount.minorUnits)
+        throw new RangeError("Participants must sum to the amount.");
+      if (item.conversionRate !== undefined)
+        rateFromNumber(item.conversionRate);
     } catch {
       ctx.addIssue({
         code: "custom",

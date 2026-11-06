@@ -1,10 +1,5 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import {
-  GetCommand,
-  NumberValue,
-  paginateQuery,
-  PutCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { GetCommand, paginateQuery, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { compareByKey } from "@tasan/common/compare";
 import type { CurrencySymbol } from "@tasan/common/currency";
 import type * as Rate from "@tasan/common/exchange-rate";
@@ -20,12 +15,14 @@ import { captureAsync } from "@tasan/common/tracing";
 
 import { documentClient } from "../client.js";
 import { TableName } from "../config.js";
-import { DataIntegrityError } from "../errors.js";
 import {
   expenseIDOf,
   expenseOperationKey,
+  moneyFromNumber,
+  moneyToNumber,
   operationIDOf,
   parseItem,
+  rateFromNumber,
   type SplitExpenseItem,
   splitExpenseItemSchema,
 } from "../items.js";
@@ -50,43 +47,32 @@ interface ExpenseReadOptions {
   consistentRead?: boolean;
 }
 
-// Legacy records may contain excess fractional digits. Keep the historical
-// read-time quantization boundary explicit; never rewrite stored snapshots.
-// Digits already lost before storage cannot be reconstructed.
-// Current expenses must reconcile with their total. Revision history may show
-// legacy snapshots that never did, so it rounds each part independently.
-const toExpense = (item: SplitExpenseItem, history: boolean): SplitExpense => {
-  const amount = M.round(item.amount, item.currency);
-  const entries = Object.entries(item.participants).sort(compareByKey);
-  const values = entries.map(([, value]) => value);
-  let allocated: M.Money[];
-  try {
-    allocated = M.roundAndAllocate(amount, values);
-  } catch (error) {
-    if (!(error instanceof RangeError)) throw error;
-    if (!history) throw new DataIntegrityError("split-expense");
-    allocated = values.map((value) => M.round(value, item.currency));
-  }
-  return {
-    kind: item.kind ?? "expense",
-    id: expenseIDOf(item),
-    splitID: item.pk,
-    updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
-    updatedBy: item.updatedBy,
-    name: item.name,
-    amount,
-    createdBy: item.createdBy,
-    createdAt: new Date(item.createdAt),
-    currency: item.currency,
-    conversionRate: item.conversionRate,
-    payer: item.payer,
-    participants: new Map(
-      entries.map(([id], index) => [asUserID(id), allocated[index]]),
-    ),
-  };
-};
-const fromItem = (item: SplitExpenseItem) => toExpense(item, false);
-const fromHistoryItem = (item: SplitExpenseItem) => toExpense(item, true);
+// The item schema has already checked amounts, participants, and the rate.
+const fromItem = (item: SplitExpenseItem): SplitExpense => ({
+  kind: item.kind ?? "expense",
+  id: expenseIDOf(item),
+  splitID: item.pk,
+  updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
+  updatedBy: item.updatedBy,
+  name: item.name,
+  amount: moneyFromNumber(item.amount, item.currency),
+  createdBy: item.createdBy,
+  createdAt: new Date(item.createdAt),
+  currency: item.currency,
+  conversionRate:
+    item.conversionRate === undefined ?
+      undefined
+    : rateFromNumber(item.conversionRate),
+  payer: item.payer,
+  participants: new Map(
+    Object.entries(item.participants)
+      .sort(compareByKey)
+      .map(([id, value]) => [
+        asUserID(id),
+        moneyFromNumber(value, item.currency),
+      ]),
+  ),
+});
 
 // A tombstone always wins, regardless of its operation ID or arrival order.
 // Otherwise creation is the baseline and the greatest operation ID wins.
@@ -185,38 +171,27 @@ const storedChanges = (expense: EditSplitExpense) => {
     M.assertCurrency(amount, expense.currency);
   return {
     name: expense.name,
-    amount: M.toString(expense.amount),
+    amount: moneyToNumber(expense.amount),
     currency: expense.currency,
-    conversionRate: expense.conversionRate,
+    conversionRate:
+      expense.conversionRate === undefined ?
+        undefined
+      : Number(expense.conversionRate),
     payer: expense.payer,
     participants: Object.fromEntries(
-      [...expense.participants].map(([id, amount]) => [id, M.toString(amount)]),
+      [...expense.participants].map(([id, amount]) => [
+        id,
+        moneyToNumber(amount),
+      ]),
     ),
   };
 };
-
-const toDynamoItem = (item: SplitExpenseItem) => ({
-  ...item,
-  amount: NumberValue.from(item.amount),
-  conversionRate:
-    item.conversionRate === undefined ?
-      undefined
-    : NumberValue.from(item.conversionRate),
-  participants: Object.fromEntries(
-    Object.entries(item.participants).map(([id, amount]) => [
-      id,
-      NumberValue.from(amount),
-    ]),
-  ),
-});
 
 const insertItem = (Item: SplitExpenseItem) => {
   return documentClient().send(
     new PutCommand({
       TableName,
-      Item: toDynamoItem(
-        parseItem(splitExpenseItemSchema, Item, "split-expense"),
-      ),
+      Item: parseItem(splitExpenseItemSchema, Item, "split-expense"),
       ConditionExpression: "attribute_not_exists(pk)",
     }),
   );
@@ -318,7 +293,7 @@ export const findExpenseRevisions = async (
       action: actionOf(item),
       recordedAt: new Date(item.updatedAt ?? item.createdAt),
       recordedBy: item.updatedBy ?? item.createdBy,
-      expense: fromHistoryItem(item),
+      expense: fromItem(item),
     };
   });
 

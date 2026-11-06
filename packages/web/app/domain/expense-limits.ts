@@ -1,11 +1,13 @@
 import * as M from "@tasan/common/money";
 
-// Apply this limit to new spending in both the source and split currencies.
-// Repayments may cover multiple expenses; stored historical amounts stay readable.
-export const expenseAmountLimitError = (
+// Every amount entered, recorded, or converted for a split stays within one
+// trillion units. This keeps stored amounts within 15 significant digits.
+export const amountLimitError = (
   amount: M.Money,
   { converted = false } = {},
-): string | undefined =>
-  M.gt(amount, M.create("1000000000000", amount.currency)) ?
-    `${converted ? "Converted expense amount" : "Expense amount"} must not exceed 1 trillion ${amount.currency}.`
-  : undefined;
+): string | undefined => {
+  const limit = M.create("1000000000000", amount.currency);
+  return M.gt(amount, limit) || M.gt(M.negate(amount), limit) ?
+      `${converted ? "Converted amount" : "Amount"} must not exceed 1 trillion ${amount.currency}.`
+    : undefined;
+};

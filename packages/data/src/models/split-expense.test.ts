@@ -5,7 +5,6 @@ import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  NumberValue,
   PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -51,22 +50,9 @@ const high = asOperationID("op_00000000000000000000000002");
 afterEach(() => {
   mock.restoreAll();
 });
+
 // Conditional puts are local to this store. Separate stores below represent
 // Regions accepting distinct operations before replication.
-const clone = <T>(value: T): T =>
-  value === undefined ? value : (
-    (JSON.parse(
-      JSON.stringify(value, (_key, child: unknown) =>
-        child instanceof NumberValue ?
-          { numericText: child.toString() }
-        : child,
-      ),
-      (_key, child: unknown) =>
-        child && typeof child === "object" && "numericText" in child ?
-          NumberValue.from(String(child.numericText))
-        : child,
-    ) as T)
-  );
 const storage = (missEventualReads = false) => {
   const items = new Map<string, Record<string, unknown>>();
   const reads: boolean[] = [];
@@ -80,7 +66,7 @@ const storage = (missEventualReads = false) => {
       return Promise.resolve({
         Item:
           missEventualReads && !consistent ? undefined : (
-            clone(items.get(key(command.input.Key ?? {})))
+            structuredClone(items.get(key(command.input.Key ?? {})))
           ),
       });
     }
@@ -108,7 +94,7 @@ const storage = (missEventualReads = false) => {
         : 0;
       const page = all.slice(start, start + 1);
       return Promise.resolve({
-        Items: clone(page),
+        Items: structuredClone(page),
         LastEvaluatedKey:
           start + 1 < all.length ?
             { pk: page[0].pk, sk: page[0].sk }
@@ -117,7 +103,7 @@ const storage = (missEventualReads = false) => {
     }
     assert.ok(command instanceof PutCommand);
     assert.equal(command.input.ConditionExpression, "attribute_not_exists(pk)");
-    const item = clone(command.input.Item ?? {});
+    const item = structuredClone(command.input.Item ?? {});
     if (items.has(key(item)))
       throw new ConditionalCheckFailedException({
         $metadata: {},
@@ -173,7 +159,7 @@ await test("eventual creation lookup misses are resolved by a strong read after 
 await test("edits retain the original snapshot and creation metadata", async () => {
   const db = storage();
   await createSplitExpense(expense);
-  const baseline = clone(db.baseline);
+  const baseline = structuredClone(db.baseline);
   const edit = operation();
   await editSplitExpense(expense.splitID, expense.id, actorID, edit, () =>
     Promise.resolve({ ...expense, name: "Lunch" }),
@@ -258,7 +244,7 @@ await test("edit retries preserve their snapshot even after later edits and dele
   );
   const deletion = operation();
   await deleteSplitExpense(expense.splitID, expense.id, actorID, deletion);
-  const before = clone([...db.items.values()]);
+  const before = structuredClone([...db.items.values()]);
   assert.deepEqual(
     await editSplitExpense(expense.splitID, expense.id, actorID, edit, () => {
       assert.fail("A retry must not prepare a new payload");
@@ -296,7 +282,7 @@ await test("concurrent edit and deletion both persist while deletion is terminal
 await test("independently accepted regional snapshots converge in any replication order", async () => {
   const db = storage();
   await createSplitExpense(expense);
-  const baseline = clone(db.baseline);
+  const baseline = structuredClone(db.baseline);
   await editSplitExpense(expense.splitID, expense.id, actorID, high, () =>
     Promise.resolve({ ...expense, name: "Region A" }),
   );
@@ -421,7 +407,7 @@ await test("returning to the split currency removes the previous rate only from 
     (await getSplitExpense(expense.splitID, expense.id))?.conversionRate,
     undefined,
   );
-  assert.equal(String(db.baseline.conversionRate), "0.006");
+  assert.equal(db.baseline.conversionRate, 0.006);
 });
 
 await test("concurrent retries prepare independently but insert only one snapshot", async () => {
@@ -478,7 +464,7 @@ await test("a lost write response can be retried without replacing the committed
         $metadata: {},
         message: "Exists",
       });
-    items.set(key, clone(item));
+    items.set(key, structuredClone(item));
     if (loseResponse) {
       loseResponse = false;
       throw lost;

@@ -61,59 +61,6 @@ await test("rounding shares down preserves the converted total and the payer's b
   );
 });
 
-await test("valid expenses can produce summaries and debts wider than storage precision", () => {
-  const largest = `${"9".repeat(38)}${"0".repeat(88)}`;
-  for (const amounts of [
-    ["1e36", "0.01"],
-    [largest, largest],
-  ]) {
-    const entries = amounts.map((text) => {
-      const amount = M.create(text, "EUR");
-      return expense({
-        currency: "EUR",
-        conversionRate: undefined,
-        amount,
-        participants: new Map([[second, amount]]),
-      });
-    });
-    const units = entries.reduce(
-      (sum, entry) => sum + entry.amount.minorUnits,
-      0n,
-    );
-    const summary = calculateExpenseSummary(entries, "EUR", payer);
-    assert.equal(summary.total.minorUnits, units);
-    assert.equal(summary.paid.minorUnits, units);
-    assert.equal(
-      calculateExpenseSummary(entries, "EUR", second).share.minorUnits,
-      units,
-    );
-    const graph = createGraphWithCurrency("EUR", entries);
-    assert.equal(graph.get(second)?.[0].amount.minorUnits, units);
-    for (const debts of [
-      graph,
-      calculateExpenseGraph({
-        id: genSplitID(),
-        name: "Wide totals",
-        currency: "EUR",
-        createdAt: new Date(),
-        createdBy: payer,
-        expenses: entries,
-        userIDs: new Set(users),
-      }),
-    ]) {
-      const balances = new Map(
-        calculateBalances(debts, users, "EUR").map(({ userID, balance }) => [
-          userID,
-          balance.minorUnits,
-        ]),
-      );
-      assert.equal(balances.get(payer), units);
-      assert.equal(balances.get(second), -units);
-      assert.equal(balances.get(third), 0n);
-    }
-  }
-});
-
 await test("converted expense totals round exact decimal half units up", () => {
   for (const [source, rate, currency, expected] of [
     [86500, 0.00565, "EUR", 488.73],
@@ -121,7 +68,7 @@ await test("converted expense totals round exact decimal half units up", () => {
     [2700, 0.00565, "EUR", 15.26],
     [10700, 0.00565, "EUR", 60.46],
     [500, 0.00563, "EUR", 2.82],
-    [10000, 5e-7, "EUR", 0.01],
+    [5000, 0.000001, "EUR", 0.01],
     [1, 0.5, "JPY", 1],
   ] as const) {
     const entry = expense({

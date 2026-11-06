@@ -10,9 +10,9 @@ const convertResponseSchema = z.looseObject({
   base: currencySymbolSchema,
   rates: z.record(
     currencySymbolSchema,
-    z.string().transform((text, ctx) => {
+    z.number().transform((value, ctx) => {
       try {
-        return Rate.round(text);
+        return Rate.create(String(value));
       } catch {
         ctx.addIssue({ code: "custom", message: "Invalid exchange rate" });
         return z.NEVER;
@@ -63,14 +63,7 @@ const fetchRate = captureAsync(
         },
       );
     }
-    // Preserve decimal tokens before JSON parsing can discard their precision.
-    const text = await res.text();
-    const raw: unknown = JSON.parse(
-      text,
-      (_key: string, value: unknown, context?: { source?: string }) =>
-        typeof value === "number" ? context?.source : value,
-    );
-    const data = convertResponseSchema.parse(raw);
+    const data = convertResponseSchema.parse(await res.json());
     const rate = data.rates[to];
     if (!rate) throw new Error(`No exchange rate for ${to}`);
     getLogger().info("Exchange rate fetched", { from, to, rate });

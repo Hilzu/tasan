@@ -166,30 +166,18 @@ await test("same-currency expenses do not call the rate provider", async () => {
   assert.equal(save.mock.calls[0].arguments[0].conversionRate, undefined);
 });
 
-const conversionRangeCases = [
-  {
-    name: "converted total exceeds the expense limit",
-    amount: "1e12",
-    rate: "1.000000000001",
-    participants: new Map([[actorID, "1e12"]]),
-  },
-  {
-    name: "converted total exceeds magnitude",
-    amount: "1e12",
-    rate: "1e125",
-    participants: new Map([[actorID, "1e12"]]),
-  },
-];
-
-const isConversionFieldError = (error: unknown) => {
+const trillion = "1000000000000";
+const isConversionLimitError = (error: unknown) => {
   assert.ok(error instanceof ApplicationError);
   assert.equal(error.code, "invalid_input");
-  assert.match(error.fieldErrors.amount[0], /supported range|1 trillion/);
-  assert.ok(error.fieldErrors.amount[0].includes(split.currency));
+  assert.equal(
+    error.fieldErrors.amount[0],
+    `Converted amount must not exceed 1 trillion ${split.currency}.`,
+  );
   return true;
 };
 
-await test("oversized source expenses and edits fail before fetching rates or writing", async () => {
+await test("amounts over one trillion fail before fetching rates or writing", async () => {
   const input: NewExpense = {
     ...expense,
     currency: "USD",
@@ -200,7 +188,7 @@ await test("oversized source expenses and edits fail before fetching rates or wr
     assert.ok(error instanceof ApplicationError);
     assert.equal(
       error.fieldErrors.amount[0],
-      "Expense amount must not exceed 1 trillion USD.",
+      "Amount must not exceed 1 trillion USD.",
     );
     return true;
   };
@@ -217,82 +205,45 @@ await test("oversized source expenses and edits fail before fetching rates or wr
   assert.equal(savedChanges.length, 0);
 });
 
-await test("repayments can cover multiple expenses above the individual expense limit", async () => {
+await test("repayments over one trillion are recorded as several payments", async () => {
   const { recordRepayment } = await import("~/.server/services/expenses");
-  await recordRepayment(actorID, splitID, {
+  const repayment = {
     id: genExpenseID(),
     payer: actorID,
     recipient: payerID,
-    amount: "2000000000000",
-  });
+    amount: "1000000000000.01",
+  };
+  await assert.rejects(
+    () => recordRepayment(actorID, splitID, repayment),
+    ApplicationError,
+  );
+  await recordRepayment(actorID, splitID, { ...repayment, amount: trillion });
   assert.equal(
     M.toString(save.mock.calls[0].arguments[0].amount),
-    "2000000000000.00",
+    "1000000000000.00",
   );
 });
 
-await test("conversions over the expense limit name the converted split currency", async () => {
+await test("creation and currency-changing edits reject conversions over the limit", async () => {
   rate.mock.mockImplementation(() =>
     Promise.resolve(Rate.create("1.000000000001")),
   );
+  const input = {
+    ...expense,
+    currency: "USD" as const,
+    amount: trillion,
+    participants: new Map([[actorID, trillion]]),
+  };
   await assert.rejects(
-    () =>
-      createExpense(actorID, splitID, {
-        ...expense,
-        currency: "USD",
-        amount: "1e12",
-        participants: new Map([[actorID, "1e12"]]),
-      }),
-    (error: unknown) => {
-      assert.ok(error instanceof ApplicationError);
-      assert.equal(
-        error.fieldErrors.amount[0],
-        `Converted expense amount must not exceed 1 trillion ${split.currency}.`,
-      );
-      return true;
-    },
+    () => createExpense(actorID, splitID, input),
+    isConversionLimitError,
+  );
+  await assert.rejects(
+    () => editExpense(actorID, splitID, expense.id, genOperationID(), input),
+    isConversionLimitError,
   );
   assert.equal(save.mock.callCount(), 0);
-});
-
-await test("creation rejects unrepresentable conversions before writing", async (t) => {
-  for (const entry of conversionRangeCases)
-    await t.test(entry.name, async () => {
-      rate.mock.mockImplementation(() =>
-        Promise.resolve(Rate.create(entry.rate)),
-      );
-      await assert.rejects(
-        () =>
-          createExpense(actorID, splitID, {
-            ...expense,
-            currency: "USD",
-            amount: entry.amount,
-            participants: entry.participants,
-          }),
-        isConversionFieldError,
-      );
-      assert.equal(save.mock.callCount(), 0);
-    });
-});
-
-await test("currency-changing edits reject unrepresentable conversions before saving a revision", async (t) => {
-  for (const entry of conversionRangeCases)
-    await t.test(entry.name, async () => {
-      rate.mock.mockImplementation(() =>
-        Promise.resolve(Rate.create(entry.rate)),
-      );
-      await assert.rejects(
-        () =>
-          editExpense(actorID, splitID, expense.id, genOperationID(), {
-            ...expense,
-            currency: "USD",
-            amount: entry.amount,
-            participants: entry.participants,
-          }),
-        isConversionFieldError,
-      );
-      assert.equal(savedChanges.length, 0);
-    });
+  assert.equal(savedChanges.length, 0);
 });
 
 await test("edits validate conversions with the preserved historical rate", async () => {
@@ -315,10 +266,10 @@ await test("edits validate conversions with the preserved historical rate", asyn
       editExpense(actorID, splitID, expense.id, genOperationID(), {
         ...expense,
         currency: "USD",
-        amount: "1e12",
-        participants: new Map([[actorID, "1e12"]]),
+        amount: trillion,
+        participants: new Map([[actorID, trillion]]),
       }),
-    isConversionFieldError,
+    isConversionLimitError,
   );
   assert.equal(rate.mock.callCount(), 0);
   assert.equal(savedChanges.length, 0);
@@ -329,8 +280,8 @@ await test("large representable conversions keep source amounts when creating an
   const input: NewExpense = {
     ...expense,
     currency: "USD",
-    amount: "1e12",
-    participants: new Map([[actorID, "1e12"]]),
+    amount: trillion,
+    participants: new Map([[actorID, trillion]]),
   };
   await createExpense(actorID, splitID, input);
   await editExpense(actorID, splitID, expense.id, genOperationID(), input);

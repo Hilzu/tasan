@@ -75,7 +75,7 @@ await test("calculations use exact arithmetic and round only the final result", 
     ["10 / 3", "3.33"],
     ["1.005", "1.01"],
     ["0.03 / 2", "0.02"],
-    ["9007199254740993.01 + 0.01", "9007199254740993.02"],
+    ["999999999999.98 + 0.01", "999999999999.99"],
   ]) {
     const amount = resolveAmount(input, true, "EUR");
     assert.ok(amount);
@@ -111,20 +111,22 @@ await test("invalid calculations remain unresolved", () => {
   );
 });
 
-await test("amount errors distinguish invalid input from unsupported ranges", () => {
-  const tooLarge = "Amount is too large or has too many digits.";
+await test("amount errors distinguish invalid input from the amount limit", () => {
+  const limit = "Amount must not exceed 1 trillion EUR.";
   for (const [text, expressionMode, error] of [
     ["", false, ""],
     ["12,5", false, ""],
+    ["1000000000000", false, ""],
+    ["-1000000000000", true, ""],
     ["1.2.3", false, "Invalid amount"],
     ["1 +", true, "Invalid calculation"],
     ["1 / 0", true, "Invalid calculation"],
-    ["1".repeat(40), false, tooLarge],
-    ["1".repeat(40), true, tooLarge],
-    [`${"9".repeat(500)} * ${"9".repeat(500)}`, true, tooLarge],
+    ["1000000000000.01", false, limit],
+    ["1000000 * 1000000.01", true, limit],
+    ["-1000000000001", true, limit],
   ] as const) {
     const result = readAmountInput(text, expressionMode, "EUR");
-    assert.equal(result.error, error, text.slice(0, 20));
+    assert.equal(result.error, error, text);
     assert.equal(result.amount === undefined, text === "" || error !== "");
   }
 });
