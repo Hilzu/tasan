@@ -20,9 +20,9 @@ import {
 const region = "eu-central-1";
 const functionName = "TasanAppFn";
 const logGroupName = `/aws/lambda/${functionName}`;
-const benchmarkUrl = "https://tasan.app/splits";
+const origin = "https://tasan.app";
 // Served from S3 by CloudFront, so it opens the connection without invoking the Lambda.
-const connectionWarmupUrl = "https://tasan.app/favicon.ico";
+const connectionWarmupUrl = `${origin}/favicon.ico`;
 
 const architectures = [Architecture.arm64, Architecture.x86_64];
 // CPU share scales linearly with memory up to one full vCPU at 1769 MB. The single-threaded
@@ -30,9 +30,10 @@ const architectures = [Architecture.arm64, Architecture.x86_64];
 const memorySizes = [256, 512, 768, 1024, 1280, 1536, 1769, 2048];
 
 // Each round visits every configuration in a new random order so drift over time is spread evenly.
+// Within a configuration the pages are requested alternately, so each page gets this many samples.
 const rounds = 3;
 const samplesPerRound = 20;
-// Discarded requests after each configuration change, which absorb the cold start and JIT warm-up.
+// Discarded requests per page after each configuration change, which absorb the cold start and JIT warm-up.
 const warmupCount = 5;
 
 // First-tier on-demand duration prices in eu-central-1 (USD per GB-second). The per-request
@@ -48,6 +49,22 @@ const reportPollIntervalMs = 15 * 1000;
 
 const sessionCookie = process.env.SESSION_COOKIE;
 if (!sessionCookie) throw new Error("SESSION_COOKIE env is required");
+// A split the session user belongs to. Pick one with many expenses and participants: the split
+// page loads every expense and computes balances and simplified payments.
+const splitId = process.env.SPLIT_ID;
+if (!splitId?.startsWith("spl_")) {
+  throw new Error("SPLIT_ID env is required and must be a split ID (spl_…)");
+}
+
+interface Page {
+  name: string;
+  url: string;
+}
+
+const pages: Page[] = [
+  { name: "splits", url: `${origin}/splits` },
+  { name: "split", url: `${origin}/splits/${encodeURIComponent(splitId)}` },
+];
 
 interface FunctionState {
   architecture: Architecture;
@@ -57,6 +74,7 @@ interface FunctionState {
 interface Sample extends FunctionState {
   time: string;
   round: number;
+  page: string;
   requestId: string;
   cache: string;
   clientMs: number;
@@ -93,9 +111,9 @@ const warmConnection = async () => {
   }
 };
 
-const request = async () => {
+const request = async (page: Page) => {
   const start = performance.now();
-  const res = await fetch(benchmarkUrl, {
+  const res = await fetch(page.url, {
     headers: { Cookie: sessionCookie },
     // An expired session redirects to the login page, which must not be measured as a success.
     redirect: "manual",
@@ -105,6 +123,7 @@ const request = async () => {
   const body = await res.text();
   const clientMs = performance.now() - start;
   if (res.status !== 200) {
+    console.error(`Error requesting ${page.url}`);
     console.error("Error status:", res.status);
     console.error("Error headers:", res.headers);
     console.error("Error response:", body);
@@ -164,6 +183,10 @@ const downloadDeployedCode = async (expectedSha256: string) => {
   }
   return zipFile;
 };
+
+// Fail on an expired session or an inaccessible split before touching the function.
+await warmConnection();
+for (const page of pages) await request(page);
 
 await waitForUpdate();
 const original = await getState();
@@ -232,11 +255,21 @@ const runBenchmark = async (samples: Sample[]) => {
       await setState(configuration);
 
       await warmConnection();
-      for (let i = 0; i < warmupCount; i++) await request();
+      for (let i = 0; i < warmupCount; i++) {
+        for (const page of pages) await request(page);
+      }
 
       for (let i = 0; i < samplesPerRound; i++) {
-        const time = new Date().toISOString();
-        samples.push({ ...configuration, time, round, ...(await request()) });
+        for (const page of pages) {
+          const time = new Date().toISOString();
+          samples.push({
+            ...configuration,
+            time,
+            round,
+            page: page.name,
+            ...(await request(page)),
+          });
+        }
       }
     }
   }
@@ -337,6 +370,7 @@ const printTsv = (samples: Sample[], reports: Map<string, LambdaReport>) => {
     "round",
     "architecture",
     "memoryMB",
+    "page",
     "requestId",
     "xCache",
     "clientMs",
@@ -354,6 +388,7 @@ const printTsv = (samples: Sample[], reports: Map<string, LambdaReport>) => {
         sample.round.toString(),
         sample.architecture,
         sample.memorySize.toString(),
+        sample.page,
         sample.requestId,
         sample.cache,
         sample.clientMs.toFixed(1),
@@ -367,7 +402,8 @@ const printTsv = (samples: Sample[], reports: Map<string, LambdaReport>) => {
   process.stdout.write(`${lines.join("\n")}\n`);
 };
 
-const printSummary = (
+const printPageSummary = (
+  page: Page,
   samples: Sample[],
   reports: Map<string, LambdaReport>,
 ) => {
@@ -389,6 +425,7 @@ const printSummary = (
   for (const configuration of configurations) {
     const configSamples = samples.filter(
       (sample) =>
+        sample.page === page.name &&
         sample.architecture === configuration.architecture &&
         sample.memorySize === configuration.memorySize,
     );
@@ -425,7 +462,15 @@ const printSummary = (
       costPerMillion ? `$${costPerMillion.toFixed(2)}` : "-",
     ]);
   }
-  console.error(`\n${formatTable(header, rows)}`);
+  if (rows.length === 0) return;
+  console.error(`\n${page.name} (${page.url})\n${formatTable(header, rows)}`);
+};
+
+const printSummary = (
+  samples: Sample[],
+  reports: Map<string, LambdaReport>,
+) => {
+  for (const page of pages) printPageSummary(page, samples, reports);
   console.error(
     "\nClient times are measured end to end from this machine; Lambda times come from the function's platform reports.",
   );
