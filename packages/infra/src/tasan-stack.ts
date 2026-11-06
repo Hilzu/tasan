@@ -130,9 +130,12 @@ export class TasanStack extends Stack {
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {
       functionName: "TasanAppFn",
       runtime: lambda.Runtime.NODEJS_24_X,
-      memorySize: 512,
+      // Rendering is CPU-bound, so duration falls roughly in proportion to memory up to the full
+      // vCPU at 1769 MB, keeping the cost per request about flat. arm64 is as fast as x86_64 at
+      // the same size and cheaper (measured with @tasan/benchmark). Keep in sync with RegionalStack.
+      memorySize: 1769,
       entry: "./src/app-function/main.mts",
-      architecture: lambda.Architecture.X86_64,
+      architecture: lambda.Architecture.ARM_64,
       tracing: lambda.Tracing.ACTIVE,
       loggingFormat: lambda.LoggingFormat.JSON,
       applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
