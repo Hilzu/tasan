@@ -13,6 +13,7 @@ import {
   aws_s3 as s3,
   CfnOutput,
   Duration,
+  RemovalPolicy,
   Stack,
   type StackProps,
 } from "aws-cdk-lib";
@@ -218,6 +219,10 @@ export class TasanStack extends Stack {
         code: lambda.Code.fromAsset("./dist/app-origin-request/", {
           exclude: ["*.mts", "*.map"],
         }),
+        // Lambda can't delete a version while CloudFront still runs replicas of it, which lasts
+        // hours after the distribution switches to a new version. Deleting the previous version
+        // on deploy therefore always fails after several minutes of retries, so keep it instead.
+        currentVersionOptions: { removalPolicy: RemovalPolicy.RETAIN },
       },
     );
 
