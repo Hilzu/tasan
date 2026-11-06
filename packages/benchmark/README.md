@@ -1,8 +1,8 @@
 # `@tasan/benchmark`
 
-An operational benchmark for comparing the production application Lambda across configured architectures and memory sizes. It updates `TasanAppFn`, sends authenticated requests to `https://tasan.app/splits`, and prints latency measurements.
+An operational benchmark for comparing the production application Lambda across configured architectures and memory sizes. It updates `TasanAppFn` in `eu-central-1`, sends authenticated requests to `https://tasan.app/splits`, and prints latency measurements.
 
-This utility mutates the live Lambda configuration and code. It is not a local or read-only benchmark. Run it only when a production benchmark has been explicitly requested, with the correct AWS account and region active, and be prepared to restore the intended Lambda configuration afterward.
+This utility mutates the live Lambda configuration and code. It is not a local or read-only benchmark. Run it only when a production benchmark has been explicitly requested, with credentials for the production AWS account active. Architecture changes redeploy the currently deployed code package, and the original architecture and memory size are restored when the run finishes, fails, or is interrupted with a single Ctrl-C. Check the Lambda configuration manually if the process is killed before it reports the restore.
 
 ## Usage
 
