@@ -1,3 +1,5 @@
+import * as Rate from "./exchange-rate.js";
+
 // Fetched from https://api.frankfurter.dev/v1/currencies, plus historic
 // currencies that existing splits and expenses may still use.
 export const currencies = {
@@ -48,8 +50,10 @@ export const currencySymbols = Object.keys(currencies);
  * rate. The exchange-rate provider no longer serves them, so conversions go
  * through the euro using these rates. Bulgaria adopted the euro on 2026-01-01.
  */
-export const fixedEuroRates: Partial<Record<CurrencySymbol, number>> = {
-  BGN: 1.95583,
+export const fixedEuroRates: Partial<
+  Record<CurrencySymbol, Rate.ExchangeRate>
+> = {
+  BGN: Rate.create("1.95583"),
 };
 
 /** Historic currencies stay readable and convertible for existing data, but

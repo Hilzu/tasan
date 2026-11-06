@@ -83,16 +83,16 @@ await test("fixed euro currencies convert through the euro without provider pair
     assert.equal(await fetchCurrencyConversionRate("EUR", "BGN"), "1.95583");
     assert.equal(
       await fetchCurrencyConversionRate("BGN", "EUR"),
-      String(1 / 1.95583),
+      "0.511291881196218",
     );
     assert.equal(fetch.mock.callCount(), 0);
     assert.equal(
       await fetchCurrencyConversionRate("BGN", "SEK"),
-      String(11 / 1.95583),
+      "5.6242106931584",
     );
     assert.equal(
       await fetchCurrencyConversionRate("CHF", "BGN"),
-      String(1.95583 / 0.94),
+      "2.08067021276596",
     );
     assert.deepEqual(
       fetch.mock.calls.map((call) => call.arguments[0]),

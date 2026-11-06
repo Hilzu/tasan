@@ -32,18 +32,20 @@ export const fetchCurrencyConversionRate = async (
   if (fixedEuroRates[from] === undefined && fixedEuroRates[to] === undefined)
     return fetchCachedRate(from, to);
   // The provider no longer publishes rates for fixed-rate currencies, so
-  // derive their pairs through the euro. The shortest decimal text of the
-  // quotient is exactly what a JS number holds, as Rate.create requires.
+  // derive their pairs through the euro.
   const [fromRate, toRate] = await Promise.all([
     unitsPerEuro(from),
     unitsPerEuro(to),
   ]);
-  return Rate.create(String(toRate / fromRate));
+  return Rate.quotient(toRate, fromRate);
 };
 
-const unitsPerEuro = async (symbol: CurrencySymbol): Promise<number> =>
+const euro = Rate.create("1");
+const unitsPerEuro = (
+  symbol: CurrencySymbol,
+): Rate.ExchangeRate | Promise<Rate.ExchangeRate> =>
   fixedEuroRates[symbol] ??
-  (symbol === "EUR" ? 1 : Number(await fetchCachedRate("EUR", symbol)));
+  (symbol === "EUR" ? euro : fetchCachedRate("EUR", symbol));
 
 const fetchCachedRate = async (
   from: CurrencySymbol,
