@@ -42,8 +42,9 @@ export class RegionalStack extends Stack {
       runtime: lambda.Runtime.NODEJS_24_X,
       code: lambda.Code.fromAsset(`cdk.out/${appFunctionAssetPath}`),
       handler: "index.handler",
-      memorySize: 512,
-      architecture: lambda.Architecture.X86_64,
+      // Same settings as TasanStack's AppFunction; see the reasoning there.
+      memorySize: 1769,
+      architecture: lambda.Architecture.ARM_64,
       tracing: lambda.Tracing.ACTIVE,
       loggingFormat: lambda.LoggingFormat.JSON,
       applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
