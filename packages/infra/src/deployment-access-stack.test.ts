@@ -77,12 +77,15 @@ await test("permissions are limited to regional bootstrap roles and the configur
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-deploy-role-412381763181-ap-southeast-1",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-deploy-role-412381763181-eu-central-1",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-deploy-role-412381763181-us-east-1",
+            "arn:aws:iam::412381763181:role/cdk-hnb659fds-deploy-role-412381763181-us-east-2",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-file-publishing-role-412381763181-ap-southeast-1",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-file-publishing-role-412381763181-eu-central-1",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-file-publishing-role-412381763181-us-east-1",
+            "arn:aws:iam::412381763181:role/cdk-hnb659fds-file-publishing-role-412381763181-us-east-2",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-lookup-role-412381763181-ap-southeast-1",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-lookup-role-412381763181-eu-central-1",
             "arn:aws:iam::412381763181:role/cdk-hnb659fds-lookup-role-412381763181-us-east-1",
+            "arn:aws:iam::412381763181:role/cdk-hnb659fds-lookup-role-412381763181-us-east-2",
           ],
         },
         {
@@ -92,6 +95,7 @@ await test("permissions are limited to regional bootstrap roles and the configur
             "arn:aws:ssm:ap-southeast-1:412381763181:parameter/cdk-bootstrap/hnb659fds/version",
             "arn:aws:ssm:eu-central-1:412381763181:parameter/cdk-bootstrap/hnb659fds/version",
             "arn:aws:ssm:us-east-1:412381763181:parameter/cdk-bootstrap/hnb659fds/version",
+            "arn:aws:ssm:us-east-2:412381763181:parameter/cdk-bootstrap/hnb659fds/version",
           ],
         },
         {

@@ -10,7 +10,12 @@ import {
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 
-const deploymentRegions = ["eu-central-1", "ap-southeast-1", "us-east-1"];
+const deploymentRegions = [
+  "eu-central-1",
+  "ap-southeast-1",
+  "us-east-1",
+  "us-east-2",
+];
 const bootstrapQualifier = "hnb659fds";
 
 export class DeploymentAccessStack extends Stack {

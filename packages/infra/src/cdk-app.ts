@@ -21,6 +21,17 @@ new RegionalStack(app, "SingaporeStack", {
   distributionID: tasan.distributionID,
 });
 
+new RegionalStack(app, "OhioStack", {
+  env: { region: "us-east-2", account: "412381763181" },
+  crossRegionReferences: true,
+
+  tableName: tasan.tableName,
+  userPoolServerURL: tasan.userPoolServerURL,
+  appClientID: tasan.appClientID,
+  appFunctionAssetPath: tasan.appFunctionAssetPath,
+  distributionID: tasan.distributionID,
+});
+
 new AccessLogsStack(app, "AccessLogsStack", {
   env: { region: "us-east-1", account: "412381763181" },
   crossRegionReferences: true,
