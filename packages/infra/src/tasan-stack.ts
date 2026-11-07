@@ -5,6 +5,7 @@ import {
   aws_cognito as cognito,
   aws_dynamodb as dynamodb,
   aws_iam as iam,
+  aws_kms as kms,
   aws_lambda as lambda,
   aws_lambda_nodejs as nodejs,
   aws_logs as logs,
@@ -26,14 +27,19 @@ import { managedLoginBranding } from "./managed-login-branding.js";
 
 const publicRootFiles = ["favicon.ico", "robots.txt"];
 
+type Props = StackProps & {
+  dnssecKeyArn: string;
+};
+
 export class TasanStack extends Stack {
   tableName: string;
   userPoolServerURL: string;
   appClientID: string;
   appFunctionAssetPath: string;
   distributionID: string;
+  hostedZoneID: string;
 
-  constructor(scope: Construct, id: string, props: StackProps) {
+  constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
     // TODO: Manage this certificate in the CDK in a separate us-east-1 stack
@@ -324,12 +330,25 @@ export class TasanStack extends Stack {
       zoneName: "tasan.app",
     });
 
+    // Signing only takes effect for validating resolvers once the zone's DS record is published
+    // in the parent .app zone through the domain registrar.
+    appHostedZone.enableDnssec({
+      kmsKey: kms.Key.fromKeyArn(this, "DnssecKey", props.dnssecKeyArn),
+      keySigningKeyName: "TasanAppKsk",
+    });
+
     const cloudFrontTarget = new r53targets.CloudFrontTarget(distribution);
     new route53.ARecord(this, "AppARecord", {
       zone: appHostedZone,
       target: route53.RecordTarget.fromAlias(cloudFrontTarget),
     });
     new route53.AaaaRecord(this, "AppAaaaRecord", {
+      zone: appHostedZone,
+      target: route53.RecordTarget.fromAlias(cloudFrontTarget),
+    });
+    // CloudFront answers the alias with the distribution's ALPN protocols and IP hints, so
+    // browsers can connect over HTTP/3 directly instead of learning it from Alt-Svc first.
+    new route53.HttpsRecord(this, "AppHttpsRecord", {
       zone: appHostedZone,
       target: route53.RecordTarget.fromAlias(cloudFrontTarget),
     });
@@ -354,6 +373,7 @@ export class TasanStack extends Stack {
     const appFunctionAsset = appFunction.node.findChild("Code") as Asset;
     this.appFunctionAssetPath = appFunctionAsset.assetPath;
     this.distributionID = distribution.distributionId;
+    this.hostedZoneID = appHostedZone.hostedZoneId;
 
     new CfnOutput(this, "LambdaFunctionUrl", { value: appFunctionUrl.url });
   }
