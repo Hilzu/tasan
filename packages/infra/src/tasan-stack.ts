@@ -110,9 +110,14 @@ export class TasanStack extends Stack {
       partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
       timeToLiveAttribute: "expiresAt",
-      // Traffic is low and bursty, so per-request billing costs cents a month and can't be
-      // throttled by fixed capacity. Provisioned only pays off at a sustained load far above ours.
-      billing: dynamodb.Billing.onDemand(),
+      billing: dynamodb.Billing.provisioned({
+        readCapacity: dynamodb.Capacity.fixed(20),
+        // The GSI inherits these write settings. Deploy the seed before switching to on-demand.
+        writeCapacity: dynamodb.Capacity.autoscaled({
+          maxCapacity: 25,
+          seedCapacity: 25,
+        }),
+      }),
       deletionProtection: true,
       globalSecondaryIndexes: [
         {
@@ -120,6 +125,7 @@ export class TasanStack extends Stack {
           partitionKey: { name: "sk", type: dynamodb.AttributeType.STRING },
           sortKey: { name: "pk", type: dynamodb.AttributeType.STRING },
           projectionType: dynamodb.ProjectionType.KEYS_ONLY,
+          readCapacity: dynamodb.Capacity.fixed(5),
         },
       ],
       replicas: [{ region: "ap-southeast-1" }, { region: "us-east-2" }],
