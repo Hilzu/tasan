@@ -91,7 +91,8 @@ jobs:
             --payload '{}' \
             "$response")"
           if jq -e 'has("FunctionError")' <<<"$invocation" >/dev/null; then
-            echo "Parameter Store sync failed"
+            echo "Parameter Store sync failed:"
+            cat "$response"
             exit 1
           fi
 

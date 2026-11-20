@@ -181,6 +181,7 @@ export class TasanStack extends Stack {
       new iam.PolicyStatement({
         actions: ["ssm:GetParametersByPath"],
         resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app/*`,
         ],
       }),
