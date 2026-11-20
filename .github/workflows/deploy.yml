@@ -83,13 +83,13 @@ jobs:
         run: |
           response="$(mktemp)"
           trap 'rm -f "$response"' EXIT
-          aws lambda invoke \
+          invocation="$(aws lambda invoke \
             --function-name TasanParameterSyncFn \
             --region eu-central-1 \
             --cli-binary-format raw-in-base64-out \
             --payload '{}' \
-            "$response" >/dev/null
-          if jq -e 'has("FunctionError")' "$response" >/dev/null; then
+            "$response")"
+          if jq -e 'has("FunctionError")' <<<"$invocation" >/dev/null; then
             echo "Parameter Store sync failed"
             exit 1
           fi
