@@ -31,10 +31,10 @@ membership protection, expense creation/editing/history/deletion, equal and
 weighted allocations, adjustments, calculations, foreign currency conversion,
 repayments, settings validation/persistence, and local session logout.
 
-CI runs the suite on changes and the deployment workflow runs it before AWS
-authentication or deployment. `pnpm test` remains the unit/lint/type-check
-command. Browser failures retain screenshots, traces, and an HTML report; local
-CI failure artifacts are retained for seven days.
+CI runs the suite on pull requests and pushes to `main`. The deployment workflow
+does not run tests or check CI status. `pnpm test` remains the
+unit/lint/type-check command. Browser failures retain screenshots, traces, and
+an HTML report; CI failure artifacts are retained for seven days.
 
 ## Deployed environments
 
