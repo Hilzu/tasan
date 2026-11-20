@@ -113,13 +113,16 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
         return redirectResponse(`${normalizedPath}${query}`);
       }
 
-      const region = process.env.AWS_REGION;
-      const forceOhio = Boolean(request.headers["x-force-ohio"]);
-      const forceSingapore = Boolean(request.headers["x-force-singapore"]);
-      if (
-        forceOhio ||
-        (!forceSingapore && regionsServedFromOhio.includes(region ?? ""))
-      ) {
+      const forcedRegion = request.headers["x-force-region"]?.[0]?.value;
+      const region =
+        (
+          forcedRegion === "eu-central-1" ||
+          regionsServedFromOhio.includes(forcedRegion ?? "") ||
+          regionsServedFromSingapore.includes(forcedRegion ?? "")
+        ) ?
+          forcedRegion
+        : process.env.AWS_REGION;
+      if (regionsServedFromOhio.includes(region ?? "")) {
         getLogger().debug("Origin selected", {
           originRegion: "us-east-2",
         });
@@ -136,10 +139,7 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
           },
         };
         request.headers.host = [{ value: ohioLambdaFunctionDomain }];
-      } else if (
-        regionsServedFromSingapore.includes(region ?? "") ||
-        forceSingapore
-      ) {
+      } else if (regionsServedFromSingapore.includes(region ?? "")) {
         getLogger().debug("Origin selected", {
           originRegion: "ap-southeast-1",
         });

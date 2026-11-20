@@ -145,15 +145,45 @@ await test("Ohio edge regions route to the Ohio function URL", async () => {
   }
 });
 
-await test("x-force-ohio routes requests to Ohio from any edge region", async () => {
-  const domain = "dxkosp5vqfwxmwcs7a2te5gzgy0shdnq.lambda-url.us-east-2.on.aws";
-  const result = await originRequest("/splits", "", "GET", {
-    region: "eu-central-1",
-    headers: { "x-force-ohio": [{ key: "X-Force-Ohio", value: "true" }] },
+await test("x-force-region selects a supported origin and ignores unknown regions", async () => {
+  const ohioDomain =
+    "dxkosp5vqfwxmwcs7a2te5gzgy0shdnq.lambda-url.us-east-2.on.aws";
+  const singaporeDomain =
+    "cxh43kp2vsbbrb4vgwpratjkpi0ekjjk.lambda-url.ap-southeast-1.on.aws";
+  const headers = (region: string) => ({
+    "x-force-region": [{ key: "X-Force-Region", value: region }],
   });
-  assert.ok(result && "uri" in result);
-  assert.equal(result.origin?.custom?.domainName, domain);
-  assert.deepEqual(result.headers.host, [{ value: domain }]);
+
+  const ohio = await originRequest("/splits", "", "GET", {
+    region: "eu-central-1",
+    headers: headers("us-east-2"),
+  });
+  assert.ok(ohio && "uri" in ohio);
+  assert.equal(ohio.origin?.custom?.domainName, ohioDomain);
+
+  const singapore = await originRequest("/splits", "", "GET", {
+    region: "us-east-2",
+    headers: headers("ap-southeast-2"),
+  });
+  assert.ok(singapore && "uri" in singapore);
+  assert.equal(singapore.origin?.custom?.domainName, singaporeDomain);
+
+  const defaultOrigin = await originRequest("/splits", "", "GET", {
+    region: "us-east-2",
+    headers: headers("eu-central-1"),
+  });
+  assert.ok(defaultOrigin && "uri" in defaultOrigin);
+  assert.equal(defaultOrigin.origin, undefined);
+  assert.deepEqual(defaultOrigin.headers.host, [
+    { key: "Host", value: "tasan.app" },
+  ]);
+
+  const unknown = await originRequest("/splits", "", "GET", {
+    region: "us-east-2",
+    headers: headers("unknown-region"),
+  });
+  assert.ok(unknown && "uri" in unknown);
+  assert.equal(unknown.origin?.custom?.domainName, ohioDomain);
 });
 
 await test("unrouted edge regions keep the default origin", async () => {
