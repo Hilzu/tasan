@@ -1,4 +1,5 @@
 import {
+  ArnFormat,
   aws_iam as iam,
   CfnCondition,
   CfnOutput,
@@ -109,6 +110,20 @@ export class DeploymentAccessStack extends Stack {
             resourceName: `cdk-bootstrap/${bootstrapQualifier}/version`,
           }),
         ),
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["lambda:InvokeFunction"],
+        resources: [
+          this.formatArn({
+            service: "lambda",
+            region: "eu-central-1",
+            resource: "function",
+            resourceName: "TasanParameterSyncFn",
+            arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+          }),
+        ],
       }),
     );
 

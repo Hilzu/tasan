@@ -166,8 +166,42 @@ export class TasanStack extends Stack {
       }),
     );
 
+    const parameterSyncFunction = new nodejs.NodejsFunction(
+      this,
+      "ParameterSyncFunction",
+      {
+        functionName: "TasanParameterSyncFn",
+        runtime: lambda.Runtime.NODEJS_24_X,
+        architecture: lambda.Architecture.ARM_64,
+        entry: "./src/parameter-sync/main.mts",
+        timeout: Duration.seconds(30),
+      },
+    );
+    parameterSyncFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ssm:GetParametersByPath"],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app/*`,
+        ],
+      }),
+    );
+    parameterSyncFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ssm:PutParameter"],
+        resources: [
+          `arn:${this.partition}:ssm:ap-southeast-1:${this.account}:parameter/tasan-app/*`,
+          `arn:${this.partition}:ssm:us-east-2:${this.account}:parameter/tasan-app/*`,
+        ],
+      }),
+    );
+
     new logs.LogGroup(this, "AppLogGroup", {
       logGroupName: `/aws/lambda/${appFunction.functionName}`,
+      retention: logRetention,
+    });
+
+    new logs.LogGroup(this, "ParameterSyncLogGroup", {
+      logGroupName: `/aws/lambda/${parameterSyncFunction.functionName}`,
       retention: logRetention,
     });
 
