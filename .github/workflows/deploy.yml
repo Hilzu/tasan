@@ -80,20 +80,7 @@ jobs:
         run: pnpm --filter @tasan/infra exec cdk deploy --app cdk.out TasanStack --require-approval never --ci
 
       - name: Sync secrets to regional stacks
-        shell: bash
-        run: |
-          response="$(mktemp)"
-          trap 'rm -f "$response"' EXIT
-          invocation="$(aws lambda invoke \
-            --function-name TasanParameterSyncFn \
-            --region eu-central-1 \
-            --cli-binary-format raw-in-base64-out \
-            --payload '{}' \
-            "$response")"
-          if jq -e 'has("FunctionError")' <<<"$invocation" >/dev/null; then
-            echo "Parameter Store sync failed"
-            exit 1
-          fi
+        run: node scripts/sync-regional-parameters.mjs
 
       - name: Deploy infrastructure
         run: pnpm --filter @tasan/infra exec cdk deploy --app cdk.out --all --require-approval never --ci

@@ -3,6 +3,7 @@ import {
   PutParameterCommand,
   SSMClient,
 } from "@aws-sdk/client-ssm";
+import { getLogger } from "@tasan/common/logging";
 import type { Handler } from "aws-lambda";
 
 const sourceRegion = "eu-central-1";
@@ -28,8 +29,36 @@ interface ParameterSource {
 }
 
 interface ParameterDestination {
+  region: string;
   putParameter: (parameter: Parameter) => Promise<void>;
 }
+
+class ParameterSyncError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ParameterSyncError";
+  }
+}
+
+const runSyncOperation = async <T,>(
+  description: string,
+  operation: () => Promise<T>,
+): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    getLogger().error(`${description} failed`, { error });
+    const errorType =
+      (
+        error instanceof Error &&
+        /^[A-Za-z][A-Za-z0-9_]{0,127}$/.test(error.name)
+      ) ?
+        error.name
+      : "UnknownError";
+    // The Lambda response reaches the deploy runner, so omit the error message.
+    throw new ParameterSyncError(`${description} failed: ${errorType}`);
+  }
+};
 
 export const syncParameters = async (
   source: ParameterSource,
@@ -38,16 +67,26 @@ export const syncParameters = async (
   const parameters: Parameter[] = [];
   let nextToken: string | undefined;
   do {
-    const page = await source.getParametersPage(nextToken);
+    const page = await runSyncOperation(
+      `ssm:GetParametersByPath on ${parameterPath} in ${sourceRegion}`,
+      () => source.getParametersPage(nextToken),
+    );
     parameters.push(...page.parameters);
     nextToken = page.nextToken;
   } while (nextToken);
 
   if (parameters.length === 0)
-    throw new Error(`No source parameters found under ${parameterPath}`);
+    throw new ParameterSyncError(
+      `No source parameters found under ${parameterPath}`,
+    );
 
   const writes = destinations.flatMap((destination) =>
-    parameters.map((parameter) => () => destination.putParameter(parameter)),
+    parameters.map(
+      (parameter) => () =>
+        runSyncOperation(`ssm:PutParameter in ${destination.region}`, () =>
+          destination.putParameter(parameter),
+        ),
+    ),
   );
   for (let index = 0; index < writes.length; index += maxConcurrentWrites) {
     await Promise.all(
@@ -88,6 +127,7 @@ const source: ParameterSource = {
 const destinations = destinationRegions.map((region) => {
   const client = new SSMClient({ region });
   return {
+    region,
     putParameter: async ({ name, type, value }: Parameter) => {
       await client.send(
         new PutParameterCommand({

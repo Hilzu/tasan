@@ -39,8 +39,10 @@ await test("parameter sync IAM covers only the application parameter hierarchy",
       Statement: Match.arrayWith([
         Match.objectLike({
           Action: "ssm:GetParametersByPath",
-          Resource:
+          Resource: [
+            "arn:aws:ssm:eu-central-1:412381763181:parameter/tasan-app",
             "arn:aws:ssm:eu-central-1:412381763181:parameter/tasan-app/*",
+          ],
         }),
         Match.objectLike({
           Action: "ssm:PutParameter",
