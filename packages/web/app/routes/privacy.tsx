@@ -20,7 +20,7 @@ export default function Privacy() {
       <header className="space-y-2">
         <MainHeading>Privacy notice</MainHeading>
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          Last updated: <time dateTime="2026-11-03">3 November 2026</time>
+          Last updated: <time dateTime="2026-11-20">20 November 2026</time>
         </p>
         <p>
           Santeri Consulting Oy, Finland, is the controller of personal data
@@ -54,8 +54,9 @@ export default function Privacy() {
             <strong>Legitimate interests (Article 6(1)(f)):</strong> maintaining
             accurate shared records, resolving disputed entries, providing
             support, diagnosing problems and protecting the service against
-            abuse. These are our interests and, for shared records, those of
-            other participants.
+            abuse. For these purposes, AWS access logs record IP addresses and
+            request details. These are our interests and, for shared records,
+            those of other participants.
           </li>
           <li>
             <strong>Legal obligations (Article 6(1)(c)):</strong> handling
@@ -119,10 +120,12 @@ export default function Privacy() {
         </p>
         <p>
           Sessions and invitations are retained until expiry or revocation;
-          expired database records are removed asynchronously. Logs expire after
-          13 months. Support correspondence is retained until the request and
-          any related follow-up or disputes are resolved. Applicable legal
-          obligations or specific legal claims may require longer retention.
+          expired database records are removed asynchronously. AWS CloudFront
+          access logs, which include IP addresses, are retained for three
+          months. Application logs are retained for 13 months. Support
+          correspondence is retained until the request and any related follow-up
+          or disputes are resolved. Applicable legal obligations or specific
+          legal claims may require longer retention.
         </p>
       </section>
 
