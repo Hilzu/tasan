@@ -13,7 +13,7 @@ await test("provisioned table and index have write seeds for the billing migrati
     WriteCapacityAutoScalingSettings: Match.objectLike({
       MaxCapacity: 25,
       MinCapacity: 1,
-      SeedCapacity: 1,
+      SeedCapacity: 25,
     }),
   };
   Template.fromStack(stack).hasResourceProperties(

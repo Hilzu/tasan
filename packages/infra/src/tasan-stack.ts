@@ -115,7 +115,7 @@ export class TasanStack extends Stack {
         // The GSI inherits these write settings. Deploy the seed before switching to on-demand.
         writeCapacity: dynamodb.Capacity.autoscaled({
           maxCapacity: 25,
-          seedCapacity: 1,
+          seedCapacity: 25,
         }),
       }),
       deletionProtection: true,
