@@ -42,5 +42,12 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
       },
     },
+    {
+      name: "mobile-webkit",
+      testMatch: "**/*.pw.ts",
+      use: {
+        ...devices["iPhone 13"],
+      },
+    },
   ],
 });

@@ -55,7 +55,7 @@ jobs:
         run: pnpm test
 
       - name: Install Chromium
-        run: pnpm --filter @tasan/e2e exec playwright install --with-deps chromium
+        run: pnpm --filter @tasan/e2e exec playwright install --with-deps chromium webkit
 
       - name: Start isolated E2E database
         id: e2e-db
