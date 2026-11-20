@@ -113,7 +113,8 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
         return redirectResponse(`${normalizedPath}${query}`);
       }
 
-      const forcedRegion = request.headers["x-force-region"]?.[0]?.value;
+      const headers: Partial<typeof request.headers> = request.headers;
+      const forcedRegion = headers["x-force-region"]?.at(0)?.value;
       const region =
         (
           forcedRegion === "eu-central-1" ||
@@ -122,31 +123,28 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
         ) ?
           forcedRegion
         : process.env.AWS_REGION;
+
+      let regionalOrigin: { region: string; domain: string } | undefined;
       if (regionsServedFromOhio.includes(region ?? "")) {
-        getLogger().debug("Origin selected", {
-          originRegion: "us-east-2",
-        });
-        request.origin = {
-          custom: {
-            protocol: "https",
-            domainName: ohioLambdaFunctionDomain,
-            port: 443,
-            path: "",
-            sslProtocols: ["TLSv1.2"],
-            readTimeout: 30,
-            keepaliveTimeout: 5,
-            customHeaders: {},
-          },
+        regionalOrigin = {
+          region: "us-east-2",
+          domain: ohioLambdaFunctionDomain,
         };
-        request.headers.host = [{ value: ohioLambdaFunctionDomain }];
       } else if (regionsServedFromSingapore.includes(region ?? "")) {
+        regionalOrigin = {
+          region: "ap-southeast-1",
+          domain: singaporeLambdaFunctionDomain,
+        };
+      }
+
+      if (regionalOrigin) {
         getLogger().debug("Origin selected", {
-          originRegion: "ap-southeast-1",
+          originRegion: regionalOrigin.region,
         });
         request.origin = {
           custom: {
             protocol: "https",
-            domainName: singaporeLambdaFunctionDomain,
+            domainName: regionalOrigin.domain,
             port: 443,
             path: "",
             sslProtocols: ["TLSv1.2"],
@@ -155,7 +153,7 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
             customHeaders: {},
           },
         };
-        request.headers.host = [{ value: singaporeLambdaFunctionDomain }];
+        request.headers.host = [{ value: regionalOrigin.domain }];
       }
 
       // Calculate body hash for lambda auth
