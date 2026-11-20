@@ -54,9 +54,8 @@ export default function Privacy() {
             <strong>Legitimate interests (Article 6(1)(f)):</strong> maintaining
             accurate shared records, resolving disputed entries, providing
             support, diagnosing problems and protecting the service against
-            abuse. For these purposes, AWS access logs record IP addresses and
-            request details. These are our interests and, for shared records,
-            those of other participants.
+            abuse. These are our interests and, for shared records, those of
+            other participants.
           </li>
           <li>
             <strong>Legal obligations (Article 6(1)(c)):</strong> handling
@@ -85,10 +84,8 @@ export default function Privacy() {
         </p>
         <p>
           We use AWS for hosting, replication, content delivery and logging.
-          Data is processed within and outside the European Economic Area,
-          including Australia, Brazil, India, Japan, Singapore, South Korea, the
-          United Kingdom and the United States. AWS identifies additional
-          processing locations in its{" "}
+          Data may be processed outside the European Economic Area. AWS
+          identifies its processing locations in its{" "}
           <Link to="https://aws.amazon.com/compliance/sub-processors/">
             subprocessors list
           </Link>
@@ -119,13 +116,12 @@ export default function Privacy() {
           history and deletion record.
         </p>
         <p>
-          Sessions and invitations are retained until expiry or revocation;
-          expired database records are removed asynchronously. AWS CloudFront
-          access logs, which include IP addresses, are retained for three
-          months. Application logs are retained for 13 months. Support
-          correspondence is retained until the request and any related follow-up
-          or disputes are resolved. Applicable legal obligations or specific
-          legal claims may require longer retention.
+          Sessions and invitations are retained until expiry or revocation.
+          Technical logs are retained only as long as needed to operate, secure
+          and troubleshoot the service. Support correspondence is retained until
+          the request and any related follow-up or disputes are resolved.
+          Applicable legal obligations or specific legal claims may require
+          longer retention.
         </p>
       </section>
 
