@@ -117,8 +117,13 @@ export default function Privacy() {
         </p>
         <p>
           Sessions and invitations are retained until expiry or revocation.
-          Technical logs are retained only as long as needed to operate, secure
-          and troubleshoot the service. Support correspondence is retained until
+          CloudFront access logs are retained for three months and include IP
+          addresses, requested paths and query strings, referrers, browser and
+          connection details, and request and response metadata; cookies are not
+          logged. Application and edge-function logs are retained for 13 months
+          and may include request identifiers, methods and paths, response
+          status and timing, service events, and error diagnostics, including
+          reports you choose to submit. Support correspondence is retained until
           the request and any related follow-up or disputes are resolved.
           Applicable legal obligations or specific legal claims may require
           longer retention.
