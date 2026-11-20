@@ -100,6 +100,12 @@ await test("permissions are limited to regional bootstrap roles and the configur
         },
         {
           Effect: "Allow",
+          Action: "lambda:InvokeFunction",
+          Resource:
+            "arn:aws:lambda:eu-central-1:412381763181:function:TasanParameterSyncFn",
+        },
+        {
+          Effect: "Allow",
           Action: "cloudformation:ListStackResources",
           Resource:
             "arn:aws:cloudformation:eu-central-1:412381763181:stack/TasanStack/*",

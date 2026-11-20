@@ -37,7 +37,9 @@ If GitHub's OIDC provider already exists in IAM, add `--parameters CreateGitHubO
 
 In GitHub settings, create the `production` environment, restrict it to `main`, and set its `AWS_ROLE_ARN` variable to the access stack's `AWSRoleArn` output. Add required reviewers if desired. The workflow discovers the bucket and distribution automatically.
 
-Manage later role changes through `access:diff` and `access:deploy` using SSO; the app workflow does not deploy the access stack. Update its resource parameters if the bucket or distribution is replaced.
+Manage later role changes through `access:diff` and `access:deploy` using SSO; the app workflow does not deploy the access stack. The access stack grants the GitHub deployment role permission to invoke the parameter-sync function. Update its resource parameters if the bucket or distribution is replaced.
+
+The deployment workflow copies `/tasan-app/auth-client-secret` and `/tasan-app/cookie-sign-secret` from `eu-central-1` to `ap-southeast-1` and `us-east-2` after deploying `TasanStack` and before deploying regional app stacks. The copy runs inside Lambda, so decrypted values do not pass through the GitHub runner. Copies are stored as `SecureString` parameters in each destination region; source changes are copied on the next deployment.
 
 ## Commands
 
