@@ -83,17 +83,37 @@ export default function Privacy() {
           law or necessary for legal claims.
         </p>
         <p>
-          We use AWS for hosting, replication, content delivery and logging.
-          Data may be processed outside the European Economic Area. AWS
-          identifies its processing locations in its{" "}
+          We use AWS for application hosting, storage, content delivery and
+          logging. The database is in Frankfurt, Germany (eu-central-1), with
+          replicas in Singapore (ap-southeast-1) and Ohio, United States
+          (us-east-2). CloudFront access logs are stored in Northern Virginia,
+          United States (us-east-1). CloudFront and Lambda@Edge process requests
+          at edge locations worldwide. Edge-function logs are stored for 13
+          months in the United States (us-east-1, us-east-2, us-west-1,
+          us-west-2), India (ap-south-1), South Korea (ap-northeast-2),
+          Singapore (ap-southeast-1), Australia (ap-southeast-2), Japan
+          (ap-northeast-1), Germany (eu-central-1), Ireland (eu-west-1), the
+          United Kingdom (eu-west-2) and Brazil (sa-east-1). Requests received
+          at Asia-Pacific edge regions in India, South Korea, Singapore,
+          Australia and Japan are also processed by the application in Singapore
+          (ap-southeast-1). The European Commission recognizes Japan, South
+          Korea, the United Kingdom and Brazil as providing adequate protection.
+          Its United States decision applies only to organizations participating
+          in the EU-U.S. Data Privacy Framework; we do not assume AWS
+          participates. India, Singapore and Australia do not have an adequacy
+          decision. Transfers to countries without adequacy rely on the Standard
+          Contractual Clauses in AWS’s data processing terms; contact us for a
+          copy. See the European Commission’s{" "}
+          <Link to="https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/adequacy-decisions_en">
+            current adequacy decisions
+          </Link>
+          . AWS’s subprocessors list and GDPR information are supplementary:{" "}
           <Link to="https://aws.amazon.com/compliance/sub-processors/">
             subprocessors list
           </Link>
-          . Transfers to countries without an applicable adequacy decision rely
-          on the European Commission’s Standard Contractual Clauses incorporated
-          into AWS’s data processing terms. The safeguards are described in{" "}
+          {" and "}
           <Link to="https://aws.amazon.com/compliance/gdpr-center/">
-            AWS’s GDPR information
+            AWS GDPR information
           </Link>
           .
         </p>
@@ -116,10 +136,16 @@ export default function Privacy() {
           history and deletion record.
         </p>
         <p>
-          Sessions and invitations are retained until expiry or revocation.
-          CloudFront access logs are retained for three months and include IP
-          addresses, requested paths and query strings, referrers, browser and
-          connection details, and request and response metadata; cookies are not
+          Invitation links expire after five days. Anonymous login-handshake
+          sessions expire after ten minutes. Authenticated sessions expire after
+          seven days of inactivity, subject to a 30-day absolute limit. Expired
+          invitations and sessions are no longer valid even if their database
+          records remain; DynamoDB removes expired records asynchronously,
+          typically within a few days. CloudFront access logs are retained for
+          three months and include IP addresses, requested paths, query strings,
+          referrers, browser and connection details, and request and response
+          metadata. Requested paths, query strings and referrers can contain
+          one-time sign-in codes and invitation identifiers; cookies are not
           logged. Application and edge-function logs are retained for 13 months
           and may include request identifiers, methods and paths, response
           status and timing, service events, and error diagnostics, including
