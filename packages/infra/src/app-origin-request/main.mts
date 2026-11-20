@@ -24,6 +24,15 @@ const regionsServedFromSingapore = [
 ];
 const singaporeLambdaFunctionDomain =
   "cxh43kp2vsbbrb4vgwpratjkpi0ekjjk.lambda-url.ap-southeast-1.on.aws";
+const regionsServedFromOhio = [
+  "us-east-1", // N. Virginia
+  "us-east-2", // Ohio
+  "us-west-1", // N. California
+  "us-west-2", // Oregon
+  "sa-east-1", // Sao Paulo
+];
+const ohioLambdaFunctionDomain =
+  "dxkosp5vqfwxmwcs7a2te5gzgy0shdnq.lambda-url.us-east-2.on.aws";
 
 // Lambda function URLs verify the SigV4 signature against a normalized path, but CloudFront OAC
 // signs the path exactly as the viewer sent it, so the function URL rejects paths with ".", "..",
@@ -74,9 +83,6 @@ const methodNotAllowedResponse = {
 export const redactPath = (uri: string) =>
   uri.replace(/(\/accept-invite\/).*/, "$1[redacted]");
 
-// OhioStack hosts the app in us-east-2. Once its function URL exists, route these edge caches to
-// it: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
-
 // eslint-disable-next-line @typescript-eslint/require-await
 export const handler: CloudFrontRequestHandler = async (event, context) => {
   const request = event.Records[0].cf.request;
@@ -107,16 +113,38 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
         return redirectResponse(`${normalizedPath}${query}`);
       }
 
-      const region = process.env.AWS_REGION;
-      const forceSingapore = Boolean(request.headers["x-force-singapore"]);
-      if (regionsServedFromSingapore.includes(region ?? "") || forceSingapore) {
+      const headers: Partial<typeof request.headers> = request.headers;
+      const forcedRegion = headers["x-force-region"]?.at(0)?.value;
+      const region =
+        (
+          forcedRegion === "eu-central-1" ||
+          regionsServedFromOhio.includes(forcedRegion ?? "") ||
+          regionsServedFromSingapore.includes(forcedRegion ?? "")
+        ) ?
+          forcedRegion
+        : process.env.AWS_REGION;
+
+      let regionalOrigin: { region: string; domain: string } | undefined;
+      if (regionsServedFromOhio.includes(region ?? "")) {
+        regionalOrigin = {
+          region: "us-east-2",
+          domain: ohioLambdaFunctionDomain,
+        };
+      } else if (regionsServedFromSingapore.includes(region ?? "")) {
+        regionalOrigin = {
+          region: "ap-southeast-1",
+          domain: singaporeLambdaFunctionDomain,
+        };
+      }
+
+      if (regionalOrigin) {
         getLogger().debug("Origin selected", {
-          originRegion: "ap-southeast-1",
+          originRegion: regionalOrigin.region,
         });
         request.origin = {
           custom: {
             protocol: "https",
-            domainName: singaporeLambdaFunctionDomain,
+            domainName: regionalOrigin.domain,
             port: 443,
             path: "",
             sslProtocols: ["TLSv1.2"],
@@ -125,7 +153,7 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
             customHeaders: {},
           },
         };
-        request.headers.host = [{ value: singaporeLambdaFunctionDomain }];
+        request.headers.host = [{ value: regionalOrigin.domain }];
       }
 
       // Calculate body hash for lambda auth
