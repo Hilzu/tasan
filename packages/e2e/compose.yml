@@ -1,0 +1,8 @@
+name: tasan-e2e
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:3.3.0
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+    ports:
+      - "127.0.0.1:8001:8000"

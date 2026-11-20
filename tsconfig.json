@@ -20,6 +20,7 @@
     { "path": "./packages/common" },
     { "path": "./packages/export" },
     { "path": "./packages/data" },
+    { "path": "./packages/e2e" },
     { "path": "./packages/infra" },
     { "path": "./packages/web" }
   ]

@@ -154,3 +154,9 @@ build/
 # CDK asset staging directory
 .cdk.staging
 cdk.out/
+
+# Playwright output and authentication state
+playwright-report/
+test-results/
+playwright/.auth/
+.playwright-cli/
