@@ -20,7 +20,7 @@ export default function Privacy() {
       <header className="space-y-2">
         <MainHeading>Privacy notice</MainHeading>
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          Last updated: <time dateTime="2026-11-03">3 November 2026</time>
+          Last updated: <time dateTime="2026-11-20">20 November 2026</time>
         </p>
         <p>
           Santeri Consulting Oy, Finland, is the controller of personal data
@@ -83,19 +83,24 @@ export default function Privacy() {
           law or necessary for legal claims.
         </p>
         <p>
-          We use AWS for hosting, replication, content delivery and logging.
-          Data is processed within and outside the European Economic Area,
-          including Australia, Brazil, India, Japan, Singapore, South Korea, the
-          United Kingdom and the United States. AWS identifies additional
-          processing locations in its{" "}
-          <Link to="https://aws.amazon.com/compliance/sub-processors/">
-            subprocessors list
-          </Link>
-          . Transfers to countries without an applicable adequacy decision rely
-          on the European Commission’s Standard Contractual Clauses incorporated
-          into AWS’s data processing terms. The safeguards are described in{" "}
-          <Link to="https://aws.amazon.com/compliance/gdpr-center/">
-            AWS’s GDPR information
+          We use Amazon Web Services (AWS) for hosting, storage, content
+          delivery and logging. The application database is stored in Germany,
+          with copies in Singapore and the United States. AWS routes requests
+          through its network. The application in Singapore handles requests
+          routed through certain Asia-Pacific AWS locations. Access logs are
+          stored in the United States. Edge-function logs are stored in the
+          region where the function runs: the EEA (Germany and Ireland), the
+          United States, the United Kingdom, Japan, South Korea, Brazil, India,
+          Singapore or Australia. The United Kingdom, Japan, South Korea and
+          Brazil have EU adequacy decisions. AWS is certified under the{" "}
+          <Link to="https://aws.amazon.com/compliance/eu-us-data-privacy-framework/">
+            EU-U.S. Data Privacy Framework
+          </Link>{" "}
+          as a covered entity under Amazon.com, Inc.’s certification. Transfers
+          to Singapore, India and Australia rely on the Standard Contractual
+          Clauses in the{" "}
+          <Link to="https://d1.awsstatic.com/legal/aws-dpa/aws-dpa.pdf">
+            AWS Data Processing Addendum
           </Link>
           .
         </p>
@@ -118,11 +123,19 @@ export default function Privacy() {
           history and deletion record.
         </p>
         <p>
-          Sessions and invitations are retained until expiry or revocation;
-          expired database records are removed asynchronously. Logs expire after
-          13 months. Support correspondence is retained until the request and
-          any related follow-up or disputes are resolved. Applicable legal
-          obligations or specific legal claims may require longer retention.
+          Authenticated sessions end after seven days of inactivity or after 30
+          days at most. Invitation links expire after five days. Expired
+          sessions and invitations stop working immediately; DynamoDB deletes
+          their records asynchronously, usually within a few days. Access logs
+          are kept for three months and include IP addresses, browser and
+          connection details, and request details, including URLs and referrers,
+          which can contain invitation identifiers or one-time sign-in codes.
+          Cookies are not logged. Application and edge-function logs are kept
+          for 13 months and include request and error details, including reports
+          you choose to submit. Support correspondence is retained until the
+          request and any related follow-up or disputes are resolved. Applicable
+          legal obligations or specific legal claims may require longer
+          retention.
         </p>
       </section>
 
