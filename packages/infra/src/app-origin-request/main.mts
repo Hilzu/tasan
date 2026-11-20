@@ -74,8 +74,8 @@ const methodNotAllowedResponse = {
 export const redactPath = (uri: string) =>
   uri.replace(/(\/accept-invite\/).*/, "$1[redacted]");
 
-// In the future we should also host in us-east-2
-// Edge caches to serve from: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
+// OhioStack hosts the app in us-east-2. Once its function URL exists, route these edge caches to
+// it: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
 
 // eslint-disable-next-line @typescript-eslint/require-await
 export const handler: CloudFrontRequestHandler = async (event, context) => {

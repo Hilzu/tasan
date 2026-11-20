@@ -122,7 +122,7 @@ export class TasanStack extends Stack {
           projectionType: dynamodb.ProjectionType.KEYS_ONLY,
         },
       ],
-      replicas: [{ region: "ap-southeast-1" }],
+      replicas: [{ region: "ap-southeast-1" }, { region: "us-east-2" }],
     });
 
     const appFunction = new nodejs.NodejsFunction(this, "AppFunction", {
