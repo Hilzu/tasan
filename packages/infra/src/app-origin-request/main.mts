@@ -24,6 +24,15 @@ const regionsServedFromSingapore = [
 ];
 const singaporeLambdaFunctionDomain =
   "cxh43kp2vsbbrb4vgwpratjkpi0ekjjk.lambda-url.ap-southeast-1.on.aws";
+const regionsServedFromOhio = [
+  "us-east-1", // N. Virginia
+  "us-east-2", // Ohio
+  "us-west-1", // N. California
+  "us-west-2", // Oregon
+  "sa-east-1", // Sao Paulo
+];
+const ohioLambdaFunctionDomain =
+  "dxkosp5vqfwxmwcs7a2te5gzgy0shdnq.lambda-url.us-east-2.on.aws";
 
 // Lambda function URLs verify the SigV4 signature against a normalized path, but CloudFront OAC
 // signs the path exactly as the viewer sent it, so the function URL rejects paths with ".", "..",
@@ -74,9 +83,6 @@ const methodNotAllowedResponse = {
 export const redactPath = (uri: string) =>
   uri.replace(/(\/accept-invite\/).*/, "$1[redacted]");
 
-// OhioStack hosts the app in us-east-2. Once its function URL exists, route these edge caches to
-// it: us-east-1, us-east-2, us-west-1, us-west-2, sa-east-1
-
 // eslint-disable-next-line @typescript-eslint/require-await
 export const handler: CloudFrontRequestHandler = async (event, context) => {
   const request = event.Records[0].cf.request;
@@ -108,8 +114,32 @@ export const handler: CloudFrontRequestHandler = async (event, context) => {
       }
 
       const region = process.env.AWS_REGION;
+      const forceOhio = Boolean(request.headers["x-force-ohio"]);
       const forceSingapore = Boolean(request.headers["x-force-singapore"]);
-      if (regionsServedFromSingapore.includes(region ?? "") || forceSingapore) {
+      if (
+        forceOhio ||
+        (!forceSingapore && regionsServedFromOhio.includes(region ?? ""))
+      ) {
+        getLogger().debug("Origin selected", {
+          originRegion: "us-east-2",
+        });
+        request.origin = {
+          custom: {
+            protocol: "https",
+            domainName: ohioLambdaFunctionDomain,
+            port: 443,
+            path: "",
+            sslProtocols: ["TLSv1.2"],
+            readTimeout: 30,
+            keepaliveTimeout: 5,
+            customHeaders: {},
+          },
+        };
+        request.headers.host = [{ value: ohioLambdaFunctionDomain }];
+      } else if (
+        regionsServedFromSingapore.includes(region ?? "") ||
+        forceSingapore
+      ) {
         getLogger().debug("Origin selected", {
           originRegion: "ap-southeast-1",
         });

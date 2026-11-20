@@ -23,19 +23,33 @@ const originRequest = async (
   uri: string,
   querystring = "",
   method = "GET",
+  options: {
+    region?: string;
+    headers?: CloudFrontRequest["headers"];
+  } = {},
 ): Promise<CloudFrontRequestResult> => {
+  const previousRegion = process.env.AWS_REGION;
+  if (options.region) process.env.AWS_REGION = options.region;
   const request: CloudFrontRequest = {
     clientIp: "192.0.2.1",
     method,
     uri,
     querystring,
-    headers: { host: [{ key: "Host", value: "tasan.app" }] },
+    headers: {
+      host: [{ key: "Host", value: "tasan.app" }],
+      ...options.headers,
+    },
   };
   const event = {
     Records: [{ cf: { config: {}, request } }],
   } as unknown as CloudFrontRequestEvent;
-  const result = await handler(event, context, () => undefined);
-  return result ?? undefined;
+  try {
+    const result = await handler(event, context, () => undefined);
+    return result ?? undefined;
+  } finally {
+    if (previousRegion === undefined) delete process.env.AWS_REGION;
+    else process.env.AWS_REGION = previousRegion;
+  }
 };
 
 await test("paths the function URL would normalize are redirected to the normalized path", async () => {
@@ -113,4 +127,40 @@ await test("normalized paths reach the origin unchanged", async () => {
     assert.equal(result.uri, uri);
     assert.equal(result.querystring, "a=/../b");
   }
+});
+
+await test("Ohio edge regions route to the Ohio function URL", async () => {
+  const domain = "dxkosp5vqfwxmwcs7a2te5gzgy0shdnq.lambda-url.us-east-2.on.aws";
+  for (const region of [
+    "us-east-1",
+    "us-east-2",
+    "us-west-1",
+    "us-west-2",
+    "sa-east-1",
+  ]) {
+    const result = await originRequest("/splits", "", "GET", { region });
+    assert.ok(result && "uri" in result, region);
+    assert.equal(result.origin?.custom?.domainName, domain, region);
+    assert.deepEqual(result.headers.host, [{ value: domain }], region);
+  }
+});
+
+await test("x-force-ohio routes requests to Ohio from any edge region", async () => {
+  const domain = "dxkosp5vqfwxmwcs7a2te5gzgy0shdnq.lambda-url.us-east-2.on.aws";
+  const result = await originRequest("/splits", "", "GET", {
+    region: "eu-central-1",
+    headers: { "x-force-ohio": [{ key: "X-Force-Ohio", value: "true" }] },
+  });
+  assert.ok(result && "uri" in result);
+  assert.equal(result.origin?.custom?.domainName, domain);
+  assert.deepEqual(result.headers.host, [{ value: domain }]);
+});
+
+await test("unrouted edge regions keep the default origin", async () => {
+  const result = await originRequest("/splits", "", "GET", {
+    region: "eu-central-1",
+  });
+  assert.ok(result && "uri" in result);
+  assert.equal(result.origin, undefined);
+  assert.deepEqual(result.headers.host, [{ key: "Host", value: "tasan.app" }]);
 });
