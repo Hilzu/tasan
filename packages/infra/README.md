@@ -39,7 +39,7 @@ In GitHub settings, create the `production` environment, restrict it to `main`, 
 
 Manage later role changes through `access:diff` and `access:deploy` using SSO; the app workflow does not deploy the access stack. The access stack grants the GitHub deployment role permission to invoke the parameter-sync function. Update its resource parameters if the bucket or distribution is replaced.
 
-The deployment workflow copies `/tasan-app/auth-client-secret` and `/tasan-app/cookie-sign-secret` from `eu-central-1` to `ap-southeast-1` and `us-east-2` after deploying `TasanStack` and before deploying regional app stacks. The copy runs inside Lambda, so decrypted values do not pass through the GitHub runner. Copies are stored as `SecureString` parameters in each destination region; source changes are copied on the next deployment.
+The deployment workflow copies every parameter under `/tasan-app/` from `eu-central-1` to `ap-southeast-1` and `us-east-2` after deploying `TasanStack` and before deploying regional app stacks. Parameters are read in paginated requests and written concurrently (up to 10 writes at a time), preserving their parameter types. The copy runs inside Lambda, so decrypted values do not pass through the GitHub runner. New source parameters are copied on the next deployment.
 
 ## Commands
 

@@ -179,10 +179,9 @@ export class TasanStack extends Stack {
     );
     parameterSyncFunction.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["ssm:GetParameter"],
+        actions: ["ssm:GetParametersByPath"],
         resources: [
-          `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app/auth-client-secret`,
-          `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app/cookie-sign-secret`,
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app/*`,
         ],
       }),
     );
@@ -190,10 +189,8 @@ export class TasanStack extends Stack {
       new iam.PolicyStatement({
         actions: ["ssm:PutParameter"],
         resources: [
-          `arn:${this.partition}:ssm:ap-southeast-1:${this.account}:parameter/tasan-app/auth-client-secret`,
-          `arn:${this.partition}:ssm:ap-southeast-1:${this.account}:parameter/tasan-app/cookie-sign-secret`,
-          `arn:${this.partition}:ssm:us-east-2:${this.account}:parameter/tasan-app/auth-client-secret`,
-          `arn:${this.partition}:ssm:us-east-2:${this.account}:parameter/tasan-app/cookie-sign-secret`,
+          `arn:${this.partition}:ssm:ap-southeast-1:${this.account}:parameter/tasan-app/*`,
+          `arn:${this.partition}:ssm:us-east-2:${this.account}:parameter/tasan-app/*`,
         ],
       }),
     );
