@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "playwright.config.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "users.ts"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "outDir": "dist",
+    "emitDeclarationOnly": true,
+    "allowImportingTsExtensions": true
+  },
+  "references": [{ "path": "../common" }, { "path": "../data" }]
+}

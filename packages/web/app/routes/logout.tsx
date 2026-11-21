@@ -4,6 +4,7 @@ import { redirect } from "react-router";
 import { sessionContext } from "~/.server/auth";
 import { buildLogoutURL } from "~/.server/openid";
 import { destroySession } from "~/.server/sessions";
+import { authDisable } from "~/config";
 
 import type { Route } from "./+types/logout";
 
@@ -15,7 +16,7 @@ export async function loader({ context }: Route.LoaderArgs) {
     outcome: "success",
     userId: session.get("userID"),
   });
-  return redirect(buildLogoutURL().href, {
+  return redirect(authDisable ? "/" : buildLogoutURL().href, {
     headers: { "set-cookie": cookie },
   });
 }

@@ -13,7 +13,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default tsEslint.config(
   // https://eslint.org/docs/latest/use/configure/ignore
   {
-    ignores: ["**/.react-router/", "**/build/", "**/cdk.out/", "**/dist/"],
+    ignores: [
+      "**/.react-router/",
+      "**/build/",
+      "**/cdk.out/",
+      "**/dist/",
+      "**/playwright-report/",
+      "**/test-results/",
+      "**/playwright/.auth/",
+      "**/.playwright-cli/",
+    ],
   },
 
   js.configs.recommended,
