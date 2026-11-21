@@ -76,9 +76,22 @@ test("create a split, invite a friend, edit expenses, settle up and delete entri
   const split = await createSplit(owner);
   const inviteURL = await inviteMember(owner, member, split.name);
 
-  const denied = await outsider.goto(split.path);
+  // The error screen checks the session on mount. Let that request finish
+  // before navigating away, because WebKit reports a fetch cancelled by
+  // navigation as an uncaught page error.
+  const gotoErrorScreen = async (url: string) => {
+    const sessionCheck = outsider.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/error-report" &&
+        response.request().method() === "GET",
+    );
+    const response = await outsider.goto(url);
+    await sessionCheck;
+    return response;
+  };
+  const denied = await gotoErrorScreen(split.path);
   expect(denied?.status()).toBe(404);
-  const usedInvite = await outsider.goto(inviteURL);
+  const usedInvite = await gotoErrorScreen(inviteURL);
   expect(usedInvite?.status()).toBe(404);
   await expect(
     outsider.getByRole("button", { name: "Accept", exact: true }),
