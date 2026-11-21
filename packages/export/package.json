@@ -11,10 +11,11 @@
     "start": "node --enable-source-maps ."
   },
   "engines": {
-    "node": "^24.16.0"
+    "node": "^24.22.3"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "typescript": "catalog:"
   },
   "dependencies": {

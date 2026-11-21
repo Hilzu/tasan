@@ -7,10 +7,10 @@
     "test:e2e": "playwright test"
   },
   "engines": {
-    "node": "^24.16.0"
+    "node": "^24.22.3"
   },
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1073.0",
+    "@aws-sdk/client-dynamodb": "^3.1173.0",
     "@playwright/cli": "^0.1.25",
     "@playwright/test": "^1.65.1",
     "@react-router/serve": "^8.5.2",

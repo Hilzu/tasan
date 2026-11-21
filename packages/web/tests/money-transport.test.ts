@@ -43,6 +43,8 @@ await test("React Router preserves Money, rates, and Maps in document hydration,
     assetsBuildDirectory: "build/client",
     future: {},
     ssr: true,
+    // Still required by ServerBuild even though React Router deprecated it.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     isSpaMode: false,
     prerender: [],
     routeDiscovery: { mode: "initial", manifestPath: "/__manifest" },

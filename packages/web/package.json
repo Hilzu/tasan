@@ -18,36 +18,36 @@
     "test": "node --import tsx --experimental-test-module-mocks --test"
   },
   "engines": {
-    "node": "^24.16.0"
+    "node": "^24.22.3"
   },
   "files": [
     "build"
   ],
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1173.0",
-    "@aws-sdk/client-ssm": "^3.1073.0",
-    "@react-router/node": "^8.4.0",
+    "@aws-sdk/client-ssm": "^3.1173.0",
+    "@react-router/node": "^8.5.2",
     "@tasan/common": "workspace:*",
     "@tasan/data": "workspace:*",
     "classnames": "^2.5.1",
-    "cldr-core": "^48.2.0",
-    "isbot": "^5.1.43",
-    "openid-client": "^6.8.4",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "cldr-core": "^49.0.0",
+    "isbot": "^5.2.3",
+    "openid-client": "^6.9.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-router": "catalog:",
-    "zod": "^4.4.3",
-    "zod-form-data": "^3.0.2"
+    "zod": "^4.6.7",
+    "zod-form-data": "^3.0.4"
   },
   "devDependencies": {
-    "@react-router/dev": "^8.4.0",
-    "@tailwindcss/vite": "^4.3.1",
+    "@react-router/dev": "^8.5.2",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "catalog:",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "tailwindcss": "^4.3.1",
-    "tsx": "^4.22.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
     "typescript": "catalog:",
-    "vite": "^8.0.16"
+    "vite": "^8.3.8"
   }
 }

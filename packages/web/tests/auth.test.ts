@@ -14,8 +14,8 @@ import type { getSession } from "~/.server/sessions";
 const readSession = mock.fn<typeof getSession>(() =>
   Promise.resolve(createSession()),
 );
-const refreshCookie = mock.fn(
-  (): Promise<string | undefined> => Promise.resolve(undefined),
+const refreshCookie = mock.fn((): Promise<string | undefined> =>
+  Promise.resolve(undefined),
 );
 const sessionMock = {
   cache: true,

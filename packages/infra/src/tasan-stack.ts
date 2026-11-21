@@ -18,7 +18,7 @@ import {
   type StackProps,
 } from "aws-cdk-lib";
 import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
-import type { Asset } from "aws-cdk-lib/aws-s3-assets";
+import { Asset } from "aws-cdk-lib/aws-s3-assets";
 import type { Construct } from "constructs";
 
 import { configureEdgeLogRetention, logRetention } from "./log-retention.js";
@@ -140,7 +140,7 @@ export class TasanStack extends Stack {
         charset: nodejs.Charset.UTF8,
         minify: true,
         sourceMap: true,
-        target: "node24.16",
+        target: "node24.22",
         format: OutputFormat.ESM,
         banner:
           'import {createRequire} from "module"; const require = createRequire(import.meta.url);',
@@ -394,7 +394,10 @@ export class TasanStack extends Stack {
     this.userPoolServerURL = userPool.userPoolProviderUrl;
     this.userPoolArn = userPool.userPoolArn;
     this.appClientID = userPoolWebClient.userPoolClientId;
-    const appFunctionAsset = appFunction.node.findChild("Code") as Asset;
+    const appFunctionAsset = appFunction.node.findChild("Code");
+    if (!(appFunctionAsset instanceof Asset)) {
+      throw new Error("App function code is not an asset");
+    }
     this.appFunctionAssetPath = appFunctionAsset.assetPath;
     this.distributionID = distribution.distributionId;
 
