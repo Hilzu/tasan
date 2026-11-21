@@ -92,6 +92,8 @@ export const sessionItemSchema = z
     expiresAt: expiry,
     absoluteExpiresAt: expiry.optional(),
     forUser: userIDSchema.optional(),
+    cognitoUsername: z.string().min(1).optional(),
+    verifiedAt: timestamp.optional(),
     authState: z.string().optional(),
     authNonce: z.string().optional(),
     authRedirect: z.string().optional(),

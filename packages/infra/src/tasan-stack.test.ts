@@ -55,3 +55,23 @@ await test("parameter sync IAM covers only the application parameter hierarchy",
     }),
   });
 });
+
+await test("app function can only read users from its own user pool", () => {
+  const stack = new TasanStack(new App(), "TasanStack", {
+    env: { account: "412381763181", region: "eu-central-1" },
+  });
+  const template = Template.fromStack(stack);
+  const [userPoolID] = Object.keys(
+    template.findResources("AWS::Cognito::UserPool"),
+  );
+  template.hasResourceProperties("AWS::IAM::Policy", {
+    PolicyDocument: Match.objectLike({
+      Statement: Match.arrayWith([
+        Match.objectLike({
+          Action: "cognito-idp:AdminGetUser",
+          Resource: { "Fn::GetAtt": [userPoolID, "Arn"] },
+        }),
+      ]),
+    }),
+  });
+});

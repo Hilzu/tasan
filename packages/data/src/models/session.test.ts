@@ -10,7 +10,8 @@ import {
 import { genSessionID, genUserID } from "@tasan/common/id";
 
 process.env.TABLE_NAME = "TestTable";
-const { getSession, refreshSession } = await import("./session.js");
+const { getSession, markSessionVerified, refreshSession } =
+  await import("./session.js");
 
 afterEach(() => {
   mock.restoreAll();
@@ -147,4 +148,33 @@ await test("renewal propagates database failures and refuses a past deadline wit
     ),
     (error) => error === failure,
   );
+});
+
+await test("verification only records a newer check on a live record", async () => {
+  const id = genSessionID();
+  const verifiedAt = new Date();
+  let fail = false;
+  mock.method(DynamoDBDocumentClient.prototype, "send", (command: unknown) => {
+    assert.ok(command instanceof UpdateCommand);
+    assert.deepEqual(command.input.Key, { pk: id, sk: id });
+    assert.equal(
+      command.input.UpdateExpression,
+      "SET verifiedAt = :verifiedAt",
+    );
+    assert.equal(
+      command.input.ConditionExpression,
+      "attribute_exists(pk) AND expiresAt > :now AND (attribute_not_exists(verifiedAt) OR verifiedAt < :verifiedAt)",
+    );
+    if (fail)
+      return Promise.reject(
+        new ConditionalCheckFailedException({
+          $metadata: {},
+          message: "Condition failed",
+        }),
+      );
+    return Promise.resolve({});
+  });
+  assert.equal(await markSessionVerified(id, verifiedAt), true);
+  fail = true;
+  assert.equal(await markSessionVerified(id, verifiedAt), false);
 });

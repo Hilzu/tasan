@@ -38,6 +38,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   session.unset("authState");
   session.unset("authNonce");
   session.set("userID", userID);
+  session.set("cognitoUsername", claims["cognito:username"]);
   const authRedirect = session.get("authRedirect");
   session.unset("authRedirect");
 

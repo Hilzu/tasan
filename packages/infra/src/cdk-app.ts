@@ -16,6 +16,7 @@ new RegionalStack(app, "SingaporeStack", {
 
   tableName: tasan.tableName,
   userPoolServerURL: tasan.userPoolServerURL,
+  userPoolArn: tasan.userPoolArn,
   appClientID: tasan.appClientID,
   appFunctionAssetPath: tasan.appFunctionAssetPath,
   distributionID: tasan.distributionID,
@@ -27,6 +28,7 @@ new RegionalStack(app, "OhioStack", {
 
   tableName: tasan.tableName,
   userPoolServerURL: tasan.userPoolServerURL,
+  userPoolArn: tasan.userPoolArn,
   appClientID: tasan.appClientID,
   appFunctionAssetPath: tasan.appFunctionAssetPath,
   distributionID: tasan.distributionID,

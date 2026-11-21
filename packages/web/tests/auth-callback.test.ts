@@ -11,19 +11,20 @@ import {
 
 interface SessionData {
   userID?: UserID;
+  cognitoUsername?: string;
   authState?: string;
   authNonce?: string;
   authRedirect?: string;
 }
 
 const sessionContext = createContext<Session<SessionData>>();
-const getTokens = mock.fn(() => {
+const getTokens = mock.fn((): unknown => {
   throw new Error("Unexpected token exchange");
 });
-const provisionAuthenticatedUser = mock.fn(() => {
+const provisionAuthenticatedUser = mock.fn((): unknown => {
   throw new Error("Unexpected user provisioning");
 });
-const commitSession = mock.fn(() => {
+const commitSession = mock.fn((): unknown => {
   throw new Error("Unexpected session commit");
 });
 
@@ -85,3 +86,26 @@ for (const sessionData of [
     assert.equal(commitSession.mock.callCount(), 0);
   });
 }
+
+await test("callback stores the Cognito username for account checks", async () => {
+  getTokens.mock.mockImplementation(() => ({
+    claims: () => ({
+      sub: "6b7f1c8e-6a51-4f43-9d55-1c1a8f1f6e2b",
+      email: "alice@example.com",
+      "cognito:username": "alice",
+    }),
+  }));
+  provisionAuthenticatedUser.mock.mockImplementation(() =>
+    Promise.resolve({ userID: "usr_test" }),
+  );
+  commitSession.mock.mockImplementation(() => Promise.resolve("cookie"));
+  const session = createSession<SessionData>({
+    authState: "state",
+    authNonce: "nonce",
+    authRedirect: "/splits",
+  });
+  const response = await loader(callbackArgs(session));
+  assert.equal(response.headers.get("location"), "/splits");
+  assert.equal(session.get("cognitoUsername"), "alice");
+  assert.equal(session.get("authState"), undefined);
+});

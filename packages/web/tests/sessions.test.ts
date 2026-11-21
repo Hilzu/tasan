@@ -7,6 +7,7 @@ import { createCookie, createSession } from "react-router";
 
 const now = new Date("2026-11-03T12:00:00Z");
 const hour = 3600_000;
+const day = 24 * hour;
 const stored = new Map<string, Data.Session>();
 const create = mock.fn<typeof Data.createSession>((data) => {
   const id = genSessionID();
@@ -23,6 +24,13 @@ const remove = mock.fn<typeof Data.deleteSession>((id) => {
 const refresh = mock.fn<typeof Data.refreshSession>(() =>
   Promise.resolve(true),
 );
+const markVerified = mock.fn<typeof Data.markSessionVerified>(
+  (id, verifiedAt) => {
+    const record = stored.get(id);
+    if (record) stored.set(id, { ...record, verifiedAt });
+    return Promise.resolve(Boolean(record));
+  },
+);
 const persistenceMock = {
   cache: true,
   exports: {
@@ -30,6 +38,7 @@ const persistenceMock = {
     getSession: read,
     deleteSession: remove,
     refreshSession: refresh,
+    markSessionVerified: markVerified,
   },
 };
 mock.module("@tasan/data", persistenceMock);
@@ -40,9 +49,15 @@ const secretsMock = {
 mock.module("~/.server/secrets", secretsMock);
 const configMock = {
   cache: true,
-  exports: { originURL: new URL("https://tasan.app") },
+  exports: { authDisable: false, originURL: new URL("https://tasan.app") },
 };
 mock.module("~/config", configMock);
+const isActive = mock.fn((_username: string) => Promise.resolve(true));
+const cognitoMock = {
+  cache: true,
+  exports: { isCognitoUserActive: isActive },
+};
+mock.module("~/.server/cognito", cognitoMock);
 const {
   clearLegacySessionCookie,
   getSession,
@@ -50,6 +65,8 @@ const {
   refreshSessionCookie,
   destroySession,
 } = await import("~/.server/sessions");
+const signedIn = () =>
+  createSession({ userID: genUserID(), cognitoUsername: "alice" });
 const cookie = createCookie("__session", { secrets: ["test-secret"] });
 const cookieID = async (value: string) => {
   const id: unknown = await cookie.parse(value);
@@ -59,7 +76,7 @@ const cookieID = async (value: string) => {
 
 beforeEach(() => {
   stored.clear();
-  for (const fn of [create, read, remove, refresh]) {
+  for (const fn of [create, read, remove, refresh, markVerified, isActive]) {
     fn.mock.restore();
     fn.mock.resetCalls();
   }
@@ -67,42 +84,77 @@ beforeEach(() => {
   mock.timers.enable({ apis: ["Date"], now });
 });
 
-await test("sign-in sets a one-hour absolute session limit", async () => {
-  const header = await commitSession(createSession({ userID: genUserID() }));
+await test("sign-in sets a seven-day cookie and a thirty-day backend cap", async () => {
+  const header = await commitSession(signedIn());
   const record = stored.get(await cookieID(header));
-  assert.equal(record?.expiresAt.getTime(), now.getTime() + hour);
-  assert.equal(record.absoluteExpiresAt?.getTime(), now.getTime() + hour);
-  assert.match(header, /Max-Age=3600/);
+  assert.equal(record?.expiresAt.getTime(), now.getTime() + 7 * day);
+  assert.equal(record.absoluteExpiresAt?.getTime(), now.getTime() + 30 * day);
+  assert.match(header, /Max-Age=604800/);
   assert.match(header, /HttpOnly/);
   assert.match(header, /Secure/);
   assert.match(header, /SameSite=Lax/);
   assert.doesNotMatch(header, /Domain=/);
+  assert.equal(record.cognitoUsername, "alice");
+  assert.equal(record.verifiedAt?.getTime(), now.getTime());
 });
 
-await test("activity cannot extend a session beyond its one-hour absolute limit", async () => {
-  const header = await commitSession(createSession({ userID: genUserID() }));
+await test("activity renews both the backend and cookie only after an hour", async () => {
+  const header = await commitSession(signedIn());
+  const id = await cookieID(header);
   const session = await getSession(header);
-  mock.timers.tick(30 * 60_000);
   assert.equal(await refreshSessionCookie(session), undefined);
-  assert.equal(refresh.mock.callCount(), 0);
+  mock.timers.tick(hour - 1);
+  assert.equal(await refreshSessionCookie(session), undefined);
+  mock.timers.tick(1);
+  const renewed = await refreshSessionCookie(session);
+  assert.ok(renewed);
+  assert.equal(await cookieID(renewed), id);
+  assert.equal(refresh.mock.callCount(), 1);
+  assert.deepEqual(refresh.mock.calls[0].arguments, [
+    id,
+    new Date(Date.now() + 7 * day),
+    new Date(now.getTime() + 7 * day),
+  ]);
+  assert.match(renewed, /Max-Age=604800/);
 });
 
-await test("legacy sessions with longer deadlines are invalidated", async () => {
+await test("renewal is capped at thirty days and stops extending near that deadline", async () => {
+  const header = await commitSession(signedIn());
+  const id = await cookieID(header);
+  const record = stored.get(id);
+  assert.ok(record);
+  mock.timers.tick(28 * day);
+  stored.set(id, { ...record, expiresAt: new Date(Date.now() + day) });
+  const renewed = await refreshSessionCookie(await getSession(header));
+  assert.ok(renewed);
+  assert.equal(
+    refresh.mock.calls[0].arguments[1].getTime(),
+    now.getTime() + 30 * day,
+  );
+  assert.match(renewed, /Max-Age=172800/);
+  assert.ok(record.absoluteExpiresAt);
+  stored.set(id, { ...record, expiresAt: record.absoluteExpiresAt });
+  assert.equal(await refreshSessionCookie(await getSession(header)), undefined);
+  assert.equal(refresh.mock.callCount(), 1);
+});
+
+await test("legacy sessions cannot be extended past their original deadline", async () => {
   const id = genSessionID();
-  const expiresAt = new Date(Date.now() + 7 * 24 * hour);
+  const expiresAt = new Date(Date.now() + 14 * day);
   stored.set(id, {
     id,
     userID: genUserID(),
-    createdAt: now,
+    cognitoUsername: "alice",
     expiresAt,
-    absoluteExpiresAt: new Date(now.getTime() + 30 * 24 * hour),
   });
   const header = await cookie.serialize(id);
+  mock.timers.tick(10 * day);
   const session = await getSession(header);
-  assert.equal(session.get("userID"), undefined);
-  assert.equal(stored.has(id), false);
   assert.equal(await refreshSessionCookie(session), undefined);
-  assert.equal(refresh.mock.callCount(), 0);
+  const committed = await commitSession(session);
+  const record = stored.get(await cookieID(committed));
+  assert.equal(record?.expiresAt.getTime(), expiresAt.getTime());
+  assert.equal(record.absoluteExpiresAt?.getTime(), expiresAt.getTime());
 });
 
 await test("anonymous login state expires in ten minutes and is never renewed", async () => {
@@ -116,18 +168,79 @@ await test("anonymous login state expires in ten minutes and is never renewed", 
   assert.equal(refresh.mock.callCount(), 0);
 });
 
-await test("authentication rotates the anonymous ID and starts the one-hour cap at sign-in", async () => {
+await test("authentication rotates the anonymous ID and starts the thirty-day cap at sign-in", async () => {
   const header = await commitSession(createSession({ authState: "state" }));
   const originalID = await cookieID(header);
   mock.timers.tick(5 * 60_000);
   const session = await getSession(header);
   session.set("userID", genUserID());
+  session.set("cognitoUsername", "alice");
   session.unset("authState");
   const signedIn = await commitSession(session);
   const id = await cookieID(signedIn);
   assert.notEqual(id, originalID);
   assert.equal(stored.has(originalID), false);
-  assert.equal(stored.get(id)?.absoluteExpiresAt?.getTime(), Date.now() + hour);
+  assert.equal(
+    stored.get(id)?.absoluteExpiresAt?.getTime(),
+    Date.now() + 30 * day,
+  );
+});
+
+await test("Cognito is checked at most hourly and active accounts keep their session", async () => {
+  const header = await commitSession(signedIn());
+  const id = await cookieID(header);
+  await getSession(header);
+  mock.timers.tick(hour - 1);
+  await getSession(header);
+  assert.equal(isActive.mock.callCount(), 0);
+  mock.timers.tick(1);
+  const session = await getSession(header);
+  assert.ok(session.get("userID"));
+  assert.deepEqual(isActive.mock.calls[0].arguments, ["alice"]);
+  assert.deepEqual(markVerified.mock.calls[0].arguments, [id, new Date()]);
+  await getSession(header);
+  assert.equal(isActive.mock.callCount(), 1);
+});
+
+await test("sessions of disabled or deleted Cognito accounts are revoked on the next check", async () => {
+  const header = await commitSession(signedIn());
+  const id = await cookieID(header);
+  mock.timers.tick(hour);
+  isActive.mock.mockImplementation(() => Promise.resolve(false));
+  const session = await getSession(header);
+  assert.equal(session.id, "");
+  assert.equal(session.get("userID"), undefined);
+  assert.equal(stored.has(id), false);
+  assert.equal(await refreshSessionCookie(session), undefined);
+  assert.equal(refresh.mock.callCount(), 0);
+});
+
+await test("Cognito failures keep the session and retry on the next request", async () => {
+  const header = await commitSession(signedIn());
+  mock.timers.tick(hour);
+  isActive.mock.mockImplementation(() =>
+    Promise.reject(new Error("Cognito unavailable")),
+  );
+  assert.ok((await getSession(header)).get("userID"));
+  assert.equal(markVerified.mock.callCount(), 0);
+  isActive.mock.restore();
+  assert.ok((await getSession(header)).get("userID"));
+  assert.equal(isActive.mock.callCount(), 2);
+  assert.equal(markVerified.mock.callCount(), 1);
+});
+
+await test("sessions without a Cognito identity require signing in again", async () => {
+  const id = genSessionID();
+  stored.set(id, {
+    id,
+    userID: genUserID(),
+    createdAt: now,
+    expiresAt: new Date(Date.now() + 7 * day),
+  });
+  const session = await getSession(await cookie.serialize(id));
+  assert.equal(session.get("userID"), undefined);
+  assert.equal(stored.has(id), false);
+  assert.equal(isActive.mock.callCount(), 0);
 });
 
 await test("legacy domain cookies can be cleared during migration", async () => {
@@ -147,7 +260,7 @@ await test("missing or expired backend records yield a fresh anonymous session w
 });
 
 await test("revocation during a request suppresses renewal and logout clears the cookie", async () => {
-  const header = await commitSession(createSession({ userID: genUserID() }));
+  const header = await commitSession(signedIn());
   const session = await getSession(header);
   mock.timers.tick(hour);
   refresh.mock.mockImplementation(() => Promise.resolve(false));

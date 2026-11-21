@@ -14,6 +14,7 @@ import { logRetention } from "./log-retention.js";
 type Props = StackProps & {
   tableName: string;
   userPoolServerURL: string;
+  userPoolArn: string;
   appClientID: string;
   appFunctionAssetPath: string;
   distributionID: string;
@@ -24,6 +25,7 @@ export class RegionalStack extends Stack {
     const {
       tableName,
       userPoolServerURL,
+      userPoolArn,
       appClientID,
       appFunctionAssetPath,
       distributionID,
@@ -72,6 +74,13 @@ export class RegionalStack extends Stack {
         resources: [
           `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app*`,
         ],
+      }),
+    );
+
+    appFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["cognito-idp:AdminGetUser"],
+        resources: [userPoolArn],
       }),
     );
 
