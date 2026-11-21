@@ -15,7 +15,8 @@ export default defineConfig({
   webServer:
     deployed ? undefined : (
       {
-        command: "node scripts/local-server.ts",
+        command:
+          "pnpm --filter @tasan/web... build && node scripts/local-server.ts",
         url: "http://127.0.0.1:4173/version",
         reuseExistingServer: false,
         timeout: 120_000,

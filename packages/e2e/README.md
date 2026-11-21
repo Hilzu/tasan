@@ -12,11 +12,9 @@ docker compose -f packages/e2e/compose.yml down
 ```
 
 By default, Playwright builds and serves the production application at
-`http://127.0.0.1:4173`. It creates a unique table in the in-memory DynamoDB Local
-instance on port 8001 and removes that table on graceful shutdown. Compose
-`down` also discards all test data after an interrupted run. The development
-database is not used. `E2E_DYNAMODB_ENDPOINT` can select another loopback HTTP
-endpoint.
+`http://127.0.0.1:4173`. It recreates a `TasanE2E` table in the in-memory
+DynamoDB Local instance on port 8001 at every start, and Compose `down` discards
+all test data. The development database is not used.
 
 The local server explicitly supplies disposable credentials and secrets, seeds
 three fictional users, and uses the existing `AUTH_DISABLE` session-creation
@@ -94,5 +92,5 @@ pnpm --filter @tasan/e2e exec playwright-cli open http://127.0.0.1:4173
 ```
 
 To keep the isolated app running for exploration while DynamoDB Local is up,
-use `pnpm --filter @tasan/e2e exec node scripts/local-server.ts`. Stop it when
-finished to remove its table.
+build the app with `pnpm --filter @tasan/web... build`, then run
+`pnpm --filter @tasan/e2e exec node scripts/local-server.ts`.
