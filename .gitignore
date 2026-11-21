@@ -158,5 +158,5 @@ cdk.out/
 # Playwright output and authentication state
 playwright-report/
 test-results/
-playwright/.auth/
+**/playwright/.auth/
 .playwright-cli/
