@@ -34,7 +34,7 @@ const sessionsMock = {
 mock.module("~/.server/sessions", sessionsMock);
 const configMock = {
   cache: true,
-  exports: { originURL: new URL("https://tasan.app") },
+  exports: { authDisable: false, originURL: new URL("https://tasan.app") },
 };
 mock.module("~/config", configMock);
 

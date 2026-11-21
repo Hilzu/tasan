@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 import { asSessionID, type UserID } from "@tasan/common/id";
 import { getLogger, logError } from "@tasan/common/logging";
 import {
@@ -40,13 +42,18 @@ const cookie = createCookie("__session", {
   secure: originURL.protocol === "https:",
 });
 
-export const clearLegacySessionCookie = async () =>
-  await cookie.serialize("", {
-    domain: originURL.hostname,
+export const clearLegacySessionCookie = async () => {
+  const hostname = originURL.hostname;
+  // Browsers can treat a Domain cookie on a local host as the host-only cookie.
+  if (hostname === "localhost" || isIP(hostname.replace(/^\[|\]$/g, "")))
+    return;
+  return await cookie.serialize("", {
+    domain: hostname,
     expires: new Date(0),
     maxAge: 0,
     path: "/",
   });
+};
 
 const serialize = (id: string, expiresAt: Date) =>
   cookie.serialize(id, {

@@ -245,9 +245,18 @@ await test("sessions without a Cognito identity require signing in again", async
 
 await test("legacy domain cookies can be cleared during migration", async () => {
   const header = await clearLegacySessionCookie();
+  assert.ok(header);
   assert.match(header, /Domain=tasan\.app/);
   assert.match(header, /Max-Age=0/);
   assert.match(header, /Expires=Thu, 01 Jan 1970/);
+});
+
+await test("legacy cleanup does not delete host-only local cookies", async () => {
+  for (const hostname of ["localhost", "127.0.0.1", "[::1]"]) {
+    configMock.exports.originURL.hostname = hostname;
+    assert.equal(await clearLegacySessionCookie(), undefined);
+  }
+  configMock.exports.originURL.hostname = "tasan.app";
 });
 
 await test("missing or expired backend records yield a fresh anonymous session with no stale ID", async () => {

@@ -26,20 +26,20 @@ export const sessionMiddleware: MiddlewareFunction<Response> = async (
   const userID = session.get("userID");
   if (userID) getLogger().appendKeys({ userId: userID });
   const response = await next();
+  // Login and logout own their cookie. Never overwrite them during renewal.
+  const hasResponseSessionCookie = response.headers
+    .getSetCookie()
+    .some((value) => value.startsWith("__session="));
   const hasSessionCookie = request.headers
     .get("cookie")
     ?.split(";")
     .some((value) => value.trim().startsWith("__session="));
   if (hasSessionCookie) {
-    response.headers.append("Set-Cookie", await clearLegacySessionCookie());
+    const legacyCookie = await clearLegacySessionCookie();
+    if (legacyCookie) response.headers.append("Set-Cookie", legacyCookie);
     response.headers.set("Cache-Control", "private, no-store");
   }
-  // Login and logout own their cookie. Never overwrite them during renewal.
-  if (
-    !response.headers
-      .getSetCookie()
-      .some((value) => value.startsWith("__session="))
-  ) {
+  if (!hasResponseSessionCookie) {
     let cookie: string | undefined;
     try {
       cookie = await refreshSessionCookie(session);

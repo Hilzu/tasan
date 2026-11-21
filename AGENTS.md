@@ -31,6 +31,7 @@ Prefer the narrowest relevant check while iterating, then run `pnpm test` before
 ## Frontend verification
 
 - Test frontend changes in a browser against the running application. Exercise the affected interactions and relevant success and error states; automated tests and type checking do not replace browser testing.
+- For agent-driven browser exploration, use `pnpm --filter @tasan/e2e exec playwright-cli --help`; see `packages/e2e/README.md` for setup and safe local/deployed usage.
 - For visual changes, capture and inspect screenshots of the affected views in all four combinations: mobile light mode, mobile dark mode, desktop light mode, and desktop dark mode.
 - Include these screenshots in the review handoff, with links or attachments, and identify the viewport sizes and color modes used. Capture relevant expanded, collapsed, or feedback states when the change affects them.
 - If browser testing or screenshot capture is blocked, report the specific blocker and which verification remains incomplete; do not claim it passed.
