@@ -119,18 +119,17 @@ await test("public operations round-trip domain objects without exposing storage
     userID,
     expiresAt,
     authState: "state",
-    accessToken: "secret",
-    refreshToken: "refresh",
   };
   await api.putSession(session);
   const restored = await api.getSession(session.id);
   assert.ok(restored);
   assert.equal(restored.expiresAt.getTime(), expiresAt.getTime());
   assert.equal(restored.userID, userID);
-  assert.equal(restored.accessToken, session.accessToken);
+  assert.ok(restored.createdAt instanceof Date);
   assert.equal(restored.authNonce, undefined);
+  assert.equal("accessToken" in restored, false);
+  assert.equal("refreshToken" in restored, false);
   assert.equal("forUser" in restored, false);
-  assert.equal("createdAt" in restored, false);
 
   const invite = await api.createInviteForSplit({ splitID, createdBy: userID });
   const restoredInvite = await api.findInviteForSplit(invite.id);
@@ -337,8 +336,6 @@ await test("optional session attributes are omitted by the real SDK serializer",
         "authState",
         "authNonce",
         "authRedirect",
-        "accessToken",
-        "refreshToken",
       ]) {
         assert.equal(field in payload.Item, false);
       }

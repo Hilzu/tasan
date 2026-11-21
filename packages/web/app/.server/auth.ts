@@ -7,7 +7,11 @@ import {
   redirect,
 } from "react-router";
 
-import { getSession, refreshSessionCookie } from "~/.server/sessions";
+import {
+  clearLegacySessionCookie,
+  getSession,
+  refreshSessionCookie,
+} from "~/.server/sessions";
 
 export const sessionContext =
   createContext<Awaited<ReturnType<typeof getSession>>>();
@@ -22,6 +26,14 @@ export const sessionMiddleware: MiddlewareFunction<Response> = async (
   const userID = session.get("userID");
   if (userID) getLogger().appendKeys({ userId: userID });
   const response = await next();
+  const hasSessionCookie = request.headers
+    .get("cookie")
+    ?.split(";")
+    .some((value) => value.trim().startsWith("__session="));
+  if (hasSessionCookie) {
+    response.headers.append("Set-Cookie", await clearLegacySessionCookie());
+    response.headers.set("Cache-Control", "private, no-store");
+  }
   // Login and logout own their cookie. Never overwrite them during renewal.
   if (
     !response.headers

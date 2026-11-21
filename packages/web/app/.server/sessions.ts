@@ -16,27 +16,32 @@ export interface SessionData {
   authState?: string;
   authNonce?: string;
   authRedirect?: string;
-  accessToken?: string;
-  refreshToken?: string;
 }
 
 type AppSession = Session<SessionData>;
 const day = 24 * 60 * 60;
 const idleLifetime = 7 * day;
-const absoluteLifetime = 30 * day;
+const absoluteLifetime = 60 * 60;
 const loginLifetime = 10 * 60;
 const refreshInterval = 60 * 60;
 const loadedSessionRecords = new WeakMap<AppSession, StoredSession>();
 
 // TODO: make the cookies work when using the local site from phone
 const cookie = createCookie("__session", {
-  domain: originURL.hostname,
   httpOnly: true,
   path: "/",
   sameSite: "lax",
   secrets: cookieSignSecrets,
   secure: originURL.protocol === "https:",
 });
+
+export const clearLegacySessionCookie = async () =>
+  await cookie.serialize("", {
+    domain: originURL.hostname,
+    expires: new Date(0),
+    maxAge: 0,
+    path: "/",
+  });
 
 const serialize = (id: string, expiresAt: Date) =>
   cookie.serialize(id, {
@@ -52,14 +57,25 @@ export async function getSession(
   const record = await getSessionData(asSessionID(id));
   // Do not retain a stale ID: expired or revoked sessions must never be revived.
   if (!record) return createSession<SessionData>();
+  const maxAbsoluteExpiry =
+    record.createdAt ?
+      new Date(record.createdAt.getTime() + absoluteLifetime * 1000)
+    : undefined;
+  if (
+    record.userID &&
+    (!record.absoluteExpiresAt ||
+      !maxAbsoluteExpiry ||
+      record.absoluteExpiresAt > maxAbsoluteExpiry)
+  ) {
+    await deleteSession(record.id);
+    return createSession<SessionData>();
+  }
   const session = createSession<SessionData>(
     {
       userID: record.userID,
       authState: record.authState,
       authNonce: record.authNonce,
       authRedirect: record.authRedirect,
-      accessToken: record.accessToken,
-      refreshToken: record.refreshToken,
     },
     record.id,
   );
@@ -71,8 +87,7 @@ export async function commitSession(session: AppSession): Promise<string> {
   const previous = loadedSessionRecords.get(session);
   const now = Date.now();
   const userID = session.get("userID");
-  // A successful sign-in gets a fresh ID and a new absolute deadline. Legacy
-  // sessions without that deadline can never outlive their existing expiry.
+  // A successful sign-in gets a fresh ID and a one-hour absolute deadline.
   const absoluteExpiresAt =
     userID ?
       previous?.userID === userID ?
@@ -108,8 +123,8 @@ export async function refreshSessionCookie(
       (record.absoluteExpiresAt ?? record.expiresAt).getTime(),
     ),
   );
-  // Bound writes during active use to once an hour. Near the absolute deadline
-  // there is nothing to extend, and anonymous OAuth sessions never slide.
+  // Anonymous OAuth sessions never slide; authenticated sessions cannot exceed
+  // their one-hour absolute deadline.
   if (expiresAt.getTime() - record.expiresAt.getTime() < refreshInterval * 1000)
     return;
   if (!(await refreshSession(record.id, expiresAt, record.expiresAt))) return;

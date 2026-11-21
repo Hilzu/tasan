@@ -7,11 +7,10 @@ import { createCookie, createSession } from "react-router";
 
 const now = new Date("2026-11-03T12:00:00Z");
 const hour = 3600_000;
-const day = 24 * hour;
 const stored = new Map<string, Data.Session>();
 const create = mock.fn<typeof Data.createSession>((data) => {
   const id = genSessionID();
-  stored.set(id, { ...data, id });
+  stored.set(id, { ...data, id, createdAt: data.createdAt ?? new Date() });
   return Promise.resolve({ id });
 });
 const read = mock.fn<typeof Data.getSession>((id) =>
@@ -44,8 +43,13 @@ const configMock = {
   exports: { originURL: new URL("https://tasan.app") },
 };
 mock.module("~/config", configMock);
-const { getSession, commitSession, refreshSessionCookie, destroySession } =
-  await import("~/.server/sessions");
+const {
+  clearLegacySessionCookie,
+  getSession,
+  commitSession,
+  refreshSessionCookie,
+  destroySession,
+} = await import("~/.server/sessions");
 const cookie = createCookie("__session", { secrets: ["test-secret"] });
 const cookieID = async (value: string) => {
   const id: unknown = await cookie.parse(value);
@@ -63,69 +67,42 @@ beforeEach(() => {
   mock.timers.enable({ apis: ["Date"], now });
 });
 
-await test("sign-in sets a seven-day cookie and a thirty-day backend cap", async () => {
+await test("sign-in sets a one-hour absolute session limit", async () => {
   const header = await commitSession(createSession({ userID: genUserID() }));
   const record = stored.get(await cookieID(header));
-  assert.equal(record?.expiresAt.getTime(), now.getTime() + 7 * day);
-  assert.equal(record.absoluteExpiresAt?.getTime(), now.getTime() + 30 * day);
-  assert.match(header, /Max-Age=604800/);
+  assert.equal(record?.expiresAt.getTime(), now.getTime() + hour);
+  assert.equal(record.absoluteExpiresAt?.getTime(), now.getTime() + hour);
+  assert.match(header, /Max-Age=3600/);
   assert.match(header, /HttpOnly/);
   assert.match(header, /Secure/);
   assert.match(header, /SameSite=Lax/);
+  assert.doesNotMatch(header, /Domain=/);
 });
 
-await test("activity renews both the backend and cookie only after an hour", async () => {
+await test("activity cannot extend a session beyond its one-hour absolute limit", async () => {
   const header = await commitSession(createSession({ userID: genUserID() }));
-  const id = await cookieID(header);
   const session = await getSession(header);
+  mock.timers.tick(30 * 60_000);
   assert.equal(await refreshSessionCookie(session), undefined);
-  mock.timers.tick(hour - 1);
-  assert.equal(await refreshSessionCookie(session), undefined);
-  mock.timers.tick(1);
-  const renewed = await refreshSessionCookie(session);
-  assert.ok(renewed);
-  assert.equal(await cookieID(renewed), id);
-  assert.equal(refresh.mock.callCount(), 1);
-  assert.deepEqual(refresh.mock.calls[0].arguments, [
-    id,
-    new Date(Date.now() + 7 * day),
-    new Date(now.getTime() + 7 * day),
-  ]);
-  assert.match(renewed, /Max-Age=604800/);
+  assert.equal(refresh.mock.callCount(), 0);
 });
 
-await test("renewal is capped at thirty days and stops extending near that deadline", async () => {
-  const header = await commitSession(createSession({ userID: genUserID() }));
-  const id = await cookieID(header);
-  const record = stored.get(id);
-  assert.ok(record);
-  mock.timers.tick(28 * day);
-  stored.set(id, { ...record, expiresAt: new Date(Date.now() + day) });
-  const renewed = await refreshSessionCookie(await getSession(header));
-  assert.ok(renewed);
-  assert.equal(
-    refresh.mock.calls[0].arguments[1].getTime(),
-    now.getTime() + 30 * day,
-  );
-  assert.match(renewed, /Max-Age=172800/);
-  assert.ok(record.absoluteExpiresAt);
-  stored.set(id, { ...record, expiresAt: record.absoluteExpiresAt });
-  assert.equal(await refreshSessionCookie(await getSession(header)), undefined);
-  assert.equal(refresh.mock.callCount(), 1);
-});
-
-await test("legacy sessions cannot be extended past their original deadline", async () => {
+await test("legacy sessions with longer deadlines are invalidated", async () => {
   const id = genSessionID();
-  const expiresAt = new Date(Date.now() + 14 * day);
-  stored.set(id, { id, userID: genUserID(), expiresAt });
+  const expiresAt = new Date(Date.now() + 7 * 24 * hour);
+  stored.set(id, {
+    id,
+    userID: genUserID(),
+    createdAt: now,
+    expiresAt,
+    absoluteExpiresAt: new Date(now.getTime() + 30 * 24 * hour),
+  });
   const header = await cookie.serialize(id);
-  mock.timers.tick(10 * day);
   const session = await getSession(header);
+  assert.equal(session.get("userID"), undefined);
+  assert.equal(stored.has(id), false);
   assert.equal(await refreshSessionCookie(session), undefined);
-  const committed = await commitSession(session);
-  const record = stored.get(await cookieID(committed));
-  assert.equal(record?.expiresAt.getTime(), expiresAt.getTime());
-  assert.equal(record.absoluteExpiresAt?.getTime(), expiresAt.getTime());
+  assert.equal(refresh.mock.callCount(), 0);
 });
 
 await test("anonymous login state expires in ten minutes and is never renewed", async () => {
@@ -139,7 +116,7 @@ await test("anonymous login state expires in ten minutes and is never renewed", 
   assert.equal(refresh.mock.callCount(), 0);
 });
 
-await test("authentication rotates the anonymous ID and starts the thirty-day cap at sign-in", async () => {
+await test("authentication rotates the anonymous ID and starts the one-hour cap at sign-in", async () => {
   const header = await commitSession(createSession({ authState: "state" }));
   const originalID = await cookieID(header);
   mock.timers.tick(5 * 60_000);
@@ -150,10 +127,14 @@ await test("authentication rotates the anonymous ID and starts the thirty-day ca
   const id = await cookieID(signedIn);
   assert.notEqual(id, originalID);
   assert.equal(stored.has(originalID), false);
-  assert.equal(
-    stored.get(id)?.absoluteExpiresAt?.getTime(),
-    Date.now() + 30 * day,
-  );
+  assert.equal(stored.get(id)?.absoluteExpiresAt?.getTime(), Date.now() + hour);
+});
+
+await test("legacy domain cookies can be cleared during migration", async () => {
+  const header = await clearLegacySessionCookie();
+  assert.match(header, /Domain=tasan\.app/);
+  assert.match(header, /Max-Age=0/);
+  assert.match(header, /Expires=Thu, 01 Jan 1970/);
 });
 
 await test("missing or expired backend records yield a fresh anonymous session with no stale ID", async () => {

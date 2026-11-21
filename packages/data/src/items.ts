@@ -95,8 +95,6 @@ export const sessionItemSchema = z
     authState: z.string().optional(),
     authNonce: z.string().optional(),
     authRedirect: z.string().optional(),
-    accessToken: z.string().optional(),
-    refreshToken: z.string().optional(),
   })
   .refine((item) => item.pk === item.sk);
 export type SessionItem = z.infer<typeof sessionItemSchema>;

@@ -19,7 +19,13 @@ const refreshCookie = mock.fn(
 );
 const sessionMock = {
   cache: true,
-  exports: { getSession: readSession, refreshSessionCookie: refreshCookie },
+  exports: {
+    clearLegacySessionCookie: mock.fn(() =>
+      Promise.resolve("__session=; Domain=tasan.app; Path=/"),
+    ),
+    getSession: readSession,
+    refreshSessionCookie: refreshCookie,
+  },
 };
 mock.module("~/.server/sessions", sessionMock);
 const {
@@ -186,14 +192,20 @@ for (const cookie of [
 ]) {
   await test(`explicit session cookie takes precedence: ${cookie}`, async () => {
     const response = await sessionMiddleware(
-      args(new Request("https://tasan.app/logout")),
+      args(
+        new Request("https://tasan.app/logout", {
+          headers: { cookie: "__session=existing" },
+        }),
+      ),
       () =>
         Promise.resolve(
           new Response(null, { headers: { "Set-Cookie": cookie } }),
         ),
     );
     assert.ok(response instanceof Response);
-    assert.deepEqual(response.headers.getSetCookie(), [cookie]);
+    const setCookies = response.headers.getSetCookie();
+    assert.equal(setCookies[0], cookie);
+    assert.match(setCookies[1] ?? "", /Domain=tasan\.app/);
     assert.equal(refreshCookie.mock.callCount(), 0);
   });
 }

@@ -25,7 +25,7 @@ export const buildAuthorizationURL = () => {
     response_type: "code",
     client_id: authClientID,
     redirect_uri: new URL("/auth-callback", originURL).href,
-    scope: "aws.cognito.signin.user.admin openid email profile",
+    scope: "openid email profile",
     state,
     nonce,
   });
@@ -35,7 +35,7 @@ export const buildAuthorizationURL = () => {
 
 export const getTokens = captureAsync(
   "getTokens",
-  async (opts: { currentURL: URL; state?: string; nonce?: string }) => {
+  async (opts: { currentURL: URL; state: string; nonce: string }) => {
     if (!config) throw new Error("Auth is disabled");
     const { currentURL, state, nonce } = opts;
     return await authorizationCodeGrant(config, currentURL, {
