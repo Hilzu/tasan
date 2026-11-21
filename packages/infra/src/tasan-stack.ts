@@ -140,7 +140,7 @@ export class TasanStack extends Stack {
         charset: nodejs.Charset.UTF8,
         minify: true,
         sourceMap: true,
-        target: "node24.16",
+        target: "node24.22",
         format: OutputFormat.ESM,
         banner:
           'import {createRequire} from "module"; const require = createRequire(import.meta.url);',

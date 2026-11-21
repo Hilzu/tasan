@@ -16,10 +16,10 @@
     "start": "node --enable-source-maps .",
     "test": "pnpm build && node --test dist/*.test.js",
     "build-and-sync": "../../scripts/build-and-sync.sh",
-    "build:edge": "esbuild src/app-origin-request/main.mts --bundle --platform=node --target=node24.16 --format=esm --outfile=dist/app-origin-request/main.mjs"
+    "build:edge": "esbuild src/app-origin-request/main.mts --bundle --platform=node --target=node24.22 --format=esm --outfile=dist/app-origin-request/main.mjs"
   },
   "engines": {
-    "node": "^24.16.0"
+    "node": "^24.22.3"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.162",

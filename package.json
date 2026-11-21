@@ -10,11 +10,11 @@
   },
   "license": "AGPL-3.0-or-later",
   "private": true,
-  "packageManager": "pnpm@11.8.0",
+  "packageManager": "pnpm@12.21.0",
   "type": "module",
   "engines": {
-    "node": "^24.16.0",
-    "pnpm": "^11.8.0"
+    "node": "^24.22.3",
+    "pnpm": "^12.21.0"
   },
   "scripts": {
     "build": "pnpm -r build",
