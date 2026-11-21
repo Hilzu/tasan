@@ -7,7 +7,6 @@ import { sessionContext } from "~/.server/auth";
 import { getTokens } from "~/.server/openid";
 import { provisionAuthenticatedUser } from "~/.server/services/users";
 import { commitSession } from "~/.server/sessions";
-import { originURL } from "~/config";
 import { toRelativePath } from "~/url";
 
 import type { Route } from "./+types/auth-callback";
@@ -23,9 +22,11 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 
   const state = session.get("authState");
   const nonce = session.get("authNonce");
-  const currentURL = new URL(toRelativePath(request.url), originURL);
+  if (!state || !nonce)
+    throw new Response("Invalid authentication response", { status: 400 });
+
+  const currentURL = new URL(request.url);
   const tokens = await getTokens({ currentURL, state, nonce });
-  if (!tokens.refresh_token) throw new Error("No refresh token");
 
   const claims = claimsSchema.parse(tokens.claims());
   const { userID } = await provisionAuthenticatedUser({
@@ -37,8 +38,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   session.unset("authState");
   session.unset("authNonce");
   session.set("userID", userID);
-  session.set("accessToken", tokens.access_token);
-  session.set("refreshToken", tokens.refresh_token);
+  session.set("cognitoUsername", claims["cognito:username"]);
   const authRedirect = session.get("authRedirect");
   session.unset("authRedirect");
 

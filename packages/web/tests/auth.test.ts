@@ -19,7 +19,13 @@ const refreshCookie = mock.fn(
 );
 const sessionMock = {
   cache: true,
-  exports: { getSession: readSession, refreshSessionCookie: refreshCookie },
+  exports: {
+    clearLegacySessionCookie: mock.fn(() =>
+      Promise.resolve("__session=; Domain=tasan.app; Path=/"),
+    ),
+    getSession: readSession,
+    refreshSessionCookie: refreshCookie,
+  },
 };
 mock.module("~/.server/sessions", sessionMock);
 const {
@@ -131,6 +137,26 @@ await test("renewal appends the cookie without replacing unrelated cookies and p
   assert.equal(response.headers.get("cache-control"), "private, no-store");
 });
 
+await test("legacy cookie cleanup does not prevent session renewal", async () => {
+  refreshCookie.mock.mockImplementation(() =>
+    Promise.resolve("__session=renewed"),
+  );
+  const response = await sessionMiddleware(
+    args(
+      new Request("https://tasan.app/splits", {
+        headers: { cookie: "__session=existing" },
+      }),
+    ),
+    next,
+  );
+  assert.ok(response instanceof Response);
+  assert.deepEqual(response.headers.getSetCookie(), [
+    "__session=; Domain=tasan.app; Path=/",
+    "__session=renewed",
+  ]);
+  assert.equal(refreshCookie.mock.callCount(), 1);
+});
+
 await test("failed renewal logs the error and preserves a completed action's response", async (t) => {
   const failure = new Error("Session renewal database write failed");
   const errorLog = t.mock.method(getLogger(), "error", () => undefined);
@@ -186,14 +212,20 @@ for (const cookie of [
 ]) {
   await test(`explicit session cookie takes precedence: ${cookie}`, async () => {
     const response = await sessionMiddleware(
-      args(new Request("https://tasan.app/logout")),
+      args(
+        new Request("https://tasan.app/logout", {
+          headers: { cookie: "__session=existing" },
+        }),
+      ),
       () =>
         Promise.resolve(
           new Response(null, { headers: { "Set-Cookie": cookie } }),
         ),
     );
     assert.ok(response instanceof Response);
-    assert.deepEqual(response.headers.getSetCookie(), [cookie]);
+    const setCookies = response.headers.getSetCookie();
+    assert.equal(setCookies[0], cookie);
+    assert.match(setCookies[1] ?? "", /Domain=tasan\.app/);
     assert.equal(refreshCookie.mock.callCount(), 0);
   });
 }

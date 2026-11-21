@@ -1,23 +1,27 @@
+import { isIP } from "node:net";
+
 import { asSessionID, type UserID } from "@tasan/common/id";
+import { getLogger, logError } from "@tasan/common/logging";
 import {
   createSession as createStoredSession,
   deleteSession,
   getSession as getSessionData,
+  markSessionVerified,
   refreshSession,
   type Session as StoredSession,
 } from "@tasan/data";
 import { createCookie, createSession, type Session } from "react-router";
 
+import { isCognitoUserActive } from "~/.server/cognito";
 import { cookieSignSecrets } from "~/.server/secrets";
-import { originURL } from "~/config";
+import { authDisable, originURL } from "~/config";
 
 export interface SessionData {
   userID?: UserID;
+  cognitoUsername?: string;
   authState?: string;
   authNonce?: string;
   authRedirect?: string;
-  accessToken?: string;
-  refreshToken?: string;
 }
 
 type AppSession = Session<SessionData>;
@@ -26,17 +30,30 @@ const idleLifetime = 7 * day;
 const absoluteLifetime = 30 * day;
 const loginLifetime = 10 * 60;
 const refreshInterval = 60 * 60;
+const verificationInterval = 60 * 60;
 const loadedSessionRecords = new WeakMap<AppSession, StoredSession>();
 
 // TODO: make the cookies work when using the local site from phone
 const cookie = createCookie("__session", {
-  domain: originURL.hostname,
   httpOnly: true,
   path: "/",
   sameSite: "lax",
   secrets: cookieSignSecrets,
   secure: originURL.protocol === "https:",
 });
+
+export const clearLegacySessionCookie = async () => {
+  const hostname = originURL.hostname;
+  // Browsers can treat a Domain cookie on a local host as the host-only cookie.
+  if (hostname === "localhost" || isIP(hostname.replace(/^\[|\]$/g, "")))
+    return;
+  return await cookie.serialize("", {
+    domain: hostname,
+    expires: new Date(0),
+    maxAge: 0,
+    path: "/",
+  });
+};
 
 const serialize = (id: string, expiresAt: Date) =>
   cookie.serialize(id, {
@@ -52,19 +69,62 @@ export async function getSession(
   const record = await getSessionData(asSessionID(id));
   // Do not retain a stale ID: expired or revoked sessions must never be revived.
   if (!record) return createSession<SessionData>();
+  if (record.userID && !(await verifyAccount(record))) {
+    await deleteSession(record.id);
+    return createSession<SessionData>();
+  }
   const session = createSession<SessionData>(
     {
       userID: record.userID,
+      cognitoUsername: record.cognitoUsername,
       authState: record.authState,
       authNonce: record.authNonce,
       authRedirect: record.authRedirect,
-      accessToken: record.accessToken,
-      refreshToken: record.refreshToken,
     },
     record.id,
   );
   loadedSessionRecords.set(session, record);
   return session;
+}
+
+/**
+ * Revoke sessions whose Cognito account was deleted or disabled. The check
+ * runs with session renewal at most once an hour, so revocation applies within
+ * an hour without shortening the session. Cognito outages do not sign users
+ * out; the check is retried on the next request instead.
+ */
+async function verifyAccount(record: StoredSession): Promise<boolean> {
+  if (authDisable) return true;
+  const username = record.cognitoUsername;
+  // Sessions created before account checks cannot be checked; sign in again.
+  if (!username) return false;
+  const now = new Date();
+  const lastVerified = record.verifiedAt ?? record.createdAt;
+  if (
+    lastVerified &&
+    now.getTime() - lastVerified.getTime() < verificationInterval * 1000
+  )
+    return true;
+  let active: boolean;
+  try {
+    active = await isCognitoUserActive(username);
+  } catch (error) {
+    logError("Cognito account check failed", error);
+    return true;
+  }
+  if (!active) {
+    getLogger().info("Session revoked for inactive Cognito account", {
+      action: "auth.revoke",
+      userId: record.userID,
+    });
+    return false;
+  }
+  try {
+    await markSessionVerified(record.id, now);
+  } catch (error) {
+    logError("Recording Cognito account check failed", error);
+  }
+  return true;
 }
 
 export async function commitSession(session: AppSession): Promise<string> {
@@ -89,6 +149,8 @@ export async function commitSession(session: AppSession): Promise<string> {
     ...session.data,
     expiresAt,
     absoluteExpiresAt,
+    // Sign-in has just been authenticated by Cognito.
+    verifiedAt: userID ? new Date(now) : undefined,
   });
   // Explicit commits happen at sign-in and rotate the ID, including the
   // anonymous OAuth session, rather than upgrading an existing bearer token.

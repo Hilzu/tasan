@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import { type ReactNode, useEffect, useRef } from "react";
-import type { To } from "react-router";
+import { Form, type To } from "react-router";
 
 import { Link } from "~/components/link";
 
@@ -8,8 +8,27 @@ type DropdownItem = {
   label: string;
   destructive?: boolean;
 } & (
-  | { to: To; onSelect?: never; disabled?: never }
-  | { to?: never; onSelect: () => void; disabled?: boolean }
+  | {
+      to: To;
+      formAction?: never;
+      method?: never;
+      onSelect?: never;
+      disabled?: never;
+    }
+  | {
+      formAction: string;
+      method: "post";
+      disabled?: boolean;
+      onSelect?: never;
+      to?: never;
+    }
+  | {
+      to?: never;
+      formAction?: never;
+      method?: never;
+      onSelect: () => void;
+      disabled?: boolean;
+    }
 );
 
 interface ActionsDropdownProps {
@@ -93,7 +112,8 @@ export function ActionsDropdown({
             "block w-full cursor-pointer px-4 py-2 text-left hover:bg-gray-100 focus-visible:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-gray-800 dark:focus-visible:bg-gray-800",
             item.destructive && "text-red-600 dark:text-red-400",
           );
-          return item.to !== undefined ?
+          return (
+            item.to !== undefined ?
               <Link
                 key={item.label}
                 to={item.to}
@@ -105,6 +125,20 @@ export function ActionsDropdown({
               >
                 {item.label}
               </Link>
+            : item.formAction !== undefined ?
+              <Form
+                key={item.label}
+                action={item.formAction}
+                method={item.method}
+              >
+                <button
+                  type="submit"
+                  className={className}
+                  disabled={item.disabled}
+                >
+                  {item.label}
+                </button>
+              </Form>
             : <button
                 key={item.label}
                 type="button"
@@ -116,7 +150,8 @@ export function ActionsDropdown({
                 }}
               >
                 {item.label}
-              </button>;
+              </button>
+          );
         })}
       </div>
     </details>

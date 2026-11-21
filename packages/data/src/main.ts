@@ -18,6 +18,7 @@ export {
   createSession,
   deleteSession,
   getSession,
+  markSessionVerified,
   putSession,
   refreshSession,
   type Session,

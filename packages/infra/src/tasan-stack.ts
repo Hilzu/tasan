@@ -29,6 +29,7 @@ const publicRootFiles = ["favicon.ico", "robots.txt"];
 export class TasanStack extends Stack {
   tableName: string;
   userPoolServerURL: string;
+  userPoolArn: string;
   appClientID: string;
   appFunctionAssetPath: string;
   distributionID: string;
@@ -163,6 +164,14 @@ export class TasanStack extends Stack {
         resources: [
           `arn:aws:ssm:${this.region}:${this.account}:parameter/tasan-app*`,
         ],
+      }),
+    );
+
+    // Session renewal checks that the signed-in Cognito account is still active.
+    appFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["cognito-idp:AdminGetUser"],
+        resources: [userPool.userPoolArn],
       }),
     );
 
@@ -383,6 +392,7 @@ export class TasanStack extends Stack {
 
     this.tableName = appTable.tableName;
     this.userPoolServerURL = userPool.userPoolProviderUrl;
+    this.userPoolArn = userPool.userPoolArn;
     this.appClientID = userPoolWebClient.userPoolClientId;
     const appFunctionAsset = appFunction.node.findChild("Code") as Asset;
     this.appFunctionAssetPath = appFunctionAsset.assetPath;

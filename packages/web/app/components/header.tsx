@@ -77,7 +77,12 @@ export function Header({ className, user, split, isLandingPage }: HeaderProps) {
               }
               items={[
                 { label: "Settings", to: href("/settings") },
-                { label: "Log out", to: href("/logout") },
+                {
+                  label: "Log out",
+                  formAction: href("/logout"),
+                  method: "post",
+                  destructive: true,
+                },
               ]}
             />
           : <Link

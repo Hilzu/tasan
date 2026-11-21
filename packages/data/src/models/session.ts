@@ -15,16 +15,19 @@ import { parseItem, type SessionItem, sessionItemSchema } from "../items.js";
 
 export interface Session {
   id: SessionID;
+  createdAt?: Date;
   userID?: UserID;
   /** Current expiry; activity may extend it up to absoluteExpiresAt. */
   expiresAt: Date;
   /** Fixed deadline set at sign-in; activity cannot extend it. */
   absoluteExpiresAt?: Date;
+  /** Immutable Cognito username used to check that the account is still active. */
+  cognitoUsername?: string;
+  /** When Cognito last confirmed that the account is active. */
+  verifiedAt?: Date;
   authState?: string;
   authNonce?: string;
   authRedirect?: string;
-  accessToken?: string;
-  refreshToken?: string;
 }
 
 type PrimaryKey = Pick<SessionItem, "pk" | "sk">;
@@ -32,31 +35,33 @@ type PrimaryKey = Pick<SessionItem, "pk" | "sk">;
 const toItem = (session: Session): SessionItem => ({
   pk: session.id,
   sk: session.id,
-  createdAt: new Date().toISOString(),
+  createdAt: (session.createdAt ?? new Date()).toISOString(),
   expiresAt: toUnixTime(session.expiresAt),
   absoluteExpiresAt:
     session.absoluteExpiresAt && toUnixTime(session.absoluteExpiresAt),
   forUser: session.userID,
+  cognitoUsername: session.cognitoUsername,
+  verifiedAt: session.verifiedAt?.toISOString(),
   authState: session.authState,
   authNonce: session.authNonce,
   authRedirect: session.authRedirect,
-  accessToken: session.accessToken,
-  refreshToken: session.refreshToken,
 });
 
 const fromItem = (item: SessionItem): Session => ({
   id: item.pk,
+  createdAt: new Date(item.createdAt),
   userID: item.forUser,
   expiresAt: fromUnixTime(item.expiresAt),
   absoluteExpiresAt:
     item.absoluteExpiresAt === undefined ?
       undefined
     : fromUnixTime(item.absoluteExpiresAt),
+  cognitoUsername: item.cognitoUsername,
+  verifiedAt:
+    item.verifiedAt === undefined ? undefined : new Date(item.verifiedAt),
   authState: item.authState,
   authNonce: item.authNonce,
   authRedirect: item.authRedirect,
-  accessToken: item.accessToken,
-  refreshToken: item.refreshToken,
 });
 
 export const putSession = captureAsync(
@@ -74,7 +79,7 @@ export const createSession = captureAsync(
   "createSession",
   async (session: CreateSession): Promise<{ id: SessionID }> => {
     const id = genSessionID();
-    await putSession({ ...session, id });
+    await putSession({ ...session, id, createdAt: new Date() });
     return { id };
   },
 );
@@ -125,6 +130,32 @@ export const refreshSession = captureAsync(
             ":now": now,
             ":expiry": expiry,
             ":previousExpiry": toUnixTime(previousExpiresAt),
+          },
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof ConditionalCheckFailedException) return false;
+      throw error;
+    }
+  },
+);
+
+/** Record a successful account check on a live record without resurrecting logout. */
+export const markSessionVerified = captureAsync(
+  "markSessionVerified",
+  async (id: SessionID, verifiedAt: Date): Promise<boolean> => {
+    try {
+      await documentClient().send(
+        new UpdateCommand({
+          TableName,
+          Key: { pk: id, sk: id } satisfies PrimaryKey,
+          UpdateExpression: "SET verifiedAt = :verifiedAt",
+          ConditionExpression:
+            "attribute_exists(pk) AND expiresAt > :now AND (attribute_not_exists(verifiedAt) OR verifiedAt < :verifiedAt)",
+          ExpressionAttributeValues: {
+            ":now": toUnixTime(new Date()),
+            ":verifiedAt": verifiedAt.toISOString(),
           },
         }),
       );

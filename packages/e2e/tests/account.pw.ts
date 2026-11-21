@@ -41,7 +41,7 @@ test("local bypass sessions are revoked on logout", async ({ owner }) => {
   if (!sessionCookie) throw new Error("Sign-in did not set a session cookie.");
   const account = owner.getByLabel(/^Account menu for /);
   await account.click();
-  await owner.getByRole("link", { name: "Log out", exact: true }).click();
+  await owner.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(
     owner.getByRole("link", { name: "Log in", exact: true }),
   ).toBeVisible();
