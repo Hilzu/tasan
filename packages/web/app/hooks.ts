@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 
-import { createStorage } from "~/.client/client-utils";
+import { createStorage, type StorableValue } from "~/.client/client-utils";
 
 const isBrowser = typeof window !== "undefined";
 
-export const useStorage = <T extends NonNullable<unknown>>(
+export const useStorage = <T extends StorableValue>(
   key: string,
   initialValue?: T,
 ) => {

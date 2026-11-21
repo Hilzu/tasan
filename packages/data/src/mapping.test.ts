@@ -331,8 +331,10 @@ await test("optional session attributes are omitted by the real SDK serializer",
     "handle",
     (request: unknown) => {
       assert.ok(request && typeof request === "object" && "body" in request);
-      assert.ok(typeof request.body === "string");
-      const payload: unknown = JSON.parse(request.body);
+      assert.ok(request.body instanceof Uint8Array);
+      const payload: unknown = JSON.parse(
+        new TextDecoder().decode(request.body),
+      );
       assert.ok(payload && typeof payload === "object" && "Item" in payload);
       assert.ok(payload.Item && typeof payload.Item === "object");
       for (const field of [

@@ -139,7 +139,7 @@ export class AccessLogsStack extends Stack {
       deliveryDestinationArn: destination.attrArn,
       recordFields,
     });
-    delivery.addDependency(source);
+    delivery.addResourceDependency(source);
     delivery.node.addDependency(deliveryPolicy);
   }
 }

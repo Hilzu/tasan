@@ -57,9 +57,10 @@ await test("real SDK round trips amounts and rates as exact DynamoDB numbers", a
         request &&
           typeof request === "object" &&
           "body" in request &&
-          "headers" in request,
+          "headers" in request &&
+          request.body instanceof Uint8Array,
       );
-      const payload = JSON.parse(String(request.body)) as {
+      const payload = JSON.parse(new TextDecoder().decode(request.body)) as {
         Item?: Record<string, unknown>;
         Key?: { sk: { S: string } };
       };

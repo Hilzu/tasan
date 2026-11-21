@@ -6,6 +6,8 @@ import {
   discovery,
   randomNonce,
   randomState,
+  type TokenEndpointResponse,
+  type TokenEndpointResponseHelpers,
 } from "openid-client";
 
 import { authClientSecret } from "~/.server/secrets";
@@ -35,7 +37,11 @@ export const buildAuthorizationURL = () => {
 
 export const getTokens = captureAsync(
   "getTokens",
-  async (opts: { currentURL: URL; state: string; nonce: string }) => {
+  async (opts: {
+    currentURL: URL;
+    state: string;
+    nonce: string;
+  }): Promise<TokenEndpointResponse & TokenEndpointResponseHelpers> => {
     if (!config) throw new Error("Auth is disabled");
     const { currentURL, state, nonce } = opts;
     return await authorizationCodeGrant(config, currentURL, {

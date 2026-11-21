@@ -30,15 +30,16 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "catalog:",
-    "concurrently": "^10.0.3",
-    "eslint": "^10.5.0",
+    "@typescript/native": "catalog:",
+    "concurrently": "^10.0.7",
+    "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-n": "^18.1.0",
-    "eslint-plugin-simple-import-sort": "^13.0.0",
-    "globals": "^17.6.0",
-    "prettier": "3.8.4",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "eslint-plugin-n": "^18.5.0",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "globals": "^17.14.0",
+    "prettier": "3.10.1",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.73.0"
   }
 }

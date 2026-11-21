@@ -13,7 +13,9 @@ export const createShareHandler = (data: ShareData) => () => {
   });
 };
 
-export const createStorage = <T extends NonNullable<unknown>>(key: string) => ({
+export type StorableValue = string | number | boolean | object;
+
+export const createStorage = <T extends StorableValue>(key: string) => ({
   get: (): T | null => {
     try {
       const value = localStorage.getItem(key);
