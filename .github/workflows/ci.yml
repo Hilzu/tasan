@@ -40,8 +40,8 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Install Chromium
-        run: pnpm --filter @tasan/e2e exec playwright install --with-deps chromium webkit
+      - name: Install browsers
+        run: pnpm --filter @tasan/e2e exec playwright install chromium firefox webkit
 
       - name: Start isolated E2E database
         id: e2e-db

@@ -5,7 +5,7 @@ Docker:
 
 ```sh
 pnpm install
-pnpm --filter @tasan/e2e exec playwright install chromium webkit
+pnpm --filter @tasan/e2e exec playwright install chromium firefox webkit
 docker compose -f packages/e2e/compose.yml up --detach
 pnpm --filter @tasan/e2e test:e2e
 docker compose -f packages/e2e/compose.yml down
@@ -25,8 +25,8 @@ production authentication configuration. Only the external USD-to-EUR
 exchange-rate response is stubbed locally; application calculations, sessions,
 loaders, actions, and database writes are real.
 
-The suite runs on desktop Chromium and a mobile Safari profile powered by
-WebKit. It covers split creation, invitations and single-use acceptance,
+The suite runs on desktop Chromium, desktop Firefox, and a mobile Safari
+profile powered by WebKit. It covers split creation, invitations and single-use acceptance,
 membership protection, expense creation/editing/history/deletion, equal and
 weighted allocations, adjustments, calculations, foreign currency conversion,
 repayments, settings validation/persistence, and local session logout.

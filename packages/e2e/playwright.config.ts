@@ -43,6 +43,13 @@ export default defineConfig({
       },
     },
     {
+      name: "firefox",
+      testMatch: "**/*.pw.ts",
+      use: {
+        ...devices["Desktop Firefox"],
+      },
+    },
+    {
       name: "mobile-webkit",
       testMatch: "**/*.pw.ts",
       use: {
