@@ -45,7 +45,7 @@ jobs:
 
       - name: Start isolated E2E database
         id: e2e-db
-        run: docker compose -f packages/e2e/compose.yml up --detach
+        run: docker compose -f packages/e2e/compose.yml up --detach --wait --wait-timeout 60
 
       - name: Test browser flows
         run: pnpm --filter @tasan/e2e test:e2e

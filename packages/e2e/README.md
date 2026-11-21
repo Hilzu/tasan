@@ -6,7 +6,7 @@ Docker:
 ```sh
 pnpm install
 pnpm --filter @tasan/e2e exec playwright install chromium firefox webkit
-docker compose -f packages/e2e/compose.yml up --detach
+docker compose -f packages/e2e/compose.yml up --detach --wait
 pnpm --filter @tasan/e2e test:e2e
 docker compose -f packages/e2e/compose.yml down
 ```

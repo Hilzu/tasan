@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { setTimeout } from "node:timers/promises";
 
 import {
   CreateTableCommand,
@@ -44,19 +43,7 @@ async function deleteTable() {
   }
 }
 
-// Retry while the database container is still starting.
-for (let attempt = 1; ; attempt++) {
-  try {
-    await deleteTable();
-    break;
-  } catch (error) {
-    if (attempt === 30)
-      throw new Error(`DynamoDB Local is not reachable at ${endpoint}.`, {
-        cause: error,
-      });
-    await setTimeout(1_000);
-  }
-}
+await deleteTable();
 
 await client.send(
   new CreateTableCommand({
