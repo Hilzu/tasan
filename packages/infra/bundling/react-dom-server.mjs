@@ -1,1 +1,1 @@
-export { renderToPipeableStream } from "react-dom-streaming-renderer";
+export { renderToPipeableStream } from "../../web/node_modules/react-dom/cjs/react-dom-server.node.production.js";

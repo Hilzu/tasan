@@ -1,38 +1,27 @@
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { dirname, isAbsolute, join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const projectRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
-export function reactDomServerAliases() {
+export function reactDomServerAlias() {
+  const facade = "./packages/infra/bundling/react-dom-server.mjs";
   const webRequire = createRequire(import.meta.resolve("@tasan/web"));
   const publicRenderer = webRequire.resolve("react-dom/server");
-  const reactDomDir = dirname(webRequire.resolve("react-dom/package.json"));
-  const streamingRenderer = join(
-    reactDomDir,
-    "cjs/react-dom-server.node.production.js",
-  );
-  const rendererPath = relative(projectRoot, streamingRenderer);
-  if (
-    isAbsolute(rendererPath) ||
-    rendererPath === ".." ||
-    rendererPath.startsWith(`..${sep}`)
-  ) {
-    throw new Error(
-      "React DOM's streaming renderer is outside the project root",
-    );
-  }
+  const facadeUrl = pathToFileURL(resolve(projectRoot, facade)).href;
 
   // Isolate NODE_ENV so the check cannot alter the CDK process's module cache.
   try {
     execFileSync(
       process.execPath,
       [
+        "--input-type=module",
         "-e",
         `
-          const publicRenderer = require(process.argv[1]);
-          const streamingRenderer = require(process.argv[2]);
+          import { createRequire } from "node:module";
+          const publicRenderer = createRequire(import.meta.url)(process.argv[1]);
+          const streamingRenderer = await import(process.argv[2]);
           if (
             typeof streamingRenderer.renderToPipeableStream !== "function" ||
             publicRenderer.renderToPipeableStream !== streamingRenderer.renderToPipeableStream
@@ -41,7 +30,7 @@ export function reactDomServerAliases() {
           }
         `,
         publicRenderer,
-        streamingRenderer,
+        facadeUrl,
       ],
       { env: { ...process.env, NODE_ENV: "production" } },
     );
@@ -51,8 +40,5 @@ export function reactDomServerAliases() {
     });
   }
 
-  return {
-    "react-dom/server": "./packages/infra/bundling/react-dom-server.mjs",
-    "react-dom-streaming-renderer": `./${rendererPath.split(sep).join("/")}`,
-  };
+  return facade;
 }

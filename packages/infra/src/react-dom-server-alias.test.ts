@@ -4,10 +4,7 @@ import { test } from "node:test";
 
 import { build } from "esbuild";
 
-import {
-  projectRoot,
-  reactDomServerAliases,
-} from "./react-dom-server-alias.js";
+import { projectRoot, reactDomServerAlias } from "./react-dom-server-alias.js";
 
 const bundleRenderer = (contents: string) =>
   build({
@@ -16,7 +13,7 @@ const bundleRenderer = (contents: string) =>
       contents,
       resolveDir: join(projectRoot, "packages/web"),
     },
-    alias: reactDomServerAliases(),
+    alias: { "react-dom/server": reactDomServerAlias() },
     bundle: true,
     platform: "node",
     format: "esm",
