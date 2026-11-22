@@ -1,5 +1,4 @@
 import classNames from "classnames";
-import { useEffect, useState } from "react";
 import { href } from "react-router";
 
 import { Link } from "~/components/link";
@@ -64,15 +63,13 @@ function ArrowRight() {
 const startLinkClasses =
   "inline-flex min-h-12 items-center justify-center gap-8 rounded-lg bg-brand-700 px-6 py-3 font-semibold text-white outline-brand-700 transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-4 dark:bg-brand-300 dark:text-brand-950 dark:outline-brand-300 dark:hover:bg-brand-200";
 
-export const LandingPage = () => {
-  const [selected, setSelected] = useState(0);
-  const [hydrated, setHydrated] = useState(false);
-  const example = examples[selected];
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-
+export const LandingPage = ({
+  selectedExampleId,
+}: {
+  selectedExampleId: string;
+}) => {
+  const example =
+    examples.find(({ id }) => id === selectedExampleId) ?? examples[0];
   return (
     <div>
       <section
@@ -116,27 +113,21 @@ export const LandingPage = () => {
         </div>
 
         <ExampleFrame>
-          <div
-            role="group"
+          <nav
             aria-label="Choose an example split"
             className="bg-brand-canvas/80 dark:bg-brand-950/90 mb-5 grid grid-cols-3 gap-1 rounded-xl p-1"
           >
-            {examples.map((item, index) => (
-              <button
+            {examples.map((item) => (
+              <Link
                 key={item.name}
-                type="button"
-                aria-pressed={selected === index}
-                aria-controls="split-example"
-                disabled={!hydrated}
-                onClick={() => {
-                  setSelected(index);
-                }}
-                className="text-brand-800 outline-brand-700 aria-pressed:bg-brand-700 dark:text-brand-100 dark:outline-brand-300 dark:hover:bg-brand-800 dark:aria-pressed:bg-brand-300 dark:aria-pressed:text-brand-950 min-h-11 cursor-pointer rounded-lg px-1 py-2 text-xs font-medium transition-colors hover:bg-white/60 focus-visible:outline-2 disabled:cursor-wait aria-pressed:text-white sm:text-sm"
+                to={`/?example=${item.id}`}
+                aria-current={example.id === item.id ? "true" : undefined}
+                className="text-brand-800 outline-brand-700 aria-[current=true]:bg-brand-700 dark:text-brand-100 dark:outline-brand-300 dark:hover:bg-brand-800 dark:aria-[current=true]:bg-brand-300 dark:aria-[current=true]:text-brand-950 min-h-11 cursor-pointer rounded-lg px-1 py-2 text-center text-xs font-medium transition-colors hover:bg-white/60 focus-visible:outline-2 aria-[current=true]:text-white sm:text-sm"
               >
                 {item.name}
-              </button>
+              </Link>
             ))}
-          </div>
+          </nav>
           <p
             id="example-description"
             className="text-brand-800 dark:text-brand-200 mb-3 text-center text-xs leading-relaxed"

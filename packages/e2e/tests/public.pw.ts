@@ -19,37 +19,24 @@ test("HEAD requests return document headers without a body", async ({
   expect((await response.body()).length).toBe(0);
 });
 
-test("example buttons become interactive after hydration", async ({ page }) => {
-  let releaseClient!: () => void;
-  let clientRequested!: () => void;
-  const clientBlocked = new Promise<void>((resolve) => {
-    releaseClient = resolve;
-  });
-  const clientRequest = new Promise<void>((resolve) => {
-    clientRequested = resolve;
-  });
+test("example selection works without JavaScript", async ({ page }) => {
+  await page.route("**/assets/entry.client-*.js", (route) => route.abort());
 
-  await page.route("**/assets/entry.client-*.js", async (route) => {
-    clientRequested();
-    await clientBlocked;
-    await route.continue();
-  });
-
-  const response = await page.goto("/", { waitUntil: "commit" });
+  const response = await page.goto("/");
   expect(response?.ok()).toBe(true);
-  const dinner = page
-    .getByRole("group", { name: "Choose an example split" })
-    .getByRole("button", { name: "Dinner out" });
 
-  try {
-    await clientRequest;
-    await expect(dinner).toBeDisabled();
-  } finally {
-    releaseClient();
-  }
-  await expect(dinner).toBeEnabled();
-  await dinner.click();
-  await expect(dinner).toHaveAttribute("aria-pressed", "true");
+  const examples = page.getByRole("navigation", {
+    name: "Choose an example split",
+  });
+  await examples.getByRole("link", { name: "Dinner out" }).click();
+
+  await expect(page).toHaveURL("/?example=dinner-out");
+  await expect(
+    examples.getByRole("link", { name: "Dinner out" }),
+  ).toHaveAttribute("aria-current", "true");
+  await expect(
+    page.getByRole("region", { name: "Dinner out example split" }),
+  ).toBeVisible();
 });
 
 test("visitors can explore examples and navigate to the privacy notice", async ({
@@ -60,11 +47,13 @@ test("visitors can explore examples and navigate to the privacy notice", async (
   await expect(page.getByRole("heading", { name: /Good times/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
 
-  const examples = page.getByRole("group", { name: "Choose an example split" });
-  await examples.getByRole("button", { name: "Dinner out" }).click();
+  const examples = page.getByRole("navigation", {
+    name: "Choose an example split",
+  });
+  await examples.getByRole("link", { name: "Dinner out" }).click();
   await expect(
-    examples.getByRole("button", { name: "Dinner out" }),
-  ).toHaveAttribute("aria-pressed", "true");
+    examples.getByRole("link", { name: "Dinner out" }),
+  ).toHaveAttribute("aria-current", "true");
   await expect(
     page.getByRole("region", { name: "Dinner out example split" }),
   ).toBeVisible();

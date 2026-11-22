@@ -22,6 +22,7 @@ export interface ExampleExpense {
 }
 
 export interface ExampleSplit {
+  id: string;
   name: string;
   title: string;
   caption: string;
@@ -30,6 +31,7 @@ export interface ExampleSplit {
 
 const exampleData = [
   {
+    id: "weekend-away",
     name: "Weekend away",
     title: "A little escape",
     caption: "GBP, EUR & USD → one total in EUR. Illustrative rates.",
@@ -50,6 +52,7 @@ const exampleData = [
     ],
   },
   {
+    id: "dinner-out",
     name: "Dinner out",
     title: "One more course",
     caption: "Sam’s plus-one counts twice. Alex covers the champagne.",
@@ -71,6 +74,7 @@ const exampleData = [
     ],
   },
   {
+    id: "shared-home",
     name: "Shared home",
     title: "Under one roof",
     caption: "Bills split by room size, right down to the cent.",
