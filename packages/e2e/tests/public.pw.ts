@@ -19,6 +19,26 @@ test("HEAD requests return document headers without a body", async ({
   expect((await response.body()).length).toBe(0);
 });
 
+test("example selection works without JavaScript", async ({ page }) => {
+  await page.route("**/assets/entry.client-*.js", (route) => route.abort());
+
+  const response = await page.goto("/");
+  expect(response?.ok()).toBe(true);
+
+  const examples = page.getByRole("navigation", {
+    name: "Choose an example split",
+  });
+  await examples.getByRole("link", { name: "Dinner out" }).click();
+
+  await expect(page).toHaveURL("/?example=dinner-out");
+  await expect(
+    examples.getByRole("link", { name: "Dinner out" }),
+  ).toHaveAttribute("aria-current", "true");
+  await expect(
+    page.getByRole("region", { name: "Dinner out example split" }),
+  ).toBeVisible();
+});
+
 test("visitors can explore examples and navigate to the privacy notice", async ({
   page,
 }) => {
@@ -27,11 +47,13 @@ test("visitors can explore examples and navigate to the privacy notice", async (
   await expect(page.getByRole("heading", { name: /Good times/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
 
-  const examples = page.getByRole("group", { name: "Choose an example split" });
-  await examples.getByRole("button", { name: "Dinner out" }).click();
+  const examples = page.getByRole("navigation", {
+    name: "Choose an example split",
+  });
+  await examples.getByRole("link", { name: "Dinner out" }).click();
   await expect(
-    examples.getByRole("button", { name: "Dinner out" }),
-  ).toHaveAttribute("aria-pressed", "true");
+    examples.getByRole("link", { name: "Dinner out" }),
+  ).toHaveAttribute("aria-current", "true");
   await expect(
     page.getByRole("region", { name: "Dinner out example split" }),
   ).toBeVisible();
