@@ -5,8 +5,10 @@ import {
   currencies,
   type CurrencySymbol,
   isCurrencySelectable,
+  isCurrencySymbol,
   selectableCurrencies,
 } from "./currency.js";
+import { currencySymbolSchema } from "./validation.js";
 
 // Minor units from the ISO 4217 list published 2026-09-17. BGN uses its last
 // listed value before it was withdrawn.
@@ -54,6 +56,14 @@ await test("currency precision follows ISO 4217 minor units", () => {
     ),
     isoMinorUnits,
   );
+});
+
+await test("currency validation rejects unknown and inherited symbols", () => {
+  for (const value of ["EUR", "BGN", "", "XYZ", "constructor", "__proto__"]) {
+    const valid = value === "EUR" || value === "BGN";
+    assert.equal(isCurrencySymbol(value), valid);
+    assert.equal(currencySymbolSchema.safeParse(value).success, valid);
+  }
 });
 
 await test("historic currencies are selectable only where already in use", () => {

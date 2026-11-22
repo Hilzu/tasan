@@ -19,27 +19,43 @@ export default function handleRequest(
   responseHeaders: Headers,
   routerContext: EntryContext,
 ) {
-  return new Promise((resolve, reject) => {
+  const scriptNonce = crypto.randomBytes(16).toString("base64url");
+
+  responseHeaders.set(
+    "Content-Security-Policy",
+    [
+      `script-src 'unsafe-inline' https: 'nonce-${scriptNonce}' 'strict-dynamic'`,
+      "object-src 'none'",
+      "img-src 'self' data:",
+      "default-src 'self'",
+      "base-uri 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+    ].join("; "),
+  );
+  responseHeaders.set("cache-control", "private, no-cache, max-age=0");
+
+  if (request.method.toUpperCase() === "HEAD") {
+    responseHeaders.set("Content-Type", "text/html");
+    return new Response(null, {
+      status: responseStatusCode,
+      headers: responseHeaders,
+    });
+  }
+
+  return new Promise<Response>((resolve, reject) => {
     let shellRendered = false;
     const userAgent = request.headers.get("user-agent");
-    const scriptNonce = crypto.randomBytes(16).toString("base64url");
-
     const timeZone =
       request.headers.get("cloudfront-viewer-time-zone") ?? undefined;
 
-    responseHeaders.set(
-      "Content-Security-Policy",
-      [
-        `script-src 'unsafe-inline' https: 'nonce-${scriptNonce}' 'strict-dynamic'`,
-        "object-src 'none'",
-        "img-src 'self' data:",
-        "default-src 'self'",
-        "base-uri 'none'",
-        "frame-ancestors 'none'",
-        "form-action 'self'",
-      ].join("; "),
-    );
-    responseHeaders.set("cache-control", "private, no-cache, max-age=0");
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const renderState = { complete: false };
+    const clearRenderTimeout = () => {
+      renderState.complete = true;
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
+    };
 
     // Ensure requests from bots and SPA Mode renders wait for all content to load before responding
     // https://react.dev/reference/react-dom/server/renderToPipeableStream#waiting-for-all-content-to-load-for-crawlers-and-static-generation
@@ -63,9 +79,13 @@ export default function handleRequest(
         [readyOption]() {
           shellRendered = true;
           const body = new PassThrough();
+          body.once("finish", clearRenderTimeout);
+          body.once("close", clearRenderTimeout);
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
+
+          pipe(body);
 
           resolve(
             new Response(stream, {
@@ -73,10 +93,9 @@ export default function handleRequest(
               status: responseStatusCode,
             }),
           );
-
-          pipe(body);
         },
         onShellError(error: unknown) {
+          clearRenderTimeout();
           // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
           reject(error);
         },
@@ -92,9 +111,9 @@ export default function handleRequest(
       },
     );
 
-    // Abort the rendering stream after the `streamTimeout` so it has tine to
-    // flush down the rejected boundaries
-    setTimeout(abort, streamTimeout + 1000);
+    // Allow rejected boundaries time to flush before aborting the render.
+    if (!renderState.complete)
+      timeoutId = setTimeout(abort, streamTimeout + 1000);
   });
 }
 

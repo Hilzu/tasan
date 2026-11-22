@@ -1,14 +1,12 @@
-import { type RefinementCtx, z } from "zod";
+import type { RefinementCtx } from "zod";
+import * as z from "zod";
 
-import { currencies, type CurrencySymbol } from "./currency.js";
+import { isCurrencySymbol } from "./currency.js";
 import { asCognitoUserID, asExpenseID, asOperationID, asUserID } from "./id.js";
 
 export const currencySymbolSchema = z
   .string()
-  .refine(
-    (c): c is CurrencySymbol => c in currencies,
-    "Invalid currency symbol",
-  );
+  .refine(isCurrencySymbol, "Invalid currency symbol");
 
 const validateID =
   <T>(validateFN: (id: string) => T) =>

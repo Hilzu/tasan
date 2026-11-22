@@ -1,7 +1,7 @@
 import { getLogger } from "@tasan/common/logging";
 import { cognitoIDSchema } from "@tasan/common/validation";
 import { redirect } from "react-router";
-import { z } from "zod";
+import * as z from "zod";
 
 import { sessionContext } from "~/.server/auth";
 import { getTokens } from "~/.server/openid";

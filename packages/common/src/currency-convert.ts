@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 
 import { type CurrencySymbol, fixedEuroRates } from "./currency.js";
 import * as Rate from "./exchange-rate.js";

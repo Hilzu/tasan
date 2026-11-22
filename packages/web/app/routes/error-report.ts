@@ -1,12 +1,23 @@
 import { randomUUID } from "node:crypto";
 
 import { getLogger } from "@tasan/common/logging";
+import * as z from "zod";
 
 import { sessionContext, sessionMiddleware } from "~/.server/auth";
 import { originURL } from "~/config";
-import { errorReportSchema } from "~/domain/error-report";
 
 import type { Route } from "./+types/error-report";
+
+const errorReportSchema = z.object({
+  description: z.string().trim().max(2000),
+  error: z.object({
+    name: z.string().max(200),
+    message: z.string().max(2000),
+    stack: z.string().max(12000),
+  }),
+  route: z.string().max(200),
+  version: z.string().max(100),
+});
 
 export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware];
 

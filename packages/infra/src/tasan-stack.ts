@@ -23,6 +23,7 @@ import type { Construct } from "constructs";
 
 import { configureEdgeLogRetention, logRetention } from "./log-retention.js";
 import { managedLoginBranding } from "./managed-login-branding.js";
+import { projectRoot, reactDomServerAlias } from "./react-dom-server-alias.js";
 
 const publicRootFiles = ["favicon.ico", "robots.txt"];
 
@@ -132,6 +133,7 @@ export class TasanStack extends Stack {
       // the same size and cheaper (measured with @tasan/benchmark). Keep in sync with RegionalStack.
       memorySize: 1769,
       entry: "./src/app-function/main.mts",
+      projectRoot,
       architecture: lambda.Architecture.ARM_64,
       tracing: lambda.Tracing.ACTIVE,
       loggingFormat: lambda.LoggingFormat.JSON,
@@ -140,8 +142,17 @@ export class TasanStack extends Stack {
         charset: nodejs.Charset.UTF8,
         minify: true,
         sourceMap: true,
+        sourcesContent: false,
         target: "node24.22",
         format: OutputFormat.ESM,
+        // Lets esbuild drop React's development builds from the bundle.
+        define: { "process.env.NODE_ENV": JSON.stringify("production") },
+        // The relative alias resolves from projectRoot locally and /asset-input in Docker.
+        workingDirectory: "/asset-input",
+        esbuildArgs: {
+          "--alias:react-dom/server": reactDomServerAlias(),
+          "--log-override:import-is-undefined": "error",
+        },
         banner:
           'import {createRequire} from "module"; const require = createRequire(import.meta.url);',
       },

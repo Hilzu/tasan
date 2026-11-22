@@ -1,18 +1,10 @@
 import { isRouteErrorResponse } from "react-router";
-import { z } from "zod";
 
-export const errorReportSchema = z.object({
-  description: z.string().trim().max(2000),
-  error: z.object({
-    name: z.string().max(200),
-    message: z.string().max(2000),
-    stack: z.string().max(12000),
-  }),
-  route: z.string().max(200),
-  version: z.string().max(100),
-});
-
-export type ErrorReport = z.infer<typeof errorReportSchema>;
+export interface ErrorDetails {
+  name: string;
+  message: string;
+  stack: string;
+}
 
 // Stack URLs can contain OAuth codes, invitation tokens, or development queries.
 const cleanStack = (stack: string) =>
@@ -25,7 +17,7 @@ const cleanStack = (stack: string) =>
     }
   });
 
-export function errorDetails(error: unknown): ErrorReport["error"] {
+export function errorDetails(error: unknown): ErrorDetails {
   if (isRouteErrorResponse(error)) {
     return {
       name: `HTTP ${String(error.status)}`,

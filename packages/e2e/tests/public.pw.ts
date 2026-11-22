@@ -1,5 +1,15 @@
 import { expect, test } from "@playwright/test";
 
+test("HEAD requests return document headers without a body", async ({
+  request,
+}) => {
+  const response = await request.head("/");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("text/html");
+  expect(response.headers()["content-security-policy"]).toContain("nonce-");
+  expect((await response.body()).length).toBe(0);
+});
+
 test("visitors can explore examples and navigate to the privacy notice", async ({
   page,
 }) => {
