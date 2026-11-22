@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
 
+test("serves the expected deployment version", async ({ request }) => {
+  const expectedVersion = process.env.E2E_EXPECTED_VERSION;
+  test.skip(!expectedVersion, "No expected deployment version was provided.");
+
+  const response = await request.get("/version");
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ version: expectedVersion });
+});
+
 test("HEAD requests return document headers without a body", async ({
   request,
 }) => {
