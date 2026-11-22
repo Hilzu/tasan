@@ -18,6 +18,8 @@ const config =
     await discovery(authServerURL, authClientID, authClientSecret)
   );
 
+const callbackURL = () => new URL("/auth-callback", originURL);
+
 export const buildAuthorizationURL = () => {
   if (!config) throw new Error("Auth is disabled");
   const state = randomState();
@@ -26,7 +28,7 @@ export const buildAuthorizationURL = () => {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: authClientID,
-    redirect_uri: new URL("/auth-callback", originURL).href,
+    redirect_uri: callbackURL().href,
     scope: "openid email profile",
     state,
     nonce,
@@ -44,7 +46,10 @@ export const getTokens = captureAsync(
   }): Promise<TokenEndpointResponse & TokenEndpointResponseHelpers> => {
     if (!config) throw new Error("Auth is disabled");
     const { currentURL, state, nonce } = opts;
-    return await authorizationCodeGrant(config, currentURL, {
+    // The Lambda request URL uses the internal origin, not the public host.
+    const publicCallbackURL = callbackURL();
+    publicCallbackURL.search = currentURL.search;
+    return await authorizationCodeGrant(config, publicCallbackURL, {
       expectedState: state,
       expectedNonce: nonce,
       idTokenExpected: true,
