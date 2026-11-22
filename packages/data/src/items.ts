@@ -17,7 +17,7 @@ import {
   operationIDSchema,
   userIDSchema,
 } from "@tasan/common/validation";
-import { z } from "zod";
+import * as z from "zod";
 
 import { DataIntegrityError } from "./errors.js";
 

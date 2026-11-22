@@ -46,6 +46,9 @@ export type CurrencyInfo = PropertyValues<typeof currencies>;
 
 export const currencySymbols = Object.keys(currencies);
 
+export const isCurrencySymbol = (value: string): value is CurrencySymbol =>
+  Object.hasOwn(currencies, value);
+
 /** Units per euro for currencies replaced by the euro at an irrevocably fixed
  * rate. The exchange-rate provider no longer serves them, so conversions go
  * through the euro using these rates. Bulgaria adopted the euro on 2026-01-01.

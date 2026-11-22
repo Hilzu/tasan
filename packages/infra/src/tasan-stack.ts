@@ -142,6 +142,8 @@ export class TasanStack extends Stack {
         sourceMap: true,
         target: "node24.22",
         format: OutputFormat.ESM,
+        // Lets esbuild drop React's development builds from the bundle.
+        define: { "process.env.NODE_ENV": JSON.stringify("production") },
         banner:
           'import {createRequire} from "module"; const require = createRequire(import.meta.url);',
       },

@@ -1,11 +1,11 @@
 import {
   type CurrencySymbol,
   isCurrencySelectable,
+  isCurrencySymbol,
   selectableCurrencies,
 } from "@tasan/common/currency";
 import { genExpenseID, genOperationID, type UserID } from "@tasan/common/id";
 import * as M from "@tasan/common/money";
-import { currencySymbolSchema } from "@tasan/common/validation";
 import type { SplitExpense } from "@tasan/data";
 import classNames from "classnames";
 import {
@@ -221,7 +221,9 @@ export function ExpenseForm({ expense }: { expense?: SplitExpense }) {
           errors={actionData?.errors.fieldErrors.currency}
           value={currency}
           onChange={(event) => {
-            const currency = currencySymbolSchema.parse(event.target.value);
+            const currency = event.target.value;
+            if (!isCurrencySymbol(currency))
+              throw new Error("Invalid currency symbol");
             setTotal((input) => normalizeAmountInput(input, currency));
             setParticipants(
               (inputs) =>

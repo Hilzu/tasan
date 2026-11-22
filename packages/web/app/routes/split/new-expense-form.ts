@@ -4,7 +4,7 @@ import {
   operationIDSchema,
   userIDSchema,
 } from "@tasan/common/validation";
-import { z } from "zod";
+import * as z from "zod";
 import { zfd } from "zod-form-data";
 
 // Decode transport values without rounding them or accepting a home currency.
