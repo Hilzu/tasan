@@ -23,6 +23,7 @@
     "fix": "eslint --fix . && node --run format",
     "format": "prettier --write .",
     "test": "pnpm -r test && concurrently --group node:test:*",
+    "test:eslint": "node --test scripts/eslint.test.mjs",
     "test:format": "prettier --check .",
     "test:lint": "eslint .",
     "test:types": "tsc --build --force --emitDeclarationOnly"

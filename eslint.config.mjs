@@ -10,6 +10,11 @@ import tsEslint from "typescript-eslint";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const zodSource =
+  ":matches([source.value='zod'], [source.value=/^zod\\u002F/])";
+const zodImportMessage =
+  "Use a Zod namespace import (`import * as z`) to enable tree-shaking.";
+
 export default tsEslint.config(
   // https://eslint.org/docs/latest/use/configure/ignore
   {
@@ -90,6 +95,21 @@ export default tsEslint.config(
       ],
       "n/prefer-node-protocol": "error",
       "no-console": "error",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: `ImportDeclaration${zodSource}[importKind!='type'] > ImportSpecifier:matches([imported.name='z'], [imported.value='z'], [imported.name='default'], [imported.value='default'])[importKind!='type']`,
+          message: zodImportMessage,
+        },
+        {
+          selector: `ImportDeclaration${zodSource}[importKind!='type'] > ImportDefaultSpecifier`,
+          message: zodImportMessage,
+        },
+        {
+          selector: `ExportNamedDeclaration${zodSource}[exportKind!='type'] > ExportSpecifier:matches([local.name='z'], [local.value='z'], [local.name='default'], [local.value='default'])[exportKind!='type']`,
+          message: zodImportMessage,
+        },
+      ],
     },
   },
   {
