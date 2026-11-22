@@ -29,10 +29,12 @@ membership protection, expense creation/editing/history/deletion, equal and
 weighted allocations, adjustments, calculations, foreign currency conversion,
 repayments, settings validation/persistence, and local session logout.
 
-CI runs the suite on pull requests and pushes to `main`. The deployment workflow
-does not run tests or check CI status. `pnpm test` remains the
-unit/lint/type-check command. Browser failures retain screenshots, traces, and
-an HTML report; CI failure artifacts are retained for seven days.
+CI runs the suite on pull requests and pushes to `main`. After deploying, the
+deployment workflow runs the read-only public checks against production and
+verifies the served build version; it does not check CI status. `pnpm test`
+remains the unit/lint/type-check command. Browser failures retain screenshots,
+traces, and an HTML report; CI and deployment failure artifacts are retained for
+seven days.
 
 ## Deployed environments
 
