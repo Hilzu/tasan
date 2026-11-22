@@ -140,6 +140,7 @@ export class TasanStack extends Stack {
         charset: nodejs.Charset.UTF8,
         minify: true,
         sourceMap: true,
+        sourcesContent: false,
         target: "node24.22",
         format: OutputFormat.ESM,
         // Lets esbuild drop React's development builds from the bundle.
