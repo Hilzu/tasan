@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { href } from "react-router";
 
 import { Link } from "~/components/link";
@@ -66,7 +66,12 @@ const startLinkClasses =
 
 export const LandingPage = () => {
   const [selected, setSelected] = useState(0);
+  const [hydrated, setHydrated] = useState(false);
   const example = examples[selected];
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   return (
     <div>
@@ -122,10 +127,11 @@ export const LandingPage = () => {
                 type="button"
                 aria-pressed={selected === index}
                 aria-controls="split-example"
+                disabled={!hydrated}
                 onClick={() => {
                   setSelected(index);
                 }}
-                className="text-brand-800 outline-brand-700 aria-pressed:bg-brand-700 dark:text-brand-100 dark:outline-brand-300 dark:hover:bg-brand-800 dark:aria-pressed:bg-brand-300 dark:aria-pressed:text-brand-950 min-h-11 cursor-pointer rounded-lg px-1 py-2 text-xs font-medium transition-colors hover:bg-white/60 focus-visible:outline-2 aria-pressed:text-white sm:text-sm"
+                className="text-brand-800 outline-brand-700 aria-pressed:bg-brand-700 dark:text-brand-100 dark:outline-brand-300 dark:hover:bg-brand-800 dark:aria-pressed:bg-brand-300 dark:aria-pressed:text-brand-950 min-h-11 cursor-pointer rounded-lg px-1 py-2 text-xs font-medium transition-colors hover:bg-white/60 focus-visible:outline-2 disabled:cursor-wait aria-pressed:text-white sm:text-sm"
               >
                 {item.name}
               </button>

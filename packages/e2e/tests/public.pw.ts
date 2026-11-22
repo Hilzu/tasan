@@ -19,6 +19,39 @@ test("HEAD requests return document headers without a body", async ({
   expect((await response.body()).length).toBe(0);
 });
 
+test("example buttons become interactive after hydration", async ({ page }) => {
+  let releaseClient!: () => void;
+  let clientRequested!: () => void;
+  const clientBlocked = new Promise<void>((resolve) => {
+    releaseClient = resolve;
+  });
+  const clientRequest = new Promise<void>((resolve) => {
+    clientRequested = resolve;
+  });
+
+  await page.route("**/assets/entry.client-*.js", async (route) => {
+    clientRequested();
+    await clientBlocked;
+    await route.continue();
+  });
+
+  const response = await page.goto("/", { waitUntil: "commit" });
+  expect(response?.ok()).toBe(true);
+  const dinner = page
+    .getByRole("group", { name: "Choose an example split" })
+    .getByRole("button", { name: "Dinner out" });
+
+  try {
+    await clientRequest;
+    await expect(dinner).toBeDisabled();
+  } finally {
+    releaseClient();
+  }
+  await expect(dinner).toBeEnabled();
+  await dinner.click();
+  await expect(dinner).toHaveAttribute("aria-pressed", "true");
+});
+
 test("visitors can explore examples and navigate to the privacy notice", async ({
   page,
 }) => {
